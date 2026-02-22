@@ -26,6 +26,17 @@ try {
     $sessionPdo = new PDO($dsn, $dbCfg['username'], $dbCfg['password'], [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     ]);
+    // Only use DB session handler if the table exists
+    $tableCheck = $sessionPdo->query("SHOW TABLES LIKE 'php_sessions'")->fetchColumn();
+    if (!$tableCheck) {
+        // Create the table on-the-fly
+        $sessionPdo->exec("CREATE TABLE IF NOT EXISTS php_sessions (
+            session_id VARCHAR(128) NOT NULL PRIMARY KEY,
+            session_data MEDIUMTEXT NOT NULL,
+            session_expiry INT(11) UNSIGNED NOT NULL,
+            INDEX idx_expiry (session_expiry)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
     $handler = new DbSessionHandler($sessionPdo);
     session_set_save_handler($handler, true);
 } catch (Exception $e) {

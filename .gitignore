@@ -26,6 +26,15 @@ Thumbs.db
 # Logs
 *.log
 
+# Test/temp files
+cookies.txt
+test_results.json
+test_all_pages.js
+import_data.py
+
+# Firebase cache
+.firebase/
+
 # IDE
 .vscode/
 .idea/

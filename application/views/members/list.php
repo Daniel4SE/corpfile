@@ -86,7 +86,7 @@
                                     ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($row->email); ?></td>
-                                <td><?php echo htmlspecialchars($row->contact_number); ?></td>
+                                <td><?php echo htmlspecialchars($row->contact_number ?? $row->mobile_number ?? ''); ?></td>
                                 <td>
                                     <a href="<?php echo site_url('members/edit_member/' . $row->id); ?>" class="btn btn-info btn-xs" title="Edit"><i class="fa fa-pencil"></i> Edit</a>
                                     <a href="<?php echo site_url('members/view_member/' . $row->id); ?>" class="btn btn-primary btn-xs" title="View"><i class="fa fa-eye"></i> View</a>

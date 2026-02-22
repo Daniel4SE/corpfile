@@ -300,7 +300,7 @@
         <div class="login-box">
 
             <div class="brand">
-                <img src="<?= base_url('public/images/corpfile-logo.png') ?>" alt="CorpFile">
+                <img src="<?= base_url('public/images/corpfile-logo.svg') ?>" alt="CorpFile" style="max-width:220px;height:auto;">
                 <h2>Welcome back</h2>
             </div>
 
