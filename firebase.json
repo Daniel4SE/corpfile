@@ -1,0 +1,28 @@
+{
+  "hosting": {
+    "site": "corpfile",
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "corpfile",
+          "region": "asia-southeast1"
+        }
+      }
+    ],
+    "headers": [
+      {
+        "source": "/public/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "public, max-age=86400" }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+# Sensitive keys
+google.key
+*.key
+*.pem
+*.p12
+.env
+.env.*
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Uploads (user data, not source)
+uploads/*
+!uploads/.gitkeep
+
+# Scraped/extracted data
+scraped_pages/
+scraped_assets/
+extracted_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/

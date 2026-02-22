@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "teamwork-demo-1771579077"
+  },
+  "targets": {
+    "teamwork-demo-1771579077": {
+      "hosting": {
+        "corpfile": ["corpfile"]
+      }
+    }
+  }
+}

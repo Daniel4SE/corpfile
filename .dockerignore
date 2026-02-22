@@ -1,0 +1,7 @@
+node_modules
+scraped_pages
+scraped_assets
+scraper.js
+scraper_v2.js
+.git
+*.md
