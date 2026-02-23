@@ -320,7 +320,7 @@
                     <div class="input-wrapper">
                         <i class="fa fa-building field-icon"></i>
                         <input type="text" name="client_id" placeholder="Enter your Company ID"
-                               value="<?= htmlspecialchars($_POST['client_id'] ?? '') ?>">
+                               value="<?= htmlspecialchars($_POST['client_id'] ?? ($default_client_id ?? 'SG123')) ?>" required>
                     </div>
                 </div>
 
@@ -329,7 +329,7 @@
                     <div class="input-wrapper">
                         <i class="fa fa-user field-icon"></i>
                         <input type="text" name="uname" placeholder="Enter your username"
-                               value="<?= htmlspecialchars($_POST['uname'] ?? '') ?>">
+                               value="<?= htmlspecialchars($_POST['uname'] ?? '') ?>" required>
                     </div>
                 </div>
 

@@ -61,6 +61,10 @@ class Database {
         $this->query($sql, array_values($data));
         return $this->pdo->lastInsertId();
     }
+
+    public function lastInsertId() {
+        return $this->pdo->lastInsertId();
+    }
     
     public function update($table, $data, $where, $whereParams = []) {
         $set = implode(', ', array_map(fn($col) => "{$col} = ?", array_keys($data)));

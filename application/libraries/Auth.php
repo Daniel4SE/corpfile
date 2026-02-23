@@ -4,7 +4,7 @@
  */
 class Auth {
 
-    private static $cookieName = 'cf_auth';
+    private static $cookieName = '__session';
     private static $secret     = 'CorpFile_secret_key_2024_xK9mPqRs';
     private static $ttl        = 7200;
 
@@ -110,6 +110,26 @@ class Auth {
     }
     
     public static function verifyPassword($password, $hash) {
-        return password_verify($password, $hash);
+        $password = (string)$password;
+        $hash = (string)$hash;
+        if ($hash === '') {
+            return false;
+        }
+
+        // Preferred modern path
+        if (password_verify($password, $hash)) {
+            return true;
+        }
+
+        // Backward compatibility for migrated systems
+        if (preg_match('/^[a-f0-9]{32}$/i', $hash)) {
+            return hash_equals(strtolower($hash), md5($password));
+        }
+        if (preg_match('/^[a-f0-9]{40}$/i', $hash)) {
+            return hash_equals(strtolower($hash), sha1($password));
+        }
+
+        // Last-resort support for plaintext legacy passwords
+        return hash_equals($hash, $password);
     }
 }

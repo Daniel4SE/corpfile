@@ -3,11 +3,55 @@
  * Welcome Controller - Login / Logout / Forgot Password
  */
 class Welcome extends BaseController {
+
+    private function getDefaultClientId(): string {
+        if ($this->db) {
+            $client = $this->db->fetchOne(
+                "SELECT client_id FROM clients WHERE status = 1 ORDER BY id ASC LIMIT 1"
+            );
+            if ($client && !empty($client->client_id)) {
+                return (string)$client->client_id;
+            }
+        }
+        return 'SG123';
+    }
+
+    private function resolveLoginClient(string $rawClientId): ?object {
+        if (!$this->db) {
+            return null;
+        }
+
+        $normalizedClientId = strtoupper(str_replace(' ', '', trim($rawClientId)));
+        if ($normalizedClientId !== '') {
+            $matched = $this->db->fetchOne(
+                "SELECT id, client_id
+                 FROM clients
+                 WHERE status = 1
+                   AND REPLACE(UPPER(client_id), ' ', '') = ?
+                 LIMIT 1",
+                [$normalizedClientId]
+            );
+            if ($matched) {
+                return $matched;
+            }
+        }
+
+        // Demo-safe fallback: if only one active client exists, use it.
+        $activeClients = $this->db->fetchAll(
+            "SELECT id, client_id FROM clients WHERE status = 1 ORDER BY id ASC LIMIT 2"
+        );
+        if (count($activeClients) === 1) {
+            return $activeClients[0];
+        }
+
+        return null;
+    }
     
     public function index() {
         if (Auth::check()) {
             $this->redirect('dashboard');
         }
+        $this->data['default_client_id'] = $this->getDefaultClientId();
         $this->view('auth/login', $this->data);
     }
     
@@ -20,25 +64,33 @@ class Welcome extends BaseController {
         $formClientId = trim($_POST['client_id'] ?? '');
         $formUsername  = trim($_POST['uname'] ?? '');
         $formPassword  = $_POST['upsd'] ?? '';
+        $lookupUser = strtolower($formUsername);
 
         // Validation
         if (!$formClientId || !$formUsername || !$formPassword) {
             $this->data['error_message'] = 'Please fill in all fields.';
+            $this->data['default_client_id'] = $this->getDefaultClientId();
             $this->view('auth/login', $this->data);
             return;
         }
 
         $user = null;
+        $resolvedClient = null;
 
         if ($this->db) {
-            // Match client_id + username exactly
-            if ($formClientId && $formUsername) {
+            $resolvedClient = $this->resolveLoginClient($formClientId);
+            if ($resolvedClient && $lookupUser !== '') {
                 $user = $this->db->fetchOne(
                     "SELECT u.*, c.client_id as company_code
                      FROM users u JOIN clients c ON c.id = u.client_id
-                     WHERE c.client_id = ? AND u.username = ? AND u.status = 1
+                     WHERE u.client_id = ?
+                       AND u.status = 1
+                       AND (
+                            LOWER(TRIM(u.username)) = ?
+                            OR LOWER(TRIM(COALESCE(u.email, ''))) = ?
+                       )
                      LIMIT 1",
-                    [$formClientId, $formUsername]
+                    [$resolvedClient->id, $lookupUser, $lookupUser]
                 );
             }
         }
@@ -51,8 +103,17 @@ class Welcome extends BaseController {
             return;
         }
 
-        // Login failed
-        $this->data['error_message'] = 'Invalid Company ID, username, or password.';
+        // Login failed — keep extra details in development only.
+        $dbStatus = $this->db ? 'connected' : 'NULL';
+        $resolvedClientCode = $resolvedClient->client_id ?? 'no-match';
+        $userFound = $user ? 'yes(id=' . $user->id . ')' : 'no';
+        $pwdOk = ($user && Auth::verifyPassword($formPassword, $user->password)) ? 'yes' : 'no';
+        $this->data['default_client_id'] = $this->getDefaultClientId();
+        $this->data['error_message'] = "Invalid Company ID, username, or password.";
+        if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
+            $debug = "DB:{$dbStatus} | InputClient:'{$formClientId}' | ResolvedClient:'{$resolvedClientCode}' | User:'{$formUsername}' | Found:{$userFound} | PwdOk:{$pwdOk}";
+            $this->data['error_message'] .= " [{$debug}]";
+        }
         $this->view('auth/login', $this->data);
     }
     
