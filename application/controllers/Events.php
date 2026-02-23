@@ -11,7 +11,7 @@ class Events extends BaseController {
     }
 }
 
-// Event Tracker controller (maps to /event_tracker)
+// Event Tracker controller (maps to /event_tracker and /duedatetracker)
 class Event_tracker extends BaseController {
     public function index() {
         $this->requireAuth();
@@ -20,7 +20,7 @@ class Event_tracker extends BaseController {
             'page_title' => 'Event Tracker',
             'events' => [],
             'companies' => [],
-            'event_types' => ['AGM', 'AR', 'FYE', 'Anniversary', 'ID Expiry'],
+            'event_types' => ['AGM', 'AR', 'ECI', 'Tax Return', 'Annual Filing'],
         ];
         
         if ($this->db) {
@@ -32,11 +32,10 @@ class Event_tracker extends BaseController {
                     [$client->id]
                 );
                 $data['events'] = $this->db->fetchAll(
-                    "SELECT ce.*, c.company_name 
-                     FROM company_events ce
-                     JOIN companies c ON c.id = ce.company_id
-                     WHERE c.client_id = ?
-                     ORDER BY ce.fye_date DESC",
+                    "SELECT id, client_id, company_id, company_name, year, fye_date, event_name, due_date, pic, status
+                     FROM due_dates
+                     WHERE client_id = ?
+                     ORDER BY due_date ASC",
                     [$client->id]
                 );
             }
@@ -257,8 +256,26 @@ class Company_agm_list extends BaseController {
     public function index($company_id = null) {
         $this->requireAuth();
         
+        // If no company_id, show ALL AGM events (from agm_events table)
         if (!$company_id) {
-            $this->redirect('agm_listing');
+            $data = [
+                'page_title' => 'Company AGM Events',
+                'agm_events' => [],
+                'company' => null,
+                'company_id' => null,
+                'events' => [],
+            ];
+            if ($this->db) {
+                $clientId = $_SESSION['client_id'] ?? '';
+                $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
+                if ($client) {
+                    $data['agm_events'] = $this->db->fetchAll(
+                        "SELECT * FROM agm_events WHERE client_id = ? ORDER BY company_name ASC",
+                        [$client->id]
+                    );
+                }
+            }
+            $this->loadLayout('events/company_agm_list', $data);
             return;
         }
         
@@ -267,6 +284,7 @@ class Company_agm_list extends BaseController {
             'company' => null,
             'company_id' => $company_id,
             'events' => [],
+            'agm_events' => [],
         ];
         
         if ($this->db) {

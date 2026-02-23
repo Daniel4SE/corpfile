@@ -78,14 +78,14 @@
                 <div class="clearfix"></div>
             </div>
             <div class="x_content" style="height:180px; overflow-y:scroll;">
-                <ul class="list-unstyled msg_list" id="postList">
+                <ul class="list-unstyled msg_list">
                     <?php if (!empty($agm_alerts)): ?>
-                        <?php foreach ($agm_alerts as $alert): ?>
+                        <?php foreach ($agm_alerts as $a): ?>
                         <li style="cursor:pointer;">
-                            <a href="<?= base_url('view_company/' . $alert->id) ?>">
+                            <a href="<?= base_url('view_company/' . $a->id) ?>">
                                 <span class="image"><img src="<?= base_url('public/images/img.jpg') ?>" alt="" style="width:40px;height:40px;border-radius:50%;"></span>
-                                <span><span style="font-size:16px;"><?= htmlspecialchars($alert->company_name) ?></span></span>
-                                <span class="message"><span>AGM Due: </span><?= $alert->agm_due_date ?></span>
+                                <span><span style="font-size:16px;"><?= htmlspecialchars($a->company_name ?? '') ?></span></span>
+                                <span class="message" style="color:red;">AGM Due Date: <?= !empty($a->agm_due_date) ? date('d/m/Y', strtotime($a->agm_due_date)) : '' ?></span>
                             </a>
                         </li>
                         <?php endforeach; ?>
@@ -101,12 +101,24 @@
     <div class="col-md-6">
         <div class="x_panel">
             <div class="x_title alertcolor">
-                <h2 style="color:#fff;">AR Due Alert (<span id="ar_count">0</span>)</h2>
+                <h2 style="color:#fff;">AR Due Alert (<?= count($ar_alerts) ?>)</h2>
                 <div class="clearfix"></div>
             </div>
             <div class="x_content" style="height:180px; overflow-y:scroll;">
-                <ul class="list-unstyled msg_list" id="postList1">
-                    <li><a><span class="message">No AR alerts</span></a></li>
+                <ul class="list-unstyled msg_list">
+                    <?php if (!empty($ar_alerts)): ?>
+                        <?php foreach ($ar_alerts as $a): ?>
+                        <li style="cursor:pointer;">
+                            <a href="<?= base_url('view_company/' . $a->id) ?>">
+                                <span class="image"><img src="<?= base_url('public/images/img.jpg') ?>" alt="" style="width:40px;height:40px;border-radius:50%;"></span>
+                                <span><span style="font-size:16px;"><?= htmlspecialchars($a->company_name ?? '') ?></span></span>
+                                <span class="message" style="color:red;">AR Due Date: <?= !empty($a->ar_due_date) ? date('d/m/Y', strtotime($a->ar_due_date)) : '' ?></span>
+                            </a>
+                        </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <li><a><span class="message">No AR alerts</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </div>
         </div>
@@ -114,16 +126,30 @@
 </div>
 
 <div class="row">
-    <!-- Due Alert (Events) -->
+    <!-- Due Alert -->
     <div class="col-md-6">
         <div class="x_panel">
-            <div class="x_title alertcolor">
-                <h2 style="color:#fff;">Due Alert (<span id="due_count">0</span>)</h2>
+            <div class="x_title" style="background:#5cb85c;border-radius:5px 5px 0 0;">
+                <h2 style="color:#fff;">Due Alert (<?= count($due_alerts) ?>)</h2>
                 <div class="clearfix"></div>
             </div>
             <div class="x_content" style="height:180px; overflow-y:scroll;">
-                <ul class="list-unstyled msg_list" id="postList2">
-                    <li><a><span class="message">No due alerts</span></a></li>
+                <ul class="list-unstyled msg_list">
+                    <?php if (!empty($due_alerts)): ?>
+                        <?php foreach ($due_alerts as $a): ?>
+                        <li style="cursor:pointer;background:#d4edda;">
+                            <a href="<?= $a->company_id ? base_url('view_company/' . $a->company_id) : '#' ?>">
+                                <span style="font-size:15px;font-weight:bold;"><?= htmlspecialchars($a->company_name ?? '') ?></span>
+                                <?php if ($a->company_id): ?>
+                                <span style="float:right;font-size:12px;">[ <a href="<?= base_url('view_company/' . $a->company_id) ?>">View</a> ]</span>
+                                <?php endif; ?>
+                                <br><span class="message">Event Date : <?= !empty($a->due_date) ? date('d/m/Y', strtotime($a->due_date)) : '' ?></span>
+                            </a>
+                        </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <li><a><span class="message">No due alerts</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </div>
         </div>
@@ -133,12 +159,22 @@
     <div class="col-md-6">
         <div class="x_panel">
             <div class="x_title alertcolor">
-                <h2 style="color:#fff;">FYE Date Not Entered (<span id="fye_count">0</span>)</h2>
+                <h2 style="color:#fff;">FYE Date Not Entered(<?= count($fye_alerts) ?>)</h2>
                 <div class="clearfix"></div>
             </div>
             <div class="x_content" style="height:180px; overflow-y:scroll;">
-                <ul class="list-unstyled msg_list" id="postList3">
-                    <li><a><span class="message">No alerts</span></a></li>
+                <ul class="list-unstyled msg_list">
+                    <?php if (!empty($fye_alerts)): ?>
+                        <?php foreach ($fye_alerts as $a): ?>
+                        <li>
+                            <a href="<?= base_url('view_company/' . $a->id) ?>">
+                                <span><?= htmlspecialchars($a->company_name ?? '') ?></span>
+                            </a>
+                        </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <li><a><span class="message">No Company found</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </div>
         </div>
@@ -150,12 +186,23 @@
     <div class="col-md-6">
         <div class="x_panel">
             <div class="x_title alertcolor">
-                <h2 style="color:#fff;">Incorporation Date Not Entered (<span id="incorp_count">0</span>)</h2>
+                <h2 style="color:#fff;">Incorporation Date Not Entered (<?= count($incorp_alerts) ?>)</h2>
                 <div class="clearfix"></div>
             </div>
             <div class="x_content" style="height:180px; overflow-y:scroll;">
-                <ul class="list-unstyled msg_list" id="postList4">
-                    <li><a><span class="message">No alerts</span></a></li>
+                <ul class="list-unstyled msg_list">
+                    <?php if (!empty($incorp_alerts)): ?>
+                        <?php foreach ($incorp_alerts as $a): ?>
+                        <li>
+                            <a href="<?= base_url('view_company/' . $a->id) ?>">
+                                <span><?= htmlspecialchars($a->company_name ?? '') ?></span>
+                                <span style="float:right;font-size:12px;">[ <a href="<?= base_url('view_company/' . $a->id) ?>">View</a> ]</span>
+                            </a>
+                        </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <li><a><span class="message">No alerts</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </div>
         </div>
@@ -165,12 +212,23 @@
     <div class="col-md-6">
         <div class="x_panel">
             <div class="x_title alertcolor">
-                <h2 style="color:#fff;">Anniversary Due Alert (<span id="anniv_count">0</span>)</h2>
+                <h2 style="color:#fff;">Anniversary Due Alert (<?= count($anniversary_alerts) ?>)</h2>
                 <div class="clearfix"></div>
             </div>
             <div class="x_content" style="height:180px; overflow-y:scroll;">
-                <ul class="list-unstyled msg_list" id="postList5">
-                    <li><a><span class="message">No alerts</span></a></li>
+                <ul class="list-unstyled msg_list">
+                    <?php if (!empty($anniversary_alerts)): ?>
+                        <?php foreach ($anniversary_alerts as $a): ?>
+                        <li>
+                            <a href="<?= base_url('view_company/' . $a->id) ?>">
+                                <span><?= htmlspecialchars($a->company_name ?? '') ?></span>
+                                <span class="message"><?= htmlspecialchars($a->years_since ?? '') ?></span>
+                            </a>
+                        </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <li><a><span class="message">No Alerts found</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </div>
         </div>
@@ -182,12 +240,23 @@
     <div class="col-md-6">
         <div class="x_panel">
             <div class="x_title alertcolor">
-                <h2 style="color:#fff;">ID Expiry Alert (<span id="expiry_count">0</span>)</h2>
+                <h2 style="color:#fff;">ID Expiry Alert (<?= count($expiry_alerts) ?>)</h2>
                 <div class="clearfix"></div>
             </div>
             <div class="x_content" style="height:180px; overflow-y:scroll;">
-                <ul class="list-unstyled msg_list" id="postList6">
-                    <li><a><span class="message">No alerts</span></a></li>
+                <ul class="list-unstyled msg_list">
+                    <?php if (!empty($expiry_alerts)): ?>
+                        <?php foreach ($expiry_alerts as $a): ?>
+                        <li>
+                            <a href="#">
+                                <span><?= htmlspecialchars($a->name ?? '') ?></span>
+                                <span class="message">Expires: <?= !empty($a->expired_date) ? date('d/m/Y', strtotime($a->expired_date)) : '' ?></span>
+                            </a>
+                        </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <li><a><span class="message">No alerts</span></a></li>
+                    <?php endif; ?>
                 </ul>
             </div>
         </div>
@@ -240,19 +309,11 @@
 
 <script>
 $(document).ready(function() {
-    // Initialize select2
-    if ($.fn.select2) {
-        $('.select2_multiple').select2();
-    }
+    if ($.fn.select2) { $('.select2_multiple').select2(); }
     
-    // Initialize fullcalendar
     if ($.fn.fullCalendar) {
         $('#calendar').fullCalendar({
-            header: {
-                left: '',
-                center: 'title',
-                right: ''
-            },
+            header: { left: '', center: 'title', right: '' },
             defaultDate: '<?= date("Y-m") ?>',
             navLinks: true,
             editable: false,
@@ -265,10 +326,7 @@ $(document).ready(function() {
                     'backgroundColor' => $colors[$e->event_type ?? 'Event'] ?? '#337ab7',
                     'borderColor' => $colors[$e->event_type ?? 'Event'] ?? '#337ab7',
                 ];
-            }, $calendar_events ?? [])) ?>,
-            eventClick: function(event) {
-                alert('Event: ' + event.title);
-            }
+            }, $calendar_events ?? [])) ?>
         });
     }
 });

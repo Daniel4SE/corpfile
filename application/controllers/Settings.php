@@ -360,7 +360,7 @@ class Settings_master extends BaseController {
             ],
         ],
         'event_name' => [
-            'table'   => 'event_names',
+            'table'   => 'event_types',
             'title'   => 'Event Names',
             'columns' => ['ID', 'Event Name', 'Category', 'Status'],
             'fields'  => [
@@ -668,7 +668,7 @@ class Settings_master extends BaseController {
             ],
         ],
         'shares_class_type' => [
-            'table'   => 'shares_class_types',
+            'table'   => 'share_classes',
             'title'   => 'Shares Class Types',
             'columns' => ['ID', 'Class Name', 'Code', 'Par Value', 'Status'],
             'fields'  => [

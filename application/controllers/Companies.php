@@ -652,7 +652,7 @@ class Pre_company extends BaseController {
                     "SELECT c.*, ct.type_name as company_type_name 
                      FROM companies c 
                      LEFT JOIN company_types ct ON ct.id = c.company_type_id
-                     WHERE c.client_id = ? AND c.entity_status = 'Pre-Incorporation'
+                     WHERE c.client_id = ? AND c.internal_css_status = 'Pre-Incorporation'
                      ORDER BY c.company_name ASC",
                     [$client->id]
                 );
@@ -689,7 +689,7 @@ class Post_company extends BaseController {
                     "SELECT c.*, ct.type_name as company_type_name 
                      FROM companies c 
                      LEFT JOIN company_types ct ON ct.id = c.company_type_id
-                     WHERE c.client_id = ? AND c.entity_status = 'Active'
+                     WHERE c.client_id = ? AND c.internal_css_status = 'Post-Incorporation'
                      ORDER BY c.company_name ASC",
                     [$client->id]
                 );

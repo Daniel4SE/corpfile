@@ -62,13 +62,17 @@ class Welcome extends BaseController {
      * verifies it server-side, and creates a local session.
      */
     public function firebase_login() {
+        // Always return JSON — catch any PHP error before headers are sent
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
+            header('Content-Type: application/json');
             echo json_encode(['error' => 'Method not allowed']);
             return;
         }
 
         header('Content-Type: application/json');
+
+        try {
 
         $input = json_decode(file_get_contents('php://input'), true);
         $idToken = $input['id_token'] ?? '';
@@ -189,6 +193,11 @@ class Welcome extends BaseController {
         // Fallback: no DB, create session from Firebase data directly
         Auth::login(0, $email ?: 'google_user', $name, $email, 'user', 'DEMO');
         echo json_encode(['success' => true, 'redirect' => base_url('dashboard')]);
+
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
+        }
     }
 
     public function logout() {

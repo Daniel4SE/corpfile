@@ -65,8 +65,8 @@
                             foreach ($members as $row): ?>
                             <tr>
                                 <td><?php echo $sno++; ?></td>
-                                <td><?php echo htmlspecialchars($row->name); ?></td>
-                                <td><?php echo htmlspecialchars($row->alias_name); ?></td>
+                                <td><?php echo htmlspecialchars($row->name ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($row->alias_name ?? ''); ?></td>
                                 <td>
                                     <?php
                                     if (!empty($row->id_type) && !empty($row->id_number)) {
@@ -85,7 +85,7 @@
                                     }
                                     ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($row->email); ?></td>
+                                <td><?php echo htmlspecialchars($row->email ?? ''); ?></td>
                                 <td><?php echo htmlspecialchars($row->contact_number ?? $row->mobile_number ?? ''); ?></td>
                                 <td>
                                     <a href="<?php echo site_url('members/edit_member/' . $row->id); ?>" class="btn btn-info btn-xs" title="Edit"><i class="fa fa-pencil"></i> Edit</a>

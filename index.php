@@ -5,10 +5,58 @@
  * Entry point - routes all requests through the MVC framework
  */
 
+// ── Static file handler for PHP built-in server ──────────────────
+// When using `php -S`, all requests go through this file.
+// Serve static assets (CSS, JS, images, fonts, videos) directly.
+if (php_sapi_name() === 'cli-server') {
+    $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+    $file = __DIR__ . $uri;
+    if ($uri !== '/' && is_file($file)) {
+        // Set proper Content-Type for common static files
+        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        $mimeTypes = [
+            'css'  => 'text/css',
+            'js'   => 'application/javascript',
+            'json' => 'application/json',
+            'png'  => 'image/png',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif'  => 'image/gif',
+            'svg'  => 'image/svg+xml',
+            'ico'  => 'image/x-icon',
+            'woff' => 'font/woff',
+            'woff2'=> 'font/woff2',
+            'ttf'  => 'font/ttf',
+            'eot'  => 'application/vnd.ms-fontobject',
+            'otf'  => 'font/otf',
+            'mp4'  => 'video/mp4',
+            'webm' => 'video/webm',
+            'pdf'  => 'application/pdf',
+            'map'  => 'application/json',
+        ];
+        if (isset($mimeTypes[$ext])) {
+            header('Content-Type: ' . $mimeTypes[$ext]);
+        }
+        readfile($file);
+        return;
+    }
+}
+
 define('BASEPATH', __DIR__ . '/');
 define('APPPATH', BASEPATH . 'application/');
 define('FCPATH', BASEPATH . 'public/');
 define('ENVIRONMENT', 'development');
+
+// PHP 8.1+ compatibility: suppress Deprecated warnings for htmlspecialchars(null)
+// These are harmless and come from the original codebase patterns
+error_reporting(E_ALL & ~E_DEPRECATED);
+
+// Safe htmlspecialchars wrapper for PHP 8.1+ (null-safe)
+if (!function_exists('esc')) {
+    function esc($str) {
+        return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
+    }
+}
 
 // Load configuration first (needed for DB session handler)
 require_once APPPATH . 'config/config.php';
@@ -303,7 +351,7 @@ $controllerMap = [
     'Remainder_remainder_list'   => ['file' => 'Misc.php', 'class' => 'Reminder_list'],
     'Remainder_set_remainder'    => ['file' => 'Misc.php', 'class' => 'Set_reminder'],
     'Remainder_edit_remainder'   => ['file' => 'Misc.php', 'class' => 'Edit_reminder'],
-    'settings_register_charge_list' => ['file' => 'Misc.php', 'class' => 'Sealings_list'],
+    'settings_register_charge_list' => ['file' => 'Misc.php', 'class' => 'Register_charge_list'],
 
     // ─── Misc Extended ──────────────────────────────────────────
     'corporate_shareholder_corp_share_comp_list' => ['file' => 'Misc.php', 'class' => 'Corp_share_comp_list'],
@@ -398,8 +446,17 @@ $firstSegmentLower = strtolower($firstSegment);
 if ($firstSegmentLower === 'settings' && count($segments) >= 2) {
     $settingsSubKey = 'settings_' . strtolower($segments[1]);
     if (isset($controllerMap[$settingsSubKey])) {
+        $map = $controllerMap[$settingsSubKey];
         $params = array_slice($segments, 2);
-        dispatchController($controllerMap[$settingsSubKey], $params);
+        // For Settings_master class, pass the sub-key as the type parameter
+        // e.g. /settings/document_category → Settings_master::index('document_category')
+        if ($map['class'] === 'Settings_master' && empty($params)) {
+            $params = [strtolower($segments[1])];
+            // Strip trailing '_list' if present (e.g. member_id_type_list → member_id_type)
+            $typeKey = preg_replace('/_list$/', '', $params[0]);
+            $params = [$typeKey];
+        }
+        dispatchController($map, $params);
         return;
     }
     // Also check the second segment directly (e.g. /settings/general_settings)
@@ -601,6 +658,26 @@ if ($firstSegmentLower === 'company_officials' && count($segments) >= 2) {
     }
     // Default to company_officials with sub-segments as params
     dispatchController($controllerMap['company_officials'], array_slice($segments, 1));
+    return;
+}
+
+// ── 2k2. Handle "corporate_shareholder/" prefix URLs ────────────────────
+//    e.g. /corporate_shareholder/corp_share_comp_list → Corp_share_comp_list
+if ($firstSegmentLower === 'corporate_shareholder' && count($segments) >= 2) {
+    $subKey = strtolower($segments[1]);
+    $compoundKey = 'corporate_shareholder_' . $subKey;
+    if (isset($controllerMap[$compoundKey])) {
+        $params = array_slice($segments, 2);
+        dispatchController($controllerMap[$compoundKey], $params);
+        return;
+    }
+    if (isset($controllerMap[$subKey])) {
+        $params = array_slice($segments, 2);
+        dispatchController($controllerMap[$subKey], $params);
+        return;
+    }
+    // Default to Company_officials
+    dispatchController($controllerMap['corporate_shareholder'], array_slice($segments, 1));
     return;
 }
 

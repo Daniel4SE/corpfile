@@ -29,13 +29,14 @@ class Company_officials extends BaseController {
             $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
             if ($client) {
                 $data['companies'] = $this->db->fetchAll(
-                    "SELECT c.id, c.company_name, c.registration_number, c.entity_status,
-                        (SELECT COUNT(*) FROM directors d WHERE d.company_id = c.id) as total_directors,
-                        (SELECT COUNT(*) FROM shareholders s WHERE s.company_id = c.id) as total_shareholders,
-                        (SELECT COUNT(*) FROM secretaries sec WHERE sec.company_id = c.id) as total_secretaries,
-                        (SELECT COUNT(*) FROM auditors a WHERE a.company_id = c.id) as total_auditors
+                    "SELECT c.id, c.company_name, c.registration_number,
+                        (SELECT COUNT(*) FROM company_officials co WHERE co.company_id = c.id AND co.official_type = 'director') as total_directors,
+                        (SELECT COUNT(*) FROM company_officials co WHERE co.company_id = c.id AND co.official_type = 'shareholder') as total_shareholders,
+                        (SELECT COUNT(*) FROM company_officials co WHERE co.company_id = c.id AND co.official_type = 'secretary') as total_secretaries,
+                        (SELECT COUNT(*) FROM company_officials co WHERE co.company_id = c.id AND co.official_type = 'auditor') as total_auditors,
+                        (SELECT COUNT(*) FROM company_officials co WHERE co.company_id = c.id AND co.official_type = 'manager') as total_managers
                      FROM companies c
-                     WHERE c.client_id = ?
+                     WHERE c.client_id = ? AND c.internal_css_status IS NOT NULL
                      ORDER BY c.company_name ASC",
                     [$client->id]
                 );

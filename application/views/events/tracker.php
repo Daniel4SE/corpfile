@@ -73,12 +73,12 @@
                     <thead>
                         <tr style="background:#206570;color:#fff;">
                             <th>S/No.</th>
-                            <th>Company Name</th>
-                            <th>FYE Date</th>
-                            <th>AGM Due</th>
-                            <th>AR Due</th>
-                            <th>Last AGM</th>
-                            <th>Last AR Filed</th>
+                            <th>Entity Name</th>
+                            <th>Year</th>
+                            <th>FYE</th>
+                            <th>Event</th>
+                            <th>Due Date</th>
+                            <th>PIC</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -86,44 +86,27 @@
                     <tbody>
                         <?php $sno = 1; foreach ($events as $e): ?>
                         <?php
-                            $today = date('Y-m-d');
-                            $agm_due = $e->agm_due_date ?? null;
-                            $ar_due = $e->ar_due_date ?? null;
-                            $status = 'completed';
-                            $status_label = 'success';
-                            $status_text = 'Completed';
-                            
-                            if ($agm_due && $agm_due < $today && empty($e->agm_held_date)) {
-                                $status = 'overdue';
-                                $status_label = 'danger';
-                                $status_text = 'Overdue';
-                            } elseif ($agm_due && $agm_due >= $today && $agm_due <= date('Y-m-d', strtotime('+30 days')) && empty($e->agm_held_date)) {
-                                $status = 'upcoming';
-                                $status_label = 'warning';
-                                $status_text = 'Upcoming';
-                            } elseif ($ar_due && $ar_due < $today && empty($e->ar_filing_date)) {
-                                $status = 'overdue';
-                                $status_label = 'danger';
-                                $status_text = 'Overdue';
-                            } elseif ($ar_due && $ar_due >= $today && $ar_due <= date('Y-m-d', strtotime('+30 days')) && empty($e->ar_filing_date)) {
-                                $status = 'upcoming';
-                                $status_label = 'warning';
-                                $status_text = 'Upcoming';
-                            }
+                            $st = $e->status ?? 'Pending';
+                            $status_label = 'default';
+                            if ($st === 'Pending') $status_label = 'warning';
+                            elseif ($st === 'Completed') $status_label = 'success';
+                            elseif ($st === 'Overdue') $status_label = 'danger';
                         ?>
                         <tr>
                             <td><?= $sno++ ?></td>
-                            <td><?= htmlspecialchars($e->company_name) ?></td>
+                            <td><?= htmlspecialchars($e->company_name ?? '') ?></td>
+                            <td><?= htmlspecialchars($e->year ?? '') ?></td>
                             <td><?= $e->fye_date ? date('d/m/Y', strtotime($e->fye_date)) : '-' ?></td>
-                            <td><?= $agm_due ? date('d/m/Y', strtotime($agm_due)) : '-' ?></td>
-                            <td><?= $ar_due ? date('d/m/Y', strtotime($ar_due)) : '-' ?></td>
-                            <td><?= !empty($e->agm_held_date) ? date('d/m/Y', strtotime($e->agm_held_date)) : '-' ?></td>
-                            <td><?= !empty($e->ar_filing_date) ? date('d/m/Y', strtotime($e->ar_filing_date)) : '-' ?></td>
-                            <td data-status="<?= $status ?>">
-                                <span class="label label-<?= $status_label ?>"><?= $status_text ?></span>
+                            <td><?= htmlspecialchars($e->event_name ?? '') ?></td>
+                            <td><?= $e->due_date ? date('d/m/Y', strtotime($e->due_date)) : '-' ?></td>
+                            <td><?= htmlspecialchars($e->pic ?? '') ?></td>
+                            <td>
+                                <span class="label label-<?= $status_label ?>"><?= htmlspecialchars($st) ?></span>
                             </td>
                             <td>
+                                <?php if ($e->company_id): ?>
                                 <a href="<?= base_url("view_company/{$e->company_id}") ?>" class="btn btn-primary btn-xs"><i class="fa fa-eye"></i> View</a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>

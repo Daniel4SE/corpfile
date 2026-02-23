@@ -31,6 +31,15 @@ cookies.txt
 test_results.json
 test_all_pages.js
 import_data.py
+compare/
+compare_pages.js
+compare_v2.js
+crawl_all_links.js
+crawl_results.json
+extract_officials.js
+import_officials.py
+officials_companies.json
+screenshots/
 
 # Firebase cache
 .firebase/
