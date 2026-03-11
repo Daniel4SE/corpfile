@@ -77,6 +77,12 @@ SQL
   else
     echo "Teamwork.sg data already imported, skipping."
   fi
+
+  # Migrate company_officials into dedicated tables (directors, shareholders, secretaries, auditors)
+  if [ -f /var/www/html/data_import/migrate_officials.php ]; then
+    echo "Running officials migration..."
+    php /var/www/html/data_import/migrate_officials.php 2>&1 || true
+  fi
 fi
 
 # Start PHP built-in server (same as local dev)
