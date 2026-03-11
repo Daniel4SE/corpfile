@@ -272,31 +272,7 @@
 </style>
 
 <div class="cf-chat-container">
-    <!-- Left: Chat History -->
-    <div class="cf-chat-sidebar">
-        <div class="cf-chat-sidebar-header">
-            <h4>Conversations</h4>
-            <button class="cf-chat-new-btn" onclick="newChat()" title="New Chat">
-                <i class="fa fa-plus"></i>
-            </button>
-        </div>
-        <div class="cf-chat-list">
-            <div class="cf-chat-item active" data-chat="1">
-                <div class="cf-chat-item-title">General Assistant</div>
-                <div class="cf-chat-item-time">Active now</div>
-            </div>
-            <div class="cf-chat-item" data-chat="2">
-                <div class="cf-chat-item-title">IR8A Filing Query</div>
-                <div class="cf-chat-item-time">2 hours ago</div>
-            </div>
-            <div class="cf-chat-item" data-chat="3">
-                <div class="cf-chat-item-title">AGM Compliance Check</div>
-                <div class="cf-chat-item-time">Yesterday</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right: Chat Main -->
+    <!-- Chat Main (single-panel assistant) -->
     <div class="cf-chat-main">
         <div class="cf-chat-main-header">
             <div class="cf-chat-ai-badge">

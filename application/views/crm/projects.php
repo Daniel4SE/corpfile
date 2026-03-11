@@ -6,7 +6,7 @@
     <div class="title_right">
         <div class="pull-right">
             <a href="<?= base_url('crm_projects/add') ?>" class="btn btn-success"><i class="fa fa-plus"></i> Add Project</a>
-            <a href="<?= base_url('crm_dashboard') ?>" class="btn btn-default"><i class="fa fa-arrow-left"></i> Back to CRM</a>
+            <a href="<?= base_url('dashboard') ?>" class="btn btn-default"><i class="fa fa-arrow-left"></i> Back to Dashboard</a>
         </div>
     </div>
 </div>

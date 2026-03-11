@@ -30,7 +30,7 @@
             <span class="cf-agent-skill">Due Dates</span>
         </div>
         <button class="btn btn-primary btn-sm cf-agent-action" onclick="openAgentChat('compliance')">
-            <i class="fa fa-bolt" style="margin-right:4px;"></i> Chat
+            <i class="fa fa-play" style="margin-right:4px;"></i> Run
         </button>
     </div>
 
@@ -52,7 +52,7 @@
             <span class="cf-agent-skill">Certificates</span>
         </div>
         <button class="btn btn-primary btn-sm cf-agent-action" onclick="openAgentChat('docgen')">
-            <i class="fa fa-bolt" style="margin-right:4px;"></i> Chat
+            <i class="fa fa-play" style="margin-right:4px;"></i> Run
         </button>
     </div>
 
@@ -74,7 +74,7 @@
             <span class="cf-agent-skill">Sanctions</span>
         </div>
         <button class="btn btn-primary btn-sm cf-agent-action" onclick="openAgentChat('kyc')">
-            <i class="fa fa-bolt" style="margin-right:4px;"></i> Chat
+            <i class="fa fa-play" style="margin-right:4px;"></i> Run
         </button>
     </div>
 
@@ -96,7 +96,7 @@
             <span class="cf-agent-skill">IRAS Filing</span>
         </div>
         <button class="btn btn-primary btn-sm cf-agent-action" onclick="openAgentChat('ir8a')">
-            <i class="fa fa-bolt" style="margin-right:4px;"></i> Chat
+            <i class="fa fa-play" style="margin-right:4px;"></i> Run
         </button>
     </div>
 
@@ -140,7 +140,7 @@
             <span class="cf-agent-skill">Payslips</span>
         </div>
         <button class="btn btn-primary btn-sm cf-agent-action" onclick="openAgentChat('payroll')">
-            <i class="fa fa-bolt" style="margin-right:4px;"></i> Chat
+            <i class="fa fa-play" style="margin-right:4px;"></i> Run
         </button>
     </div>
 

@@ -7,11 +7,106 @@ class Documents extends BaseController {
     
     public function index() {
         $this->requireAuth();
+        $documents = [];
+        if ($this->db) {
+            $clientId = $_SESSION['client_id'] ?? '';
+            $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
+            if ($client) {
+                $documents = $this->db->fetchAll(
+                    "SELECT d.*, c.company_name as company, u.name as uploaded_by 
+                     FROM documents d 
+                     LEFT JOIN companies c ON c.id = d.entity_id AND d.entity_type='company'
+                     LEFT JOIN users u ON u.id = d.uploaded_by
+                     WHERE d.client_id = ?
+                     ORDER BY d.created_at DESC
+                     LIMIT 500",
+                    [$client->id]
+                );
+                // Add computed fields
+                foreach ($documents as &$doc) {
+                    $doc->name = $doc->document_name ?? $doc->file_name ?? 'Untitled';
+                    $doc->type = $doc->document_type ?? $doc->category_name ?? 'General';
+                    $ext = pathinfo($doc->file_name ?? '', PATHINFO_EXTENSION);
+                    $iconMap = ['pdf'=>'pdf-o','doc'=>'word-o','docx'=>'word-o','xls'=>'excel-o','xlsx'=>'excel-o','jpg'=>'image-o','png'=>'image-o'];
+                    $doc->icon = $iconMap[strtolower($ext)] ?? 'o';
+                    $doc->size = !empty($doc->file_size) ? $this->formatBytes($doc->file_size) : '';
+                }
+            }
+        }
         $data = [
             'page_title' => 'Document Management',
-            'documents' => [],
+            'documents' => $documents,
         ];
         $this->loadLayout('documents/index', $data);
+    }
+
+    public function upload() {
+        $this->requireAuth();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !$this->validateCsrf()) {
+            $this->redirect('documents');
+            return;
+        }
+        if (empty($_FILES['documents']) || empty($_FILES['documents']['name'][0])) {
+            $this->setFlash('error', 'No file selected.');
+            $this->redirect('documents');
+            return;
+        }
+        $clientId = $_SESSION['client_id'] ?? '';
+        $client = $this->db ? $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]) : null;
+        if (!$client) { $this->redirect('documents'); return; }
+
+        $uploadDir = BASEPATH . 'uploads/documents/';
+        if (!is_dir($uploadDir)) { mkdir($uploadDir, 0755, true); }
+
+        $companyId = $this->input('company_id', '') ?: null;
+        $docType   = $this->input('document_type', 'General');
+        $desc      = $this->input('description', '');
+        $userId    = $_SESSION['user_id'] ?? null;
+        $count = 0;
+
+        foreach ($_FILES['documents']['name'] as $i => $name) {
+            if ($_FILES['documents']['error'][$i] !== UPLOAD_ERR_OK) continue;
+            $tmpName = $_FILES['documents']['tmp_name'][$i];
+            $size    = $_FILES['documents']['size'][$i];
+            $ext     = pathinfo($name, PATHINFO_EXTENSION);
+            $safeName = time() . '_' . $i . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $name);
+            $dest     = $uploadDir . $safeName;
+
+            if (move_uploaded_file($tmpName, $dest)) {
+                $this->db->execute(
+                    "INSERT INTO documents (client_id, entity_type, entity_id, document_name, file_name, file_path, file_size, document_type, description, uploaded_by, created_at) 
+                     VALUES (?, 'company', ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+                    [$client->id, $companyId, $name, $safeName, 'uploads/documents/' . $safeName, $size, $docType, $desc, $userId]
+                );
+                $count++;
+            }
+        }
+        $this->setFlash('success', "{$count} document(s) uploaded successfully.");
+        $this->redirect('documents');
+    }
+
+    public function download($id = null) {
+        $this->requireAuth();
+        if (!$id || !$this->db) { $this->redirect('documents'); return; }
+        $doc = $this->db->fetchOne("SELECT * FROM documents WHERE id = ?", [$id]);
+        if (!$doc || empty($doc->file_path)) { $this->redirect('documents'); return; }
+        $filePath = BASEPATH . $doc->file_path;
+        if (!file_exists($filePath)) { $this->setFlash('error', 'File not found.'); $this->redirect('documents'); return; }
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . ($doc->document_name ?? $doc->file_name ?? 'download') . '"');
+        header('Content-Length: ' . filesize($filePath));
+        readfile($filePath);
+        exit;
+    }
+
+    private function formatBytes($bytes, $precision = 1) {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        return round($bytes, $precision) . ' ' . $units[$pow];
     }
 }
 

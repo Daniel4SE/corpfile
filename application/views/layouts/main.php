@@ -78,12 +78,11 @@
                     <div class="menu_section">
                         <ul class="nav side-menu">
 
-                            <!-- 1. Chats -->
+                            <!-- 1. Assistant -->
                             <li class="<?= ($current_url == 'chats') ? 'active' : '' ?>">
                                 <a href="<?= base_url('chats') ?>">
                                     <span class="cf-nav-icon"><?= cf_icon('chat') ?></span>
-                                    <span>Chats</span>
-                                    <span class="cf-badge-count">3</span>
+                                    <span>Assistant</span>
                                 </a>
                             </li>
 
@@ -188,7 +187,7 @@
                             </li>
 
                             <!-- 9. Projects (expandable) -->
-                            <li class="<?= in_array($current_url, ['projects','tasks','activities','timesheet']) ? 'active' : '' ?>">
+                            <li class="<?= in_array($current_url, ['projects','tasks','timesheet']) ? 'active' : '' ?>">
                                 <a>
                                     <span class="cf-nav-icon"><?= cf_icon('projects') ?></span>
                                     <span>Projects</span>
@@ -200,9 +199,6 @@
                                     </li>
                                     <li class="<?= ($current_url == 'tasks') ? 'active' : '' ?>">
                                         <a href="<?= base_url('tasks') ?>">Tasks</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'activities') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('activities') ?>">Activities</a>
                                     </li>
                                     <li class="<?= ($current_url == 'timesheet') ? 'active' : '' ?>">
                                         <a href="<?= base_url('timesheet') ?>">Timesheet</a>
@@ -221,11 +217,11 @@
                                 </a>
                             </li>
 
-                            <!-- 11. Reports -->
+                            <!-- 11. Skills (Workflows) -->
                             <li class="<?= ($current_url == 'report_module') ? 'active' : '' ?>">
                                 <a href="<?= base_url('report_module/default_report') ?>">
-                                    <span class="cf-nav-icon"><?= cf_icon('reports') ?></span>
-                                    <span>Reports</span>
+                                    <span class="cf-nav-icon"><?= cf_icon('workflow') ?></span>
+                                    <span>Skills</span>
                                 </a>
                             </li>
 
