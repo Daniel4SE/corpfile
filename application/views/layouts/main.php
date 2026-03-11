@@ -501,6 +501,23 @@ $(document).ready(function () {
     });
 });
 
+/* ── Simple Markdown renderer ──────────────────────────────── */
+function renderMd(text) {
+    var h = text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/```([\s\S]*?)```/g, '<pre style="background:#f4f5f7;padding:8px;border-radius:4px;font-size:12px;overflow-x:auto"><code>$1</code></pre>')
+        .replace(/`([^`]+)`/g, '<code style="background:#f4f5f7;padding:1px 4px;border-radius:3px;font-size:12px">$1</code>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/^### (.+)$/gm, '<div style="font-weight:700;font-size:12px;margin:6px 0 2px">$1</div>')
+        .replace(/^## (.+)$/gm, '<div style="font-weight:700;font-size:13px;margin:8px 0 3px">$1</div>')
+        .replace(/^# (.+)$/gm, '<div style="font-weight:700;font-size:14px;margin:8px 0 4px">$1</div>')
+        .replace(/^\d+\.\s+(.+)$/gm, '<div style="margin-left:12px">&#8226; $1</div>')
+        .replace(/^[-•]\s+(.+)$/gm, '<div style="margin-left:12px">&#8226; $1</div>')
+        .replace(/\n/g, '<br>');
+    return h;
+}
+
 /* ── AI Agent Drawer ──────────────────────────────────────── */
 function toggleAIDrawer() {
     var drawer = document.getElementById('aiDrawer');
@@ -555,13 +572,14 @@ function sendAIMessage() {
         aiDiv.className = 'ai-message assistant';
 
         if (data.ok && data.response_text) {
-            aiDiv.innerHTML = '<span class="ai-avatar"><i class="fa fa-bolt"></i></span> ' + data.response_text;
+            aiDiv.innerHTML = '<span class="ai-avatar"><i class="fa fa-bolt"></i></span> ' +
+                '<div style="display:inline">' + renderMd(data.response_text) + '</div>';
             aiDiv.innerHTML += '<div class="action-btns">' +
-                '<button onclick="copyToClipboard(this.closest(\'.ai-message\').textContent)"><i class="fa fa-copy"></i> Copy</button>' +
+                '<button onclick="copyToClipboard(this.closest(\'.ai-message\').innerText)"><i class="fa fa-copy"></i> Copy</button>' +
                 '</div>';
         } else {
             aiDiv.innerHTML = '<span class="ai-avatar"><i class="fa fa-bolt"></i></span> ' +
-                '<em style="color:var(--cf-text-secondary)">AI agent is being configured. Chat will be available once the backend is set up.</em>';
+                '<em style="color:var(--cf-text-secondary)">' + (data.error || 'AI agent encountered an error. Please try again.') + '</em>';
         }
 
         chatBody.appendChild(aiDiv);

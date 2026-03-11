@@ -232,6 +232,26 @@
     40% { transform: scale(1); opacity: 1; }
 }
 
+/* AI content formatting */
+.cf-ai-content { display: inline; }
+.cf-ai-content pre {
+    background: #f4f5f7;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    overflow-x: auto;
+    margin: 6px 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.cf-ai-content code {
+    background: #f4f5f7;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+.cf-ai-content strong { font-weight: 600; }
+
 /* Offline / setup notice */
 .cf-chat-offline {
     background: #fef9ee !important;
@@ -314,6 +334,26 @@
 <script>
 var BASE = "<?= base_url() ?>";
 
+/* Simple markdown → HTML converter for AI responses */
+function renderMarkdown(text) {
+    var html = text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')  // escape HTML
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')           // code blocks
+        .replace(/`([^`]+)`/g, '<code>$1</code>')                             // inline code
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')                     // bold
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')                                 // italic
+        .replace(/^### (.+)$/gm, '<h5 style="margin:8px 0 4px;font-size:13px;font-weight:700">$1</h5>')
+        .replace(/^## (.+)$/gm, '<h4 style="margin:10px 0 4px;font-size:14px;font-weight:700">$1</h4>')
+        .replace(/^# (.+)$/gm, '<h3 style="margin:10px 0 6px;font-size:15px;font-weight:700">$1</h3>')
+        .replace(/^\d+\.\s+(.+)$/gm, '<li style="margin-left:16px;list-style:decimal">$1</li>')
+        .replace(/^[-•]\s+(.+)$/gm, '<li style="margin-left:16px;list-style:disc">$1</li>')
+        .replace(/\n/g, '<br>');
+    // Collapse consecutive <br> around block elements
+    html = html.replace(/<br>\s*(<h[345])/g, '$1').replace(/(<\/h[345]>)\s*<br>/g, '$1');
+    html = html.replace(/<br>\s*(<pre>)/g, '$1').replace(/(<\/pre>)\s*<br>/g, '$1');
+    return html;
+}
+
 function sendChatChip(text) {
     document.getElementById('chatInput').value = text;
     sendChatMessage();
@@ -356,14 +396,14 @@ function sendChatMessage() {
         aiDiv.className = 'cf-chat-msg assistant';
 
         if (data.ok && data.response_text) {
-            aiDiv.innerHTML = '<span class="cf-msg-avatar"><i class="fa fa-bolt"></i></span> ' + data.response_text;
+            aiDiv.innerHTML = '<span class="cf-msg-avatar"><i class="fa fa-bolt"></i></span> ' +
+                '<div class="cf-ai-content">' + renderMarkdown(data.response_text) + '</div>';
         } else {
-            // AI backend not available - show friendly offline notice
             aiDiv.className = 'cf-chat-msg assistant cf-chat-offline';
             aiDiv.innerHTML = '<span class="cf-msg-avatar" style="background:linear-gradient(135deg,#f0ad4e,#ec971f)"><i class="fa fa-info"></i></span>' +
                 '<div>' +
-                '<strong>AI Agent is being configured</strong><br>' +
-                '<span style="font-size:12px;color:var(--cf-text-secondary)">The CorpFile AI backend is not yet connected. Once your administrator completes the setup, you will be able to chat with the AI agent for compliance checks, document generation, KYC screening, and more.</span>' +
+                '<strong>AI Agent error</strong><br>' +
+                '<span style="font-size:12px;color:var(--cf-text-secondary)">' + (data.error || 'Something went wrong. Please try again.') + '</span>' +
                 '</div>';
         }
 

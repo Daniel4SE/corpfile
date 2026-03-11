@@ -2,241 +2,194 @@
 /**
  * AiBridge
  *
- * Thin wrapper around the AI CLI so the PHP app can query runtime
- * status and execute grounded agent turns.
+ * Calls the Anthropic Claude Messages API directly via HTTP.
+ * No CLI dependency — works anywhere PHP + curl are available.
  */
 class AiBridge {
-    private $binary;
-    private $stateDir;
-    private $shellHome;
-    private $path;
+    private $apiKey;
+    private $apiUrl;
+    private $model;
+    private $systemPrompt;
 
     public function __construct($options = []) {
-        $this->binary = $options['binary'] ?? getenv('AI_BIN') ?: $this->detectBinary();
-        $stateDir = $options['state_dir'] ?? getenv('AI_STATE_DIR') ?: $this->defaultStateDir();
-        $this->stateDir = rtrim((string) $stateDir, '/');
-        $this->shellHome = rtrim((string) (getenv('AI_HOME') ?: getenv('HOME') ?: dirname($this->stateDir)), '/');
-        $this->path = getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin';
+        $this->apiKey = $options['api_key'] ?? getenv('AI_API_KEY') ?: '';
+        $this->apiUrl = $options['api_url'] ?? getenv('AI_API_URL') ?: 'https://api.anthropic.com/v1/messages';
+        $this->model  = $options['model']   ?? getenv('AI_MODEL')   ?: 'claude-sonnet-4-20250514';
+
+        $this->systemPrompt = $options['system_prompt'] ?? $this->defaultSystemPrompt();
     }
 
+    /**
+     * Check if the AI backend is configured and reachable.
+     */
     public function status() {
-        if (!$this->binary) {
+        if (empty($this->apiKey)) {
             return [
                 'ready' => false,
-                'cli_found' => false,
-                'cli_version' => null,
-                'mode' => 'unavailable',
-                'gateway' => ['ok' => false],
-                'local_fallback_ready' => !empty(getenv('OPENAI_API_KEY')),
-                'error' => 'AI CLI not found in PATH.',
+                'error' => 'AI_API_KEY not configured.',
+                'provider' => 'anthropic',
+                'model' => $this->model,
             ];
         }
 
-        $versionResult = $this->runCommand([$this->binary, '--version']);
-        $gateway = $this->probeGateway();
-        $mode = $this->resolveExecMode($gateway);
-        $localFallbackReady = !empty(getenv('OPENAI_API_KEY'));
-
         return [
-            'ready' => $gateway['ok'] || $localFallbackReady,
-            'cli_found' => true,
-            'cli_version' => $versionResult['exit_code'] === 0 ? trim($versionResult['output']) : null,
-            'mode' => $mode,
-            'agent_id' => getenv('AI_AGENT_ID') ?: 'main',
-            'gateway' => $gateway,
-            'local_fallback_ready' => $localFallbackReady,
-            'state_dir' => $this->stateDir,
-            'error' => $gateway['ok'] || $localFallbackReady ? null : ($gateway['error'] ?: 'AI runtime is not available.'),
+            'ready' => true,
+            'provider' => 'anthropic',
+            'model' => $this->model,
+            'api_url' => $this->apiUrl,
+            'error' => null,
         ];
     }
 
+    /**
+     * Send a message to Claude and return the response.
+     *
+     * @param string $message     User's message
+     * @param array  $options     Optional: system_prompt, max_tokens, temperature, context (array of prior messages)
+     * @return array              ['ok' => bool, 'response_text' => string, 'error' => string|null, ...]
+     */
     public function runTurn($message, $options = []) {
         $message = trim((string) $message);
         if ($message === '') {
+            return ['ok' => false, 'error' => 'Prompt is required.'];
+        }
+
+        if (empty($this->apiKey)) {
+            return ['ok' => false, 'error' => 'AI_API_KEY not configured. Please set the AI_API_KEY environment variable.'];
+        }
+
+        $maxTokens   = (int) ($options['max_tokens']   ?? 2048);
+        $temperature = (float) ($options['temperature'] ?? 0.4);
+        $timeout     = (int) ($options['timeout']       ?? 90);
+        $timeout     = max(15, min($timeout, 300));
+
+        // Build messages array (support conversation context)
+        $messages = [];
+        if (!empty($options['context']) && is_array($options['context'])) {
+            foreach ($options['context'] as $msg) {
+                $messages[] = [
+                    'role'    => $msg['role'] ?? 'user',
+                    'content' => $msg['content'] ?? '',
+                ];
+            }
+        }
+        $messages[] = ['role' => 'user', 'content' => $message];
+
+        // System prompt
+        $systemPrompt = $options['system_prompt'] ?? $this->systemPrompt;
+
+        // Build API request body
+        $body = [
+            'model'      => $this->model,
+            'max_tokens' => $maxTokens,
+            'temperature'=> $temperature,
+            'system'     => $systemPrompt,
+            'messages'   => $messages,
+        ];
+
+        $result = $this->callApi($body, $timeout);
+
+        if (!$result['ok']) {
             return [
-                'ok' => false,
-                'error' => 'Prompt is required.',
+                'ok'    => false,
+                'error' => $result['error'],
+                'response_text' => null,
             ];
         }
 
-        if (!$this->binary) {
-            return [
-                'ok' => false,
-                'error' => 'AI CLI not found in PATH.',
-            ];
-        }
+        $data = $result['data'];
 
-        $gateway = $this->probeGateway();
-        $mode = $options['mode'] ?? $this->resolveExecMode($gateway);
-        $agentId = (string) ($options['agent_id'] ?? getenv('AI_AGENT_ID') ?: 'main');
-        $thinking = (string) ($options['thinking'] ?? 'minimal');
-        $timeout = (int) ($options['timeout'] ?? getenv('AI_TIMEOUT') ?: 90);
-        $timeout = max(15, min($timeout, 600));
-
-        $command = [$this->binary, 'agent'];
-        if ($mode === 'local') {
-            $command[] = '--local';
-        } else {
-            $command[] = '--agent';
-            $command[] = $agentId;
-        }
-
-        $command[] = '--message';
-        $command[] = $message;
-        $command[] = '--thinking';
-        $command[] = $thinking;
-        $command[] = '--timeout';
-        $command[] = (string) $timeout;
-        $command[] = '--json';
-
-        $result = $this->runCommand($command);
-        $decoded = json_decode($result['output'], true);
-
-        if ($result['exit_code'] !== 0 || !is_array($decoded)) {
-            if ($mode === 'gateway' && $this->canUseLocalFallback()) {
-                $fallbackOptions = $options;
-                $fallbackOptions['mode'] = 'local';
-                $fallbackResult = $this->runTurn($message, $fallbackOptions);
-                if (!empty($fallbackResult['ok'])) {
-                    return $fallbackResult;
+        // Extract text from response content blocks
+        $responseText = '';
+        if (!empty($data['content']) && is_array($data['content'])) {
+            foreach ($data['content'] as $block) {
+                if (($block['type'] ?? '') === 'text') {
+                    $responseText .= $block['text'];
                 }
             }
-
-            return [
-                'ok' => false,
-                'mode' => $mode,
-                'agent_id' => $mode === 'local' ? 'embedded' : $agentId,
-                'raw_output' => $result['output'],
-                'error' => $this->extractErrorMessage($result['output'], $result['exit_code']),
-            ];
-        }
-
-        $payloads = $decoded['result']['payloads'] ?? [];
-        $meta = $decoded['result']['meta'] ?? [];
-
-        return [
-            'ok' => true,
-            'mode' => $mode,
-            'agent_id' => $mode === 'local' ? 'embedded' : $agentId,
-            'response_text' => $this->extractPayloadText($payloads),
-            'session_id' => $meta['agentMeta']['sessionId'] ?? null,
-            'model' => $meta['agentMeta']['model'] ?? null,
-            'provider' => $meta['agentMeta']['provider'] ?? null,
-            'duration_ms' => $meta['durationMs'] ?? null,
-            'usage' => $meta['agentMeta']['usage'] ?? null,
-            'raw' => $decoded,
-        ];
-    }
-
-    private function resolveExecMode($gateway) {
-        $configured = strtolower((string) (getenv('AI_EXEC_MODE') ?: 'auto'));
-        if ($configured === 'gateway' || $configured === 'local') {
-            return $configured;
-        }
-
-        if (!empty($gateway['ok'])) {
-            return 'gateway';
-        }
-
-        return 'local';
-    }
-
-    private function probeGateway() {
-        $result = $this->runCommand([$this->binary, 'gateway', 'status', '--json']);
-        $decoded = json_decode($result['output'], true);
-
-        if ($result['exit_code'] !== 0 || !is_array($decoded)) {
-            return [
-                'ok' => false,
-                'error' => $this->extractErrorMessage($result['output'], $result['exit_code']),
-            ];
         }
 
         return [
-            'ok' => !empty($decoded['rpc']['ok']),
-            'port' => $decoded['gateway']['port'] ?? null,
-            'bind_host' => $decoded['gateway']['bindHost'] ?? null,
-            'probe_url' => $decoded['gateway']['probeUrl'] ?? null,
-            'service_loaded' => $decoded['service']['loaded'] ?? null,
-            'runtime_status' => $decoded['service']['runtime']['status'] ?? null,
-            'issues' => $decoded['service']['configAudit']['issues'] ?? [],
-            'raw' => $decoded,
-            'error' => !empty($decoded['rpc']['ok']) ? null : 'Gateway RPC probe failed.',
+            'ok'            => true,
+            'response_text' => trim($responseText) ?: 'Request processed.',
+            'mode'          => 'anthropic_api',
+            'model'         => $data['model'] ?? $this->model,
+            'provider'      => 'anthropic',
+            'usage'         => $data['usage'] ?? null,
+            'stop_reason'   => $data['stop_reason'] ?? null,
+            'message_id'    => $data['id'] ?? null,
         ];
     }
 
-    private function extractPayloadText($payloads) {
-        if (!is_array($payloads) || empty($payloads)) {
-            return '';
+    /**
+     * Make the actual HTTP call to the Anthropic API.
+     */
+    private function callApi($body, $timeout) {
+        $ch = curl_init();
+
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $this->apiUrl,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($body),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'x-api-key: ' . $this->apiKey,
+                'anthropic-version: 2023-06-01',
+            ],
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        @curl_close($ch);
+
+        if ($curlError) {
+            return ['ok' => false, 'error' => 'Network error: ' . $curlError, 'data' => null];
         }
 
-        $texts = [];
-        foreach ($payloads as $payload) {
-            $text = trim((string) ($payload['text'] ?? ''));
-            if ($text !== '') {
-                $texts[] = $text;
+        $decoded = json_decode($response, true);
+
+        if ($httpCode !== 200 || !is_array($decoded)) {
+            $errorMsg = 'API error (HTTP ' . $httpCode . ')';
+            if (is_array($decoded) && !empty($decoded['error']['message'])) {
+                $errorMsg = $decoded['error']['message'];
+            } elseif (is_array($decoded) && !empty($decoded['error']['type'])) {
+                $errorMsg = $decoded['error']['type'] . ': ' . ($decoded['error']['message'] ?? 'Unknown error');
             }
+            return ['ok' => false, 'error' => $errorMsg, 'data' => $decoded];
         }
 
-        return trim(implode("\n\n", $texts));
+        return ['ok' => true, 'error' => null, 'data' => $decoded];
     }
 
-    private function extractErrorMessage($output, $exitCode) {
-        $output = trim((string) $output);
-        if ($output !== '') {
-            return $output;
-        }
+    /**
+     * Default system prompt for the CorpFile AI assistant.
+     */
+    private function defaultSystemPrompt() {
+        return <<<'PROMPT'
+You are CorpFile AI, an intelligent assistant embedded in CorpFile, a corporate secretarial management platform used by company secretaries and compliance professionals.
 
-        return 'AI command failed with exit code ' . (int) $exitCode . '.';
-    }
+Your expertise includes:
+- Company incorporation, registration, and corporate governance
+- Annual returns, AGM filings, and compliance deadlines (especially Singapore ACRA)
+- Director and shareholder management, share transfers, and allotments
+- KYC/AML screening, Customer Due Diligence (CDD), and PEP checks
+- Corporate document generation: resolutions, minutes, statutory forms
+- IR8A tax filing, Singapore payroll (CPF, SDL, FWL), and IRAS deadlines
+- Invoice generation and fee management for secretarial services
+- Company event tracking (FYE changes, striking off, dormancy)
 
-    private function detectBinary() {
-        // Try to find any AI CLI in PATH
-        foreach (['corpfile-ai', 'ai-agent'] as $name) {
-            $binary = trim((string) @shell_exec('command -v ' . $name . ' 2>/dev/null'));
-            if ($binary !== '') {
-                return $binary;
-            }
-        }
-
-        return null;
-    }
-
-    private function defaultStateDir() {
-        $home = getenv('HOME');
-        if ($home) {
-            return $home . '/.corpfile-ai';
-        }
-
-        return sys_get_temp_dir() . '/.corpfile-ai';
-    }
-
-    private function canUseLocalFallback() {
-        return !empty(getenv('OPENAI_API_KEY'));
-    }
-
-    private function runCommand($commandParts) {
-        $escaped = [];
-        foreach ($commandParts as $part) {
-            $escaped[] = escapeshellarg((string) $part);
-        }
-
-        $envPrefix = sprintf(
-            'HOME=%s AI_STATE_DIR=%s PATH=%s',
-            escapeshellarg($this->shellHome),
-            escapeshellarg($this->stateDir),
-            escapeshellarg($this->path)
-        );
-        $command = $envPrefix . ' ' . implode(' ', $escaped) . ' 2>&1';
-
-        $outputLines = [];
-        $exitCode = 0;
-        @exec($command, $outputLines, $exitCode);
-
-        return [
-            'exit_code' => (int) $exitCode,
-            'output' => trim(implode("\n", $outputLines)),
-            'command' => $command,
-        ];
+Guidelines:
+- Be concise, professional, and action-oriented
+- When discussing Singapore regulations, cite the Companies Act (Cap. 50) or relevant ACRA/IRAS guidelines
+- Use structured formatting: headers, bullet points, numbered steps
+- If you don't have enough information, ask clarifying questions
+- Never fabricate company data, filing numbers, or regulatory references
+- When asked to generate documents, provide the full text content ready to use
+- For compliance checks, clearly state what is compliant and what needs attention
+PROMPT;
     }
 }
