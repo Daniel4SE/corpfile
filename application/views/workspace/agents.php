@@ -100,11 +100,14 @@
         <div class="cf-agents-chatbar-inner">
             <input type="text" class="cf-agents-chatinput" id="agentChatInput" placeholder="Ask me anything..." autocomplete="off">
             <div class="cf-agents-chatbar-right">
-                <button class="cf-agent-selector-btn" id="agentSelectorBtn" title="Switch agent">
-                    <span class="cf-agent-selector-icon" id="agentSelectorIcon"></span>
-                    <span id="agentSelectorLabel">Compliance Monitor</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
+                <div class="cf-agent-selector-wrap" id="agentSelectorWrap">
+                    <button class="cf-agent-selector-btn" id="agentSelectorBtn" title="Switch agent">
+                        <span class="cf-agent-selector-icon" id="agentSelectorIcon"></span>
+                        <span id="agentSelectorLabel">Compliance Monitor</span>
+                        <svg class="cf-selector-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="cf-agent-dropdown" id="agentDropdown"></div>
+                </div>
                 <button class="cf-agents-sendbtn" id="agentSendBtn" title="Send">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 </button>
@@ -507,6 +510,95 @@
     height: 14px;
 }
 
+/* Agent Selector Wrapper */
+.cf-agent-selector-wrap {
+    position: relative;
+}
+
+/* Agent Dropdown */
+.cf-agent-dropdown {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    min-width: 260px;
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    padding: 6px;
+    z-index: 100;
+    animation: cfDropIn 0.15s ease;
+}
+.cf-agent-dropdown.open {
+    display: block;
+}
+@keyframes cfDropIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.cf-agent-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.12s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--cf-text, #1e293b);
+}
+.cf-agent-dropdown-item:hover {
+    background: #f5f3ff;
+}
+.cf-agent-dropdown-item.active {
+    background: #eef2ff;
+}
+.cf-agent-dropdown-item .cf-dd-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.cf-agent-dropdown-item .cf-dd-icon svg {
+    width: 15px;
+    height: 15px;
+}
+.cf-agent-dropdown-item .cf-dd-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+.cf-agent-dropdown-item .cf-dd-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--cf-text, #1e293b);
+}
+.cf-agent-dropdown-item .cf-dd-desc {
+    font-size: 11.5px;
+    font-weight: 400;
+    color: var(--cf-text-secondary, #64748b);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cf-selector-chevron {
+    transition: transform 0.2s;
+}
+.cf-agent-selector-wrap.dropdown-open .cf-selector-chevron {
+    transform: rotate(180deg);
+}
+
 /* Send Button */
 .cf-agents-sendbtn {
     width: 42px;
@@ -636,19 +728,70 @@
 
     backBtn.addEventListener('click', exitChatMode);
 
-    /* ── Selector pill cycles agents ── */
+    /* ── Agent Dropdown ── */
+    var selectorWrap = document.getElementById('agentSelectorWrap');
+    var dropdown = document.getElementById('agentDropdown');
+
+    function buildDropdown() {
+        dropdown.innerHTML = '';
+        cards.forEach(function(card) {
+            var agent = card.getAttribute('data-agent');
+            var label = card.getAttribute('data-label');
+            var color = card.getAttribute('data-color') || 'purple';
+            var iconHTML = card.querySelector('.cf-agent-icon-circle').innerHTML;
+            var desc = card.querySelector('.cf-agent-card-desc').textContent;
+            var c = colorMap[color] || colorMap.purple;
+
+            var item = document.createElement('button');
+            item.className = 'cf-agent-dropdown-item' + (agent === selectedAgent ? ' active' : '');
+            item.innerHTML =
+                '<span class="cf-dd-icon" style="background:' + c.bg + ';color:' + c.fg + '">' +
+                    iconHTML.replace(/width="22"/g, 'width="15"').replace(/height="22"/g, 'height="15"') +
+                '</span>' +
+                '<span class="cf-dd-text">' +
+                    '<span class="cf-dd-name">' + label + '</span>' +
+                    '<span class="cf-dd-desc">' + desc.substring(0, 60) + (desc.length > 60 ? '...' : '') + '</span>' +
+                '</span>';
+
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selectCard(card);
+                closeDropdown();
+                if (isChatting) {
+                    addMessage('assistant', 'Switched to **' + label + '**. How can I help?');
+                }
+            });
+            dropdown.appendChild(item);
+        });
+    }
+
+    function openDropdown() {
+        buildDropdown();
+        dropdown.classList.add('open');
+        selectorWrap.classList.add('dropdown-open');
+    }
+
+    function closeDropdown() {
+        dropdown.classList.remove('open');
+        selectorWrap.classList.remove('dropdown-open');
+    }
+
+    function toggleDropdown() {
+        if (dropdown.classList.contains('open')) {
+            closeDropdown();
+        } else {
+            openDropdown();
+        }
+    }
+
     document.getElementById('agentSelectorBtn').addEventListener('click', function(e) {
         e.stopPropagation();
-        var arr = Array.prototype.slice.call(cards);
-        var idx = -1;
-        arr.forEach(function(c, i) { if (c.classList.contains('selected')) idx = i; });
-        var next = (idx + 1) % arr.length;
-        selectCard(arr[next]);
-        /* If chatting, add a system message */
-        if (isChatting) {
-            var newLabel = arr[next].getAttribute('data-label');
-            addMessage('assistant', 'Switched to **' + newLabel + '**. How can I help?');
-        }
+        toggleDropdown();
+    });
+
+    /* Close dropdown on outside click */
+    document.addEventListener('click', function() {
+        closeDropdown();
     });
 
     /* ── Add message to chat ── */
