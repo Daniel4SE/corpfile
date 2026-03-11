@@ -161,14 +161,6 @@
                                 </a>
                             </li>
 
-                            <!-- 6. EP/DP Management -->
-                            <li class="<?= ($current_url == 'duedatetracker' && isset($_GET['type']) && $_GET['type'] == 'ep') ? 'active' : '' ?>">
-                                <a href="<?= base_url('duedatetracker') ?>">
-                                    <span class="cf-nav-icon"><?= cf_icon('ep_dp') ?></span>
-                                    <span>EP/DP Management</span>
-                                </a>
-                            </li>
-
                             <!-- 7. Events & Alerts -->
                             <li class="<?= in_array($current_url, ['company_agm','duedatetracker']) ? 'active' : '' ?>">
                                 <a>
