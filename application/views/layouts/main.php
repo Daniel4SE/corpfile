@@ -210,6 +210,9 @@
                                 </ul>
                             </li>
 
+                            <!-- Divider -->
+                            <li class="cf-nav-divider"></li>
+
                             <!-- 10. Agents -->
                             <li class="<?= ($current_url == 'agents') ? 'active' : '' ?>">
                                 <a href="<?= base_url('agents') ?>">
@@ -217,9 +220,6 @@
                                     <span>Agents</span>
                                 </a>
                             </li>
-
-                            <!-- Divider -->
-                            <li class="cf-nav-divider"></li>
 
                             <!-- 11. Reports -->
                             <li class="<?= ($current_url == 'report_module') ? 'active' : '' ?>">
