@@ -3,20 +3,8 @@ set -e
 
 PORT=${PORT:-8080}
 
-# Fix Apache MPM conflict at runtime
-if apache2ctl -M 2>/dev/null | grep -q mpm_event; then
-  a2dismod mpm_event 2>/dev/null || true
-  a2enmod mpm_prefork 2>/dev/null || true
-fi
-
-# Update Apache port to match $PORT
-sed -i "s/Listen [0-9]*/Listen $PORT/" /etc/apache2/ports.conf
-sed -i "s/:8080>/:$PORT>/" /etc/apache2/sites-available/000-default.conf
-sed -i "s/:80>/:$PORT>/" /etc/apache2/sites-available/000-default.conf
-
 # Ensure uploads directory is writable
 mkdir -p /var/www/html/uploads
-chown -R www-data:www-data /var/www/html/uploads
 
 # Run DB migrations (idempotent)
 DB_HOST="${DB_HOST:-localhost}"
@@ -44,4 +32,6 @@ SQL
   echo "DB migrations done."
 fi
 
-exec "$@"
+# Start PHP built-in server (same as local dev)
+echo "Starting CorpFile on port $PORT..."
+exec php -S "0.0.0.0:$PORT" -t /var/www/html /var/www/html/index.php
