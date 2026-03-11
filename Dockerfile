@@ -7,9 +7,11 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install gd pdo pdo_mysql mysqli zip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Fix Apache MPM: disable event, enable prefork (required for mod_php)
-RUN a2dismod mpm_event 2>/dev/null || true \
-    && a2enmod mpm_prefork \
+# Fix Apache MPM conflict: force only prefork (mod_php needs it)
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.* \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.* \
+    && ln -sf /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load \
+    && ln -sf /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf \
     && a2enmod rewrite
 
 # Apache config: allow .htaccess overrides
