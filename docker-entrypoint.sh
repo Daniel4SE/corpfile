@@ -14,7 +14,14 @@ DB_NAME="${DB_NAME:-corporate_secretary}"
 DB_PORT="${DB_PORT:-3306}"
 
 # Common mysql options (disable SSL for Railway's self-signed certs)
-MYSQL_OPTS="-h${DB_HOST} -P${DB_PORT} -u${DB_USER} -p${DB_PASS} --ssl-mode=DISABLED"
+# Use --skip-ssl for MariaDB client, --ssl-mode=DISABLED for MySQL client
+SSL_FLAG=""
+if mysql --help 2>&1 | grep -q "skip-ssl"; then
+  SSL_FLAG="--skip-ssl"
+elif mysql --help 2>&1 | grep -q "ssl-mode"; then
+  SSL_FLAG="--ssl-mode=DISABLED"
+fi
+MYSQL_OPTS="-h${DB_HOST} -P${DB_PORT} -u${DB_USER} -p${DB_PASS} ${SSL_FLAG}"
 
 if [ -n "$DB_HOST" ] && [ "$DB_HOST" != "localhost" ]; then
   echo "Waiting for MySQL to be ready..."
