@@ -23,3 +23,7 @@ services:
         sync: false
       - key: DB_NAME
         sync: false
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: claude-opus-4-6

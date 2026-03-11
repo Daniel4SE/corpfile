@@ -14,7 +14,7 @@ class AiBridge {
     public function __construct($options = []) {
         $this->apiKey = $options['api_key'] ?? getenv('AI_API_KEY') ?: '';
         $this->apiUrl = $options['api_url'] ?? getenv('AI_API_URL') ?: 'https://api.anthropic.com/v1/messages';
-        $this->model  = $options['model']   ?? getenv('AI_MODEL')   ?: 'claude-sonnet-4-20250514';
+        $this->model  = $options['model']   ?? getenv('AI_MODEL')   ?: 'claude-opus-4-6';
 
         $this->systemPrompt = $options['system_prompt'] ?? $this->defaultSystemPrompt();
     }
