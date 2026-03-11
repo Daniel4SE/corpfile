@@ -226,7 +226,7 @@ body.modern-theme .nav li.current-page > a {
 }
 body.modern-theme .nav.side-menu > li.active > a .cf-nav-icon svg,
 body.modern-theme .nav li.current-page > a .cf-nav-icon svg {
-    stroke: #fff;
+    stroke: #fff !important;
 }
 body.modern-theme .nav.side-menu > li.active > a .cf-chevron svg {
     stroke: rgba(255,255,255,0.6);
@@ -240,18 +240,21 @@ body.modern-theme .nav.side-menu > li.active > a .cf-badge-count {
 body.modern-theme .cf-nav-icon {
     width: 22px;
     height: 20px;
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     margin-right: 10px;
 }
 body.modern-theme .cf-nav-icon svg {
-    stroke: var(--cf-text-secondary);
+    stroke: var(--cf-text-secondary) !important;
     transition: var(--cf-transition-fast);
+    display: inline-block !important;
+    width: 20px !important;
+    height: 20px !important;
 }
 body.modern-theme .nav.side-menu > li > a:hover .cf-nav-icon svg {
-    stroke: var(--cf-primary);
+    stroke: var(--cf-primary) !important;
 }
 
 /* -- Chevron for expandable items ----------------------------- */
@@ -1663,6 +1666,195 @@ body.modern-theme .right_col > .clearfix {
 body.modern-theme .right_col > .row {
     margin-left: -10px;
     margin-right: -10px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   34. KPI GRID & METRIC CARDS (Dashboard / Workflow)
+   ══════════════════════════════════════════════════════════════ */
+body.modern-theme .cf-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+body.modern-theme .cf-card {
+    background: var(--cf-white);
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius);
+    padding: 20px;
+    transition: var(--cf-transition-fast);
+}
+body.modern-theme .cf-card:hover {
+    box-shadow: var(--cf-shadow);
+}
+
+body.modern-theme .cf-metric-card .cf-card-kicker {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--cf-text-secondary);
+    margin-bottom: 8px;
+}
+body.modern-theme .cf-metric-card .cf-metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--cf-text);
+    line-height: 1.2;
+    margin-bottom: 6px;
+}
+body.modern-theme .cf-metric-card .cf-metric-meta {
+    font-size: 12px;
+    color: var(--cf-text-muted);
+}
+body.modern-theme .cf-metric-card .cf-metric-trend.quiet {
+    color: var(--cf-text-muted);
+}
+
+/* Metric card color accents via top border */
+body.modern-theme .cf-metric-card.neutral  { border-top: 3px solid var(--cf-accent); }
+body.modern-theme .cf-metric-card.warning  { border-top: 3px solid var(--cf-warning); }
+body.modern-theme .cf-metric-card.blue     { border-top: 3px solid var(--cf-primary); }
+body.modern-theme .cf-metric-card.green    { border-top: 3px solid var(--cf-success); }
+body.modern-theme .cf-metric-card.danger   { border-top: 3px solid var(--cf-danger); }
+
+/* ══════════════════════════════════════════════════════════════
+   35. WORKFLOW / TASK BOARD (SOP Kanban)
+   ══════════════════════════════════════════════════════════════ */
+body.modern-theme .cf-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+body.modern-theme .cf-page-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--cf-text);
+    margin: 0 0 4px 0;
+}
+body.modern-theme .cf-page-header p {
+    font-size: 13px;
+    color: var(--cf-text-secondary);
+    margin: 0;
+}
+
+body.modern-theme .cf-task-board {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+body.modern-theme .cf-task-column {
+    background: var(--cf-bg);
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius);
+    padding: 16px;
+    min-height: 200px;
+}
+body.modern-theme .cf-task-column > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--cf-border);
+}
+body.modern-theme .cf-task-column > header h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cf-text);
+    margin: 0;
+}
+
+body.modern-theme .cf-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    font-size: 11px;
+    font-weight: 600;
+}
+body.modern-theme .cf-badge.neutral {
+    background: var(--cf-card-bg);
+    color: var(--cf-text-secondary);
+}
+body.modern-theme .cf-badge.warning {
+    background: var(--cf-warning-light);
+    color: #92400E;
+}
+body.modern-theme .cf-badge.blue {
+    background: #DBEAFE;
+    color: #1E40AF;
+}
+body.modern-theme .cf-badge.green {
+    background: var(--cf-success-light);
+    color: #065F46;
+}
+body.modern-theme .cf-badge.danger {
+    background: var(--cf-danger-light);
+    color: #991B1B;
+}
+
+body.modern-theme .cf-task-card {
+    background: var(--cf-white);
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius-sm);
+    padding: 14px;
+    margin-bottom: 10px;
+    transition: var(--cf-transition-fast);
+}
+body.modern-theme .cf-task-card:hover {
+    box-shadow: var(--cf-shadow);
+    border-color: var(--cf-accent);
+}
+body.modern-theme .cf-task-card .cf-card-kicker {
+    display: block;
+    font-size: 11px;
+    color: var(--cf-text-muted);
+    margin-bottom: 4px;
+}
+body.modern-theme .cf-task-card strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cf-text);
+    margin-bottom: 4px;
+}
+body.modern-theme .cf-task-card p {
+    font-size: 12px;
+    color: var(--cf-text-secondary);
+    margin: 0 0 8px 0;
+}
+body.modern-theme .cf-task-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--cf-text-muted);
+}
+
+body.modern-theme .cf-empty {
+    text-align: center;
+    padding: 24px 12px;
+    color: var(--cf-text-muted);
+    font-size: 13px;
+}
+
+body.modern-theme .cf-inline-actions {
+    display: flex;
+    gap: 6px;
+}
+body.modern-theme .cf-inline-actions .btn-xs {
+    border-radius: 6px;
+    font-size: 11px;
+    padding: 3px 10px;
 }
 
 /* ══════════════════════════════════════════════════════════════
