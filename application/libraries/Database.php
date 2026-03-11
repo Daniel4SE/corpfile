@@ -15,11 +15,16 @@ class Database {
             } else {
                 $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['database']};charset={$config['charset']}";
             }
-            $this->pdo = new PDO($dsn, $config['username'], $config['password'], [
+            $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
                 PDO::ATTR_EMULATE_PREPARES => false,
-            ]);
+            ];
+            // Disable SSL verification for Railway (self-signed certs)
+            if (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
+                $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+            }
+            $this->pdo = new PDO($dsn, $config['username'], $config['password'], $options);
         } catch (PDOException $e) {
             if (ENVIRONMENT === 'development') {
                 die('Database connection failed: ' . $e->getMessage());
