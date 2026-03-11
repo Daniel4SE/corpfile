@@ -381,13 +381,25 @@ function sendChatMessage() {
     chatBody.appendChild(typingDiv);
     chatBody.scrollTop = chatBody.scrollHeight;
 
-    // Call AI API
+    // Call AI API (with timeout for opus model)
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 180000);
+
     fetch(BASE + 'ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message }),
+        signal: controller.signal
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+        clearTimeout(timeoutId);
+        return r.text().then(function(text) {
+            // Strip PHP warnings/notices if any, find JSON
+            var jsonMatch = text.match(/\{[\s\S]*\}$/);
+            if (jsonMatch) return JSON.parse(jsonMatch[0]);
+            throw new Error('Invalid response');
+        });
+    })
     .then(function(data) {
         var typing = document.getElementById('chatTyping');
         if (typing) typing.remove();

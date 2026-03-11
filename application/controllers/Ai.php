@@ -70,13 +70,13 @@ class Ai extends BaseController {
             $enrichedMessage = $message . "\n\n---\n[Workspace context for this query]\n" . $contextInfo;
         }
 
-        @set_time_limit(120);
+        @set_time_limit(300);
 
         $bridge = new AiBridge();
         $result = $bridge->runTurn($enrichedMessage, [
-            'max_tokens'  => 2048,
-            'temperature' => 0.4,
-            'timeout'     => 90,
+            'max_tokens'  => 4096,
+            'temperature' => 0.3,
+            'timeout'     => 180,
         ]);
 
         if (empty($result['ok'])) {
@@ -167,13 +167,65 @@ class Ai extends BaseController {
 
         $lines = [];
         $lowerMsg = strtolower($message);
+        $today = date('Y-m-d');
 
         // Always provide basic stats
         $companyCount = $this->db->count('companies', 'client_id = ?', [$client->id]);
         $lines[] = "Client: {$client->company_name} (Code: {$client->client_id})";
         $lines[] = "Total companies under management: {$companyCount}";
+        $lines[] = "Today's date: {$today}";
 
-        // Compliance / deadlines
+        // ── Recent registrations / incorporations (past N months) ──
+        if (preg_match('/recent|new|register|incorporat|past.*month|最近|新注册|注册|成立/i', $lowerMsg)) {
+            // Detect time range from message (default 3 months)
+            $months = 3;
+            if (preg_match('/(\d+)\s*(?:month|个月)/i', $lowerMsg, $m)) {
+                $months = min((int)$m[1], 24);
+            }
+            $sinceDate = date('Y-m-d', strtotime("-{$months} months"));
+
+            $recentCompanies = $this->db->fetchAll(
+                "SELECT company_name, registration_number, incorporation_date, entity_status, internal_css_status
+                 FROM companies
+                 WHERE client_id = ?
+                   AND incorporation_date >= ?
+                 ORDER BY incorporation_date DESC
+                 LIMIT 50",
+                [$client->id, $sinceDate]
+            );
+            $lines[] = "\nCompanies incorporated in the past {$months} months (since {$sinceDate}):";
+            if ($recentCompanies) {
+                $lines[] = "Found " . count($recentCompanies) . " companies:";
+                foreach ($recentCompanies as $co) {
+                    $lines[] = "- {$co->company_name} | Reg: " . ($co->registration_number ?: 'N/A')
+                        . " | Incorporated: " . ($co->incorporation_date ?: 'N/A')
+                        . " | Status: " . ($co->entity_status ?: 'N/A')
+                        . " | CSS Status: " . ($co->internal_css_status ?: 'N/A');
+                }
+            } else {
+                $lines[] = "No companies found with incorporation_date in this period.";
+
+                // Fallback: show companies created recently in system
+                $recentCreated = $this->db->fetchAll(
+                    "SELECT company_name, registration_number, incorporation_date, entity_status, created_at
+                     FROM companies
+                     WHERE client_id = ?
+                     ORDER BY COALESCE(incorporation_date, created_at) DESC
+                     LIMIT 20",
+                    [$client->id]
+                );
+                if ($recentCreated) {
+                    $lines[] = "\nMost recently added companies (by system record):";
+                    foreach ($recentCreated as $co) {
+                        $lines[] = "- {$co->company_name} | Reg: " . ($co->registration_number ?: 'N/A')
+                            . " | Incorporated: " . ($co->incorporation_date ?: 'N/A')
+                            . " | Added: " . ($co->created_at ?: 'N/A');
+                    }
+                }
+            }
+        }
+
+        // ── Compliance / deadlines ──
         if (preg_match('/deadline|due|compliance|agm|annual|overdue|alert|fye/i', $lowerMsg)) {
             $deadlines = $this->db->fetchAll(
                 "SELECT COALESCE(c.company_name, 'N/A') AS company_name,
@@ -182,7 +234,7 @@ class Ai extends BaseController {
                  LEFT JOIN companies c ON c.id = d.company_id
                  WHERE d.client_id = ?
                  ORDER BY COALESCE(d.due_date, '9999-12-31') ASC
-                 LIMIT 10",
+                 LIMIT 20",
                 [$client->id]
             );
             if ($deadlines) {
@@ -193,7 +245,7 @@ class Ai extends BaseController {
             }
         }
 
-        // IR8A / payroll / tax
+        // ── IR8A / payroll / tax ──
         if (preg_match('/ir8a|payroll|tax|cpf|iras|sdl|fwl/i', $lowerMsg)) {
             $docs = $this->db->fetchAll(
                 "SELECT document_name, created_at
@@ -201,7 +253,7 @@ class Ai extends BaseController {
                  WHERE client_id = ?
                    AND (document_name LIKE '%IR8A%' OR document_name LIKE '%Tax%' OR document_name LIKE '%payroll%')
                  ORDER BY created_at DESC
-                 LIMIT 5",
+                 LIMIT 10",
                 [$client->id]
             );
             if ($docs) {
@@ -212,30 +264,83 @@ class Ai extends BaseController {
             }
         }
 
-        // Company list
-        if (preg_match('/compan|director|share|incorporat/i', $lowerMsg)) {
-            $companies = $this->db->fetchAll(
-                "SELECT company_name, registration_no, company_status
-                 FROM companies
-                 WHERE client_id = ?
-                 ORDER BY company_name ASC
-                 LIMIT 10",
-                [$client->id]
-            );
+        // ── Company list / search ──
+        if (preg_match('/compan|director|share|list|清单|公司|列表/i', $lowerMsg)) {
+            // Check if user is searching for specific company
+            $searchTerm = null;
+            if (preg_match('/(?:named?|called|search|find|查找|搜索)\s+["\']?([^"\']+)["\']?/i', $lowerMsg, $sm)) {
+                $searchTerm = trim($sm[1]);
+            }
+
+            if ($searchTerm) {
+                $companies = $this->db->fetchAll(
+                    "SELECT company_name, registration_number, incorporation_date, entity_status, internal_css_status
+                     FROM companies
+                     WHERE client_id = ? AND (company_name LIKE ? OR registration_number LIKE ?)
+                     ORDER BY company_name ASC
+                     LIMIT 20",
+                    [$client->id, "%{$searchTerm}%", "%{$searchTerm}%"]
+                );
+            } else {
+                $companies = $this->db->fetchAll(
+                    "SELECT company_name, registration_number, incorporation_date, entity_status, internal_css_status
+                     FROM companies
+                     WHERE client_id = ?
+                     ORDER BY company_name ASC
+                     LIMIT 30",
+                    [$client->id]
+                );
+            }
             if ($companies) {
-                $lines[] = "\nCompanies (first 10):";
+                $lines[] = $searchTerm
+                    ? "\nCompanies matching '{$searchTerm}' (" . count($companies) . " found):"
+                    : "\nCompanies (first " . count($companies) . "):";
                 foreach ($companies as $co) {
-                    $lines[] = "- {$co->company_name} | Reg: " . ($co->registration_no ?: 'N/A') . " | Status: " . ($co->company_status ?: 'Active');
+                    $lines[] = "- {$co->company_name} | Reg: " . ($co->registration_number ?: 'N/A')
+                        . " | Incorporated: " . ($co->incorporation_date ?: 'N/A')
+                        . " | Status: " . ($co->entity_status ?: 'Active');
+                }
+                if (count($companies) >= 30) {
+                    $lines[] = "(Showing first 30 of {$companyCount} total)";
                 }
             }
         }
 
-        // Invoice / billing
-        if (preg_match('/invoice|bill|fee|payment/i', $lowerMsg)) {
+        // ── Company status summary ──
+        if (preg_match('/status|active|dormant|struck|terminated|状态|活跃/i', $lowerMsg)) {
+            $statusSummary = $this->db->fetchAll(
+                "SELECT COALESCE(entity_status, 'Unknown') AS status, COUNT(*) AS cnt
+                 FROM companies
+                 WHERE client_id = ?
+                 GROUP BY entity_status
+                 ORDER BY cnt DESC",
+                [$client->id]
+            );
+            if ($statusSummary) {
+                $lines[] = "\nCompany status breakdown:";
+                foreach ($statusSummary as $s) {
+                    $lines[] = "- {$s->status}: {$s->cnt} companies";
+                }
+            }
+        }
+
+        // ── Invoice / billing ──
+        if (preg_match('/invoice|bill|fee|payment|发票|账单/i', $lowerMsg)) {
             $invoiceCount = $this->db->count('invoices', 'client_id = ?', [$client->id]);
             $lines[] = "\nTotal invoices: {$invoiceCount}";
         }
 
-        return count($lines) > 2 ? implode("\n", $lines) : implode("\n", $lines);
+        // ── Officers / directors / shareholders ──
+        if (preg_match('/officer|director|secretary|shareholder|member|董事|股东|秘书/i', $lowerMsg)) {
+            $officerCount = $this->db->fetchOne(
+                "SELECT COUNT(*) AS cnt FROM company_officers WHERE company_id IN (SELECT id FROM companies WHERE client_id = ?)",
+                [$client->id]
+            );
+            if ($officerCount) {
+                $lines[] = "\nTotal officers across all companies: {$officerCount->cnt}";
+            }
+        }
+
+        return implode("\n", $lines);
     }
 }

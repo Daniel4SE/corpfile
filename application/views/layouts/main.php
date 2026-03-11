@@ -557,13 +557,24 @@ function sendAIMessage() {
     chatBody.appendChild(typingDiv);
     chatBody.scrollTop = chatBody.scrollHeight;
 
-    /* Call AI API */
+    /* Call AI API (with timeout for opus model) */
+    var abortCtrl = new AbortController();
+    var abortTimer = setTimeout(function() { abortCtrl.abort(); }, 180000);
+
     fetch(BASE_URL + 'ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message }),
+        signal: abortCtrl.signal
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+        clearTimeout(abortTimer);
+        return r.text().then(function(text) {
+            var jsonMatch = text.match(/\{[\s\S]*\}$/);
+            if (jsonMatch) return JSON.parse(jsonMatch[0]);
+            throw new Error('Invalid response');
+        });
+    })
     .then(function(data) {
         var typing = document.getElementById('aiTyping');
         if (typing) typing.remove();
