@@ -194,9 +194,6 @@
                                     <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
                                 </a>
                                 <ul class="nav child_menu">
-                                    <li class="<?= ($current_url == 'projects') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('projects') ?>">Projects</a>
-                                    </li>
                                     <li class="<?= ($current_url == 'tasks') ? 'active' : '' ?>">
                                         <a href="<?= base_url('tasks') ?>">Tasks</a>
                                     </li>
