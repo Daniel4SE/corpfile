@@ -227,6 +227,11 @@ body.modern-theme .nav li.current-page > a {
 body.modern-theme .nav.side-menu > li.active > a .cf-nav-icon svg,
 body.modern-theme .nav li.current-page > a .cf-nav-icon svg {
     stroke: #fff !important;
+    color: #fff !important;
+}
+body.modern-theme .nav.side-menu > li.active > a,
+body.modern-theme .nav.side-menu > li.active > a > span {
+    color: #fff !important;
 }
 body.modern-theme .nav.side-menu > li.active > a .cf-chevron svg {
     stroke: rgba(255,255,255,0.6);
@@ -245,16 +250,30 @@ body.modern-theme .cf-nav-icon {
     justify-content: center;
     flex-shrink: 0;
     margin-right: 10px;
+    vertical-align: middle;
 }
-body.modern-theme .cf-nav-icon svg {
+body.modern-theme .cf-nav-icon svg,
+body.modern-theme .nav.side-menu > li > a .cf-nav-icon svg,
+body.modern-theme .nav.side-menu > li > a > .cf-nav-icon svg {
     stroke: var(--cf-text-secondary) !important;
+    color: var(--cf-text-secondary) !important;
+    fill: none !important;
     transition: var(--cf-transition-fast);
     display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
     width: 20px !important;
     height: 20px !important;
 }
 body.modern-theme .nav.side-menu > li > a:hover .cf-nav-icon svg {
     stroke: var(--cf-primary) !important;
+    color: var(--cf-primary) !important;
+}
+/* Override custom.css white color on sidebar links */
+body.modern-theme .nav.side-menu > li > a,
+body.modern-theme .nav.side-menu > li > a > span {
+    color: var(--cf-text) !important;
+    font-weight: 500 !important;
 }
 
 /* -- Chevron for expandable items ----------------------------- */
