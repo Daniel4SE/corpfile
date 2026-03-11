@@ -97,12 +97,18 @@ body.modern-theme.nav-md .container.body .col-md-3.left_col .left_col {
 /* Content offset for nav-md */
 body.modern-theme.nav-md .container.body .right_col {
     background: var(--cf-bg) !important;
-    margin-left: var(--cf-sidebar-w) !important;
+    margin-left: 235px !important;
     padding: 20px 24px 10px !important;
     min-height: calc(100vh - var(--cf-topbar-h));
+    width: calc(100% - 235px) !important;
+    box-sizing: border-box !important;
+    float: none !important;
+    overflow-x: auto;
 }
 body.modern-theme.nav-md .main_container .top_nav {
-    margin-left: var(--cf-sidebar-w) !important;
+    margin-left: 235px !important;
+    width: calc(100% - 235px) !important;
+    box-sizing: border-box !important;
 }
 body.modern-theme.nav-md footer {
     margin-left: var(--cf-sidebar-w) !important;
@@ -121,6 +127,10 @@ body.modern-theme.nav-sm .container.body .left_col {
 body.modern-theme.nav-sm .container.body .right_col {
     background: var(--cf-bg) !important;
     padding: 20px 24px 10px !important;
+    margin-left: 70px !important;
+    width: calc(100% - 70px) !important;
+    box-sizing: border-box !important;
+    float: none !important;
 }
 body.modern-theme.nav-sm ul.nav.child_menu {
     background: var(--cf-white) !important;
@@ -614,7 +624,9 @@ body.modern-theme .navbar-nav .open .dropdown-menu {
 body.modern-theme .page-title {
     height: auto !important;
     padding: 0 0 16px !important;
-    overflow: hidden !important;
+    overflow: visible !important;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 body.modern-theme .page-title::after {
     content: "";
