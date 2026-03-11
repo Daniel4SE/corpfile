@@ -2,8 +2,14 @@
 set -e
 
 PORT=${PORT:-8080}
+
+# Update Apache port to match $PORT
 sed -i "s/Listen 8080/Listen $PORT/" /etc/apache2/ports.conf
 sed -i "s/:8080>/:$PORT>/" /etc/apache2/sites-available/000-default.conf
+
+# Ensure uploads directory is writable
+mkdir -p /var/www/html/uploads
+chown -R www-data:www-data /var/www/html/uploads
 
 # Run DB migrations (idempotent)
 DB_HOST="${DB_HOST:-localhost}"
@@ -11,7 +17,9 @@ DB_USER="${DB_USER:-root}"
 DB_PASS="${DB_PASS:-}"
 DB_NAME="${DB_NAME:-corporate_secretary}"
 
-mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null <<'SQL' || true
+if [ -n "$DB_HOST" ] && [ "$DB_HOST" != "localhost" ]; then
+  echo "Running DB migrations..."
+  mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null <<'SQL' || true
 CREATE TABLE IF NOT EXISTS `oauth_users` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT UNSIGNED NOT NULL,
@@ -26,5 +34,7 @@ CREATE TABLE IF NOT EXISTS `oauth_users` (
   UNIQUE KEY `uk_provider_uid` (`provider`, `provider_uid`)
 ) ENGINE=InnoDB;
 SQL
+  echo "DB migrations done."
+fi
 
 exec "$@"

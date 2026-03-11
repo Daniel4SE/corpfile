@@ -8,57 +8,31 @@ class Documents extends BaseController {
     public function index() {
         $this->requireAuth();
         $data = [
-            'page_title' => 'All Documents',
+            'page_title' => 'Document Management',
             'documents' => [],
         ];
-        if ($this->db) {
-            $clientId = $_SESSION['client_id'] ?? '';
-            $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
-            if ($client) {
-                $data['documents'] = $this->db->fetchAll(
-                    "SELECT d.id, d.document_name, d.file_path, d.file_type, d.file_size,
-                            d.entity_type, d.entity_id, d.category_id, d.created_at,
-                            c.company_name, c.registration_number,
-                            dc.category_name
-                     FROM documents d
-                     LEFT JOIN companies c ON c.id = d.entity_id AND d.entity_type = 'company'
-                     LEFT JOIN document_categories dc ON dc.id = d.category_id
-                     WHERE d.client_id = ?
-                     ORDER BY d.created_at DESC",
-                    [$client->id]
-                );
-            }
-        }
         $this->loadLayout('documents/index', $data);
     }
 }
 
-// Company File / Templates Manager (maps to /company_file)
-// Displays form_templates list — the "Generate Templates" page
+// Company File Manager (maps to /company_file)
 class Company_file extends BaseController {
     public function index($company_id = null) {
         $this->requireAuth();
-        $data = [
-            'page_title'      => 'Generate Templates',
-            'templates'       => [],
-            'form_categories' => [],
-        ];
+        $data = ['page_title' => 'Company Files', 'company' => null, 'files' => [], 'categories' => [], 'companies' => []];
         if ($this->db) {
             $clientId = $_SESSION['client_id'] ?? '';
             $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
             if ($client) {
-                $data['form_categories'] = $this->db->fetchAll(
-                    "SELECT * FROM form_categories WHERE client_id = ? ORDER BY category_name",
-                    [$client->id]
-                );
-                $data['templates'] = $this->db->fetchAll(
-                    "SELECT ft.*, fc.category_name
-                     FROM form_templates ft
-                     LEFT JOIN form_categories fc ON fc.id = ft.category_id
-                     WHERE ft.client_id = ?
-                     ORDER BY ft.template_name",
-                    [$client->id]
-                );
+                $data['companies'] = $this->db->fetchAll("SELECT id, company_name, registration_number FROM companies WHERE client_id = ? ORDER BY company_name", [$client->id]);
+                $data['categories'] = $this->db->fetchAll("SELECT * FROM document_categories WHERE client_id = ? ORDER BY category_name", [$client->id]);
+                if ($company_id || !empty($_GET['company_id'])) {
+                    $cid = $company_id ?: $_GET['company_id'];
+                    $data['company'] = $this->db->fetchOne("SELECT * FROM companies WHERE id = ?", [$cid]);
+                    $data['files'] = $this->db->fetchAll(
+                        "SELECT d.*, dc.category_name, u.name as uploaded_by_name FROM documents d LEFT JOIN document_categories dc ON dc.id = d.category_id LEFT JOIN users u ON u.id = d.uploaded_by WHERE d.entity_type = 'company' AND d.entity_id = ? ORDER BY d.created_at DESC", [$cid]
+                    );
+                }
             }
         }
         $this->loadLayout('documents/company_file', $data);

@@ -37,6 +37,8 @@
     <!-- Custom Theme Style -->
     <link href="<?= base_url('public/css/custom.min.css') ?>" rel="stylesheet">
     <link href="<?= base_url('public/css/custom.css') ?>" rel="stylesheet">
+    <!-- Modern Theme (Rillet AI ERP + Glassmorphism) -->
+    <link href="<?= base_url('public/css/modern-theme.css') ?>" rel="stylesheet">
 </head>
 
 <?php
@@ -44,60 +46,62 @@
     $uri_segments = $uri_path ? explode('/', $uri_path) : [];
     $current_url = $uri_segments[0] ?? '';
     $current_url2 = $uri_segments[1] ?? '';
+
+    // Include SVG icon helpers
+    include_once APPPATH . 'views/partials/sidebar_icons.php';
+
+    // User info
+    $user_name = isset($current_user->name) ? $current_user->name : 'Admin';
+    $user_role = isset($current_user->role) ? $current_user->role : 'Administrator';
+    $user_initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== false ? substr($user_name, strpos($user_name, ' ') + 1, 1) : ''));
 ?>
 
-<body class="nav-md">
+<body class="nav-md modern-theme">
 <div class="container body">
     <div class="main_container">
 
-        <!-- LEFT SIDEBAR -->
-        <div class="col-md-3 left_col">
+        <!-- LEFT SIDEBAR - Light Theme with SVG Icons -->
+        <div class="col-md-3 left_col" id="modernSidebar">
             <div class="left_col scroll-view">
+                <!-- CF Logo Badge -->
                 <div class="navbar nav_title" style="border: 0;">
-                    <a href="<?= base_url('dashboard') ?>" class="site_title">
-                        <img src="<?= base_url('public/images/corpfile-logo.png') ?>" alt="CorpFile" style="max-height:55px;max-width:180px;margin-top:2px;">
+                    <a href="<?= base_url('dashboard') ?>" class="site_title cf-logo-link">
+                        <span class="cf-logo-badge">CF</span>
+                        <span class="cf-logo-text">CorpFile</span>
                     </a>
                 </div>
 
                 <div class="clearfix"></div>
 
-                <!-- menu profile quick info -->
-                <div class="profile clearfix">
-                    <div class="profile_pic">
-                        <img src="<?= base_url('public/images/user.png') ?>" alt="..." class="img-circle profile_img">
-                    </div>
-                    <div class="profile_info">
-                        <span>Welcome,</span>
-                        <h2><?= isset($current_user->name) ? $current_user->name : 'Admin' ?></h2>
-                    </div>
-                </div>
-                <!-- /menu profile quick info -->
-
-                <br />
-
-                <!-- sidebar menu -->
+                <!-- Sidebar Menu -->
                 <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
                     <div class="menu_section">
-                        <h3>General</h3>
                         <ul class="nav side-menu">
 
-                            <!-- 1. Dashboard -->
+                            <!-- 1. Chats -->
+                            <li class="<?= ($current_url == 'chats') ? 'active' : '' ?>">
+                                <a href="<?= base_url('chats') ?>">
+                                    <span class="cf-nav-icon"><?= cf_icon('chat') ?></span>
+                                    <span>Chats</span>
+                                    <span class="cf-badge-count">3</span>
+                                </a>
+                            </li>
+
+                            <!-- 2. Dashboard -->
                             <li class="<?= ($current_url == 'dashboard') ? 'active' : '' ?>">
                                 <a href="<?= base_url('dashboard') ?>">
-                                    <i class="fa fa-tachometer"></i> Dashboard
+                                    <span class="cf-nav-icon"><?= cf_icon('dashboard') ?></span>
+                                    <span>Dashboard</span>
                                 </a>
                             </li>
 
-                            <!-- 2. Company Registration -->
-                            <li class="<?= ($current_url == 'add_company') ? 'active' : '' ?>">
-                                <a href="<?= base_url('add_company') ?>">
-                                    <i class="fa fa-building"></i> Company Registration
-                                </a>
-                            </li>
-
-                            <!-- 3. Records -->
+                            <!-- 3. Company Records (expandable) -->
                             <li class="<?= in_array($current_url, ['member','company_list','pre_company','post_company','Company_officials','corporate_shareholder','settings','Sealings','mainadmin']) ? 'active' : '' ?>">
-                                <a><i class="fa fa-list"></i> Records <span class="fa fa-chevron-down"></span></a>
+                                <a>
+                                    <span class="cf-nav-icon"><?= cf_icon('company') ?></span>
+                                    <span>Company Records</span>
+                                    <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
+                                </a>
                                 <ul class="nav child_menu">
                                     <li class="<?= ($current_url == 'member') ? 'active' : '' ?>">
                                         <a href="<?= base_url('member') ?>">Individuals</a>
@@ -105,20 +109,20 @@
                                     <li class="<?= ($current_url == 'company_list') ? 'active' : '' ?>">
                                         <a href="<?= base_url('company_list') ?>">Companies</a>
                                     </li>
+                                    <li class="<?= ($current_url == 'Company_officials' && $current_url2 == 'company_officials_list') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('Company_officials/company_officials_list') ?>">Director Records</a>
+                                    </li>
+                                    <li class="<?= ($current_url == 'corporate_shareholder') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('corporate_shareholder/corp_share_comp_list') ?>">Shareholder Records</a>
+                                    </li>
                                     <li class="<?= ($current_url == 'pre_company') ? 'active' : '' ?>">
                                         <a href="<?= base_url('pre_company') ?>">Pre-Incorporation</a>
                                     </li>
                                     <li class="<?= ($current_url == 'post_company') ? 'active' : '' ?>">
                                         <a href="<?= base_url('post_company') ?>">Post-Incorporation</a>
                                     </li>
-                                    <li class="<?= ($current_url == 'Company_officials' && $current_url2 == 'company_officials_list') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('Company_officials/company_officials_list') ?>">Officials</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'corporate_shareholder') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('corporate_shareholder/corp_share_comp_list') ?>">Corporate Shareholders</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'settings' && $current_url2 == 'register_charge_list') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('settings/register_charge_list') ?>">Charges</a>
+                                    <li class="<?= ($current_url == 'registers' && $current_url2 == 'register_of_charges') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('registers/register_of_charges') ?>">Charges</a>
                                     </li>
                                     <li class="<?= ($current_url == 'Sealings') ? 'active' : '' ?>">
                                         <a href="<?= base_url('Sealings/sealings_list') ?>">Sealings</a>
@@ -129,23 +133,17 @@
                                 </ul>
                             </li>
 
-                            <!-- 4. Event Tracker -->
-                            <li class="<?= in_array($current_url, ['company_agm','duedatetracker']) ? 'active' : '' ?>">
-                                <a><i class="fa fa-calendar"></i> Event Tracker <span class="fa fa-chevron-down"></span></a>
+                            <!-- 4. Documents -->
+                            <li class="<?= in_array($current_url, ['alldocuments','company_file','esign']) ? 'active' : '' ?>">
+                                <a>
+                                    <span class="cf-nav-icon"><?= cf_icon('documents') ?></span>
+                                    <span>Documents</span>
+                                    <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
+                                </a>
                                 <ul class="nav child_menu">
-                                    <li class="<?= ($current_url == 'company_agm') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('company_agm/company_agm_list') ?>">Event</a>
+                                    <li class="<?= ($current_url == 'alldocuments') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('alldocuments') ?>">All Documents</a>
                                     </li>
-                                    <li class="<?= ($current_url == 'duedatetracker') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('duedatetracker') ?>">Due Date Tracker</a>
-                                    </li>
-                                </ul>
-                            </li>
-
-                            <!-- 5. Templates -->
-                            <li class="<?= in_array($current_url, ['company_file','esign']) ? 'active' : '' ?>">
-                                <a><i class="fa fa-file"></i> Templates <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
                                     <li class="<?= ($current_url == 'company_file') ? 'active' : '' ?>">
                                         <a href="<?= base_url('company_file') ?>">Generate Templates</a>
                                     </li>
@@ -155,186 +153,116 @@
                                 </ul>
                             </li>
 
-                            <!-- 6. Report -->
-                            <li class="<?= ($current_url == 'report_module') ? 'active' : '' ?>">
-                                <a><i class="fa fa-file-word-o"></i> Report <span class="fa fa-chevron-down"></span></a>
+                            <!-- 5. Registration -->
+                            <li class="<?= ($current_url == 'add_company') ? 'active' : '' ?>">
+                                <a href="<?= base_url('add_company') ?>">
+                                    <span class="cf-nav-icon"><?= cf_icon('registration') ?></span>
+                                    <span>Registration</span>
+                                </a>
+                            </li>
+
+                            <!-- 6. EP/DP Management -->
+                            <li class="<?= ($current_url == 'duedatetracker' && isset($_GET['type']) && $_GET['type'] == 'ep') ? 'active' : '' ?>">
+                                <a href="<?= base_url('duedatetracker') ?>">
+                                    <span class="cf-nav-icon"><?= cf_icon('ep_dp') ?></span>
+                                    <span>EP/DP Management</span>
+                                </a>
+                            </li>
+
+                            <!-- 7. Events & Alerts -->
+                            <li class="<?= in_array($current_url, ['company_agm','duedatetracker']) ? 'active' : '' ?>">
+                                <a>
+                                    <span class="cf-nav-icon"><?= cf_icon('events') ?></span>
+                                    <span>Events & Alerts</span>
+                                    <span class="cf-badge-count">5</span>
+                                    <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
+                                </a>
                                 <ul class="nav child_menu">
-                                    <li class="<?= ($current_url == 'report_module' && $current_url2 == 'default_report') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('report_module/default_report') ?>">Default Report</a>
+                                    <li class="<?= ($current_url == 'company_agm') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('company_agm/company_agm_list') ?>">Events</a>
+                                    </li>
+                                    <li class="<?= ($current_url == 'duedatetracker') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('duedatetracker') ?>">Due Date Tracker</a>
                                     </li>
                                 </ul>
                             </li>
 
-                            <!-- 7. Document Management -->
-                            <li class="<?= ($current_url == 'alldocuments') ? 'active' : '' ?>">
-                                <a href="<?= base_url('alldocuments') ?>">
-                                    <i class="fa fa-file"></i> Document Management
+                            <!-- 8. Workflow (SOP) -->
+                            <li class="<?= ($current_url == 'workflow') ? 'active' : '' ?>">
+                                <a href="<?= base_url('workflow') ?>">
+                                    <span class="cf-nav-icon"><?= cf_icon('workflow') ?></span>
+                                    <span>Workflow (SOP)</span>
                                 </a>
                             </li>
 
-                            <!-- 8. Registers (23 sub-items) -->
-                            <li class="<?= ($current_url == 'registers') ? 'active' : '' ?>">
-                                <a><i class="fa fa-th"></i> Registers <span class="fa fa-chevron-down"></span></a>
+                            <!-- 9. Projects (expandable) -->
+                            <li class="<?= in_array($current_url, ['projects','tasks','activities','timesheet']) ? 'active' : '' ?>">
+                                <a>
+                                    <span class="cf-nav-icon"><?= cf_icon('projects') ?></span>
+                                    <span>Projects</span>
+                                    <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
+                                </a>
                                 <ul class="nav child_menu">
-                                    <li><a href="<?= base_url('registers/register_of_members') ?>">Register of Members</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_directors') ?>">Register of Directors</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_secretaries') ?>">Register of Secretaries</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_charges') ?>">Register of Charges</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_debenture_holders') ?>">Register of Debenture Holders</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_auditors') ?>">Register of Auditors</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_nominee_directors') ?>">Register of Nominee Directors</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_substantial_shareholders') ?>">Register of Substantial Shareholders</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_directors_shareholdings') ?>">Register of Directors Shareholdings</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_transfers') ?>">Register of Transfers</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_allotments') ?>">Register of Allotments</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_seals') ?>">Register of Seals</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_applicants') ?>">Register of Applicants</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_controllers') ?>">Register of Controllers</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_beneficial_owners') ?>">Register of Beneficial Owners</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_nominee_shareholders') ?>">Register of Nominee Shareholders</a></li>
-                                    <li><a href="<?= base_url('registers/minute_book_directors') ?>">Minute Book - Directors</a></li>
-                                    <li><a href="<?= base_url('registers/minute_book_members') ?>">Minute Book - Members</a></li>
+                                    <li class="<?= ($current_url == 'projects') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('projects') ?>">Projects</a>
+                                    </li>
+                                    <li class="<?= ($current_url == 'tasks') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('tasks') ?>">Tasks</a>
+                                    </li>
+                                    <li class="<?= ($current_url == 'activities') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('activities') ?>">Activities</a>
+                                    </li>
+                                    <li class="<?= ($current_url == 'timesheet') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('timesheet') ?>">Timesheet</a>
+                                    </li>
+                                </ul>
+                            </li>
+
+                            <!-- 10. Agents -->
+                            <li class="<?= ($current_url == 'agents') ? 'active' : '' ?>">
+                                <a href="<?= base_url('agents') ?>">
+                                    <span class="cf-nav-icon"><?= cf_icon('agents') ?></span>
+                                    <span>Agents</span>
+                                </a>
+                            </li>
+
+                            <!-- Divider -->
+                            <li class="cf-nav-divider"></li>
+
+                            <!-- 11. Reports -->
+                            <li class="<?= ($current_url == 'report_module') ? 'active' : '' ?>">
+                                <a href="<?= base_url('report_module/default_report') ?>">
+                                    <span class="cf-nav-icon"><?= cf_icon('reports') ?></span>
+                                    <span>Reports</span>
+                                </a>
+                            </li>
+
+                            <!-- 12. Registers -->
+                            <li class="<?= ($current_url == 'registers') ? 'active' : '' ?>">
+                                <a>
+                                    <span class="cf-nav-icon"><?= cf_icon('registers') ?></span>
+                                    <span>Registers</span>
+                                    <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
+                                </a>
+                                <ul class="nav child_menu">
+                                    <li><a href="<?= base_url('registers/register_of_members') ?>">Members</a></li>
+                                    <li><a href="<?= base_url('registers/register_of_directors') ?>">Directors</a></li>
+                                    <li><a href="<?= base_url('registers/register_of_secretaries') ?>">Secretaries</a></li>
+                                    <li><a href="<?= base_url('registers/register_of_charges') ?>">Charges</a></li>
+                                    <li><a href="<?= base_url('registers/register_of_controllers') ?>">Controllers</a></li>
+                                    <li><a href="<?= base_url('registers/register_of_beneficial_owners') ?>">Beneficial Owners</a></li>
                                     <li><a href="<?= base_url('registers/share_certificate') ?>">Share Certificate</a></li>
                                     <li><a href="<?= base_url('registers/annual_return') ?>">Annual Return</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_depository_agents') ?>">Register of Depository Agents</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_managers') ?>">Register of Managers</a></li>
-                                    <li><a href="<?= base_url('registers/register_of_partners') ?>">Register of Partners</a></li>
                                 </ul>
                             </li>
 
-                            <!-- 9. General Settings (19 sub-items) -->
-                            <li class="<?= ($current_url == 'general_settings') ? 'active' : '' ?>">
-                                <a><i class="fa fa-cog"></i> General Settings <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
-                                    <li><a href="<?= base_url('general_settings/company_type') ?>">Company Type</a></li>
-                                    <li><a href="<?= base_url('general_settings/company_status') ?>">Company Status</a></li>
-                                    <li><a href="<?= base_url('general_settings/company_category') ?>">Company Category</a></li>
-                                    <li><a href="<?= base_url('general_settings/designation') ?>">Designation</a></li>
-                                    <li><a href="<?= base_url('general_settings/share_type') ?>">Share Type</a></li>
-                                    <li><a href="<?= base_url('general_settings/currency') ?>">Currency</a></li>
-                                    <li><a href="<?= base_url('general_settings/country') ?>">Country</a></li>
-                                    <li><a href="<?= base_url('general_settings/state') ?>">State</a></li>
-                                    <li><a href="<?= base_url('general_settings/city') ?>">City</a></li>
-                                    <li><a href="<?= base_url('general_settings/race') ?>">Race</a></li>
-                                    <li><a href="<?= base_url('general_settings/religion') ?>">Religion</a></li>
-                                    <li><a href="<?= base_url('general_settings/id_type') ?>">ID Type</a></li>
-                                    <li><a href="<?= base_url('general_settings/salutation') ?>">Salutation</a></li>
-                                    <li><a href="<?= base_url('general_settings/relationship') ?>">Relationship</a></li>
-                                    <li><a href="<?= base_url('general_settings/nature_of_business') ?>">Nature of Business</a></li>
-                                    <li><a href="<?= base_url('general_settings/document_type') ?>">Document Type</a></li>
-                                    <li><a href="<?= base_url('general_settings/tax_settings') ?>">Tax Settings</a></li>
-                                    <li><a href="<?= base_url('general_settings/email_template') ?>">Email Template</a></li>
-                                    <li><a href="<?= base_url('general_settings/notification_settings') ?>">Notification Settings</a></li>
-                                </ul>
-                            </li>
-
-                            <!-- 10. User Settings (8 sub-items) -->
-                            <li class="<?= ($current_url == 'user_settings') ? 'active' : '' ?>">
-                                <a><i class="fa fa-cog"></i> User Settings <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
-                                    <li><a href="<?= base_url('user_settings/manage_users') ?>">Manage Users</a></li>
-                                    <li><a href="<?= base_url('user_settings/manage_roles') ?>">Manage Roles</a></li>
-                                    <li><a href="<?= base_url('user_settings/manage_permissions') ?>">Manage Permissions</a></li>
-                                    <li><a href="<?= base_url('user_settings/user_group') ?>">User Group</a></li>
-                                    <li><a href="<?= base_url('user_settings/user_branch') ?>">User Branch</a></li>
-                                    <li><a href="<?= base_url('user_settings/user_department') ?>">User Department</a></li>
-                                    <li><a href="<?= base_url('user_settings/login_history') ?>">Login History</a></li>
-                                    <li><a href="<?= base_url('user_settings/activity_log') ?>">Activity Log</a></li>
-                                </ul>
-                            </li>
-
-                            <!-- 11. CSS Settings (5 sub-items) -->
-                            <li class="<?= ($current_url == 'css_settings') ? 'active' : '' ?>">
-                                <a><i class="fa fa-cog"></i> CSS Settings <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
-                                    <li><a href="<?= base_url('css_settings/theme_color') ?>">Theme Color</a></li>
-                                    <li><a href="<?= base_url('css_settings/logo_settings') ?>">Logo Settings</a></li>
-                                    <li><a href="<?= base_url('css_settings/favicon_settings') ?>">Favicon Settings</a></li>
-                                    <li><a href="<?= base_url('css_settings/login_page') ?>">Login Page</a></li>
-                                    <li><a href="<?= base_url('css_settings/custom_css') ?>">Custom CSS</a></li>
-                                </ul>
-                            </li>
-
-                            <!-- 12. Pre Sales Settings (7 sub-items) -->
-                            <li class="<?= ($current_url == 'presales_settings') ? 'active' : '' ?>">
-                                <a><i class="fa fa-cog"></i> Pre Sales Settings <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
-                                    <li><a href="<?= base_url('presales_settings/lead_source') ?>">Lead Source</a></li>
-                                    <li><a href="<?= base_url('presales_settings/lead_status') ?>">Lead Status</a></li>
-                                    <li><a href="<?= base_url('presales_settings/lead_category') ?>">Lead Category</a></li>
-                                    <li><a href="<?= base_url('presales_settings/industry_type') ?>">Industry Type</a></li>
-                                    <li><a href="<?= base_url('presales_settings/follow_up_type') ?>">Follow Up Type</a></li>
-                                    <li><a href="<?= base_url('presales_settings/quotation_terms') ?>">Quotation Terms</a></li>
-                                    <li><a href="<?= base_url('presales_settings/service_list') ?>">Service List</a></li>
-                                </ul>
-                            </li>
-
-                            <!-- 13. Order Processing Settings (2 sub-items) -->
-                            <li class="<?= ($current_url == 'order_settings') ? 'active' : '' ?>">
-                                <a><i class="fa fa-cog"></i> Order Processing Settings <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
-                                    <li><a href="<?= base_url('order_settings/order_status') ?>">Order Status</a></li>
-                                    <li><a href="<?= base_url('order_settings/payment_terms') ?>">Payment Terms</a></li>
-                                </ul>
-                            </li>
-
-                            <!-- 14. PM Settings (9 sub-items) -->
-                            <li class="<?= ($current_url == 'pm_settings') ? 'active' : '' ?>">
-                                <a><i class="fa fa-cog"></i> PM Settings <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
-                                    <li><a href="<?= base_url('pm_settings/project_status') ?>">Project Status</a></li>
-                                    <li><a href="<?= base_url('pm_settings/project_category') ?>">Project Category</a></li>
-                                    <li><a href="<?= base_url('pm_settings/task_status') ?>">Task Status</a></li>
-                                    <li><a href="<?= base_url('pm_settings/task_priority') ?>">Task Priority</a></li>
-                                    <li><a href="<?= base_url('pm_settings/task_category') ?>">Task Category</a></li>
-                                    <li><a href="<?= base_url('pm_settings/activity_type') ?>">Activity Type</a></li>
-                                    <li><a href="<?= base_url('pm_settings/activity_status') ?>">Activity Status</a></li>
-                                    <li><a href="<?= base_url('pm_settings/milestone') ?>">Milestone</a></li>
-                                    <li><a href="<?= base_url('pm_settings/timesheet_category') ?>">Timesheet Category</a></li>
-                                </ul>
-                            </li>
-
-                            <!-- 15. Support Settings (4 sub-items) -->
-                            <li class="<?= ($current_url == 'support_settings') ? 'active' : '' ?>">
-                                <a><i class="fa fa-cog"></i> Support Settings <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
-                                    <li><a href="<?= base_url('support_settings/ticket_status') ?>">Ticket Status</a></li>
-                                    <li><a href="<?= base_url('support_settings/ticket_priority') ?>">Ticket Priority</a></li>
-                                    <li><a href="<?= base_url('support_settings/ticket_category') ?>">Ticket Category</a></li>
-                                    <li><a href="<?= base_url('support_settings/ticket_department') ?>">Ticket Department</a></li>
-                                </ul>
-                            </li>
-
-                            <!-- 16. TWXRM Report (7 sub-items) -->
-                            <li class="<?= ($current_url == 'twxrm_report') ? 'active' : '' ?>">
-                                <a><i class="fa fa-file-excel-o"></i> TWXRM Report <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
-                                    <li><a href="<?= base_url('twxrm_report/sales_report') ?>">Sales Report</a></li>
-                                    <li><a href="<?= base_url('twxrm_report/lead_report') ?>">Lead Report</a></li>
-                                    <li><a href="<?= base_url('twxrm_report/quotation_report') ?>">Quotation Report</a></li>
-                                    <li><a href="<?= base_url('twxrm_report/order_report') ?>">Order Report</a></li>
-                                    <li><a href="<?= base_url('twxrm_report/project_report') ?>">Project Report</a></li>
-                                    <li><a href="<?= base_url('twxrm_report/task_report') ?>">Task Report</a></li>
-                                    <li><a href="<?= base_url('twxrm_report/support_report') ?>">Support Report</a></li>
-                                </ul>
-                            </li>
-
-                            <!-- 17. TWXRM Dashboard (6 sub-items) -->
-                            <li class="<?= ($current_url == 'twxrm_dashboard') ? 'active' : '' ?>">
-                                <a><i class="fa fa-tachometer"></i> TWXRM Dashboard <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
-                                    <li><a href="<?= base_url('twxrm_dashboard/sales_dashboard') ?>">Sales Dashboard</a></li>
-                                    <li><a href="<?= base_url('twxrm_dashboard/lead_dashboard') ?>">Lead Dashboard</a></li>
-                                    <li><a href="<?= base_url('twxrm_dashboard/project_dashboard') ?>">Project Dashboard</a></li>
-                                    <li><a href="<?= base_url('twxrm_dashboard/task_dashboard') ?>">Task Dashboard</a></li>
-                                    <li><a href="<?= base_url('twxrm_dashboard/support_dashboard') ?>">Support Dashboard</a></li>
-                                    <li><a href="<?= base_url('twxrm_dashboard/overall_dashboard') ?>">Overall Dashboard</a></li>
-                                </ul>
-                            </li>
-
-                            <!-- 18. Sales (5 sub-items) -->
+                            <!-- 13. Sales -->
                             <li class="<?= in_array($current_url, ['leads','quotations','followups','sales_orders','sales_company']) ? 'active' : '' ?>">
-                                <a><i class="fa fa-line-chart"></i> Sales <span class="fa fa-chevron-down"></span></a>
+                                <a>
+                                    <span class="cf-nav-icon"><?= cf_icon('sales') ?></span>
+                                    <span>Sales</span>
+                                    <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
+                                </a>
                                 <ul class="nav child_menu">
                                     <li class="<?= ($current_url == 'leads') ? 'active' : '' ?>">
                                         <a href="<?= base_url('leads') ?>">Leads</a>
@@ -348,38 +276,25 @@
                                     <li class="<?= ($current_url == 'sales_orders') ? 'active' : '' ?>">
                                         <a href="<?= base_url('sales_orders') ?>">Sales Orders</a>
                                     </li>
-                                    <li class="<?= ($current_url == 'sales_company') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('sales_company') ?>">Company</a>
-                                    </li>
                                 </ul>
                             </li>
 
-                            <!-- 19. Projects (4 sub-items) -->
-                            <li class="<?= in_array($current_url, ['projects','tasks','activities','timesheet']) ? 'active' : '' ?>">
-                                <a><i class="fa fa-tasks"></i> Projects <span class="fa fa-chevron-down"></span></a>
+                            <!-- 14. Admin -->
+                            <li class="<?= in_array($current_url, ['general_settings','user_settings','css_settings','presales_settings','order_settings','pm_settings','support_settings']) ? 'active' : '' ?>">
+                                <a>
+                                    <span class="cf-nav-icon"><?= cf_icon('admin') ?></span>
+                                    <span>Admin</span>
+                                    <span class="cf-badge-count">2</span>
+                                    <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
+                                </a>
                                 <ul class="nav child_menu">
-                                    <li class="<?= ($current_url == 'projects') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('projects') ?>">Projects</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'tasks') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('tasks') ?>">Tasks</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'activities') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('activities') ?>">Activities</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'timesheet') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('timesheet') ?>">Weekly Timesheet</a>
-                                    </li>
-                                </ul>
-                            </li>
-
-                            <!-- 20. Support (1 sub-item) -->
-                            <li class="<?= ($current_url == 'tickets') ? 'active' : '' ?>">
-                                <a><i class="fa fa-ticket"></i> Support <span class="fa fa-chevron-down"></span></a>
-                                <ul class="nav child_menu">
-                                    <li class="<?= ($current_url == 'tickets') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('tickets') ?>">Ticket Management</a>
-                                    </li>
+                                    <li><a href="<?= base_url('general_settings/company_type') ?>">General Settings</a></li>
+                                    <li><a href="<?= base_url('user_settings/manage_users') ?>">Users</a></li>
+                                    <li><a href="<?= base_url('css_settings/theme_color') ?>">Appearance</a></li>
+                                    <li><a href="<?= base_url('presales_settings/lead_source') ?>">Pre-Sales</a></li>
+                                    <li><a href="<?= base_url('order_settings/order_status') ?>">Orders</a></li>
+                                    <li><a href="<?= base_url('pm_settings/project_status') ?>">Project Mgmt</a></li>
+                                    <li><a href="<?= base_url('support_settings/ticket_status') ?>">Support</a></li>
                                 </ul>
                             </li>
 
@@ -388,77 +303,71 @@
                 </div>
                 <!-- /sidebar menu -->
 
-                <!-- /menu footer buttons -->
+                <!-- Sidebar User Profile Footer -->
                 <div class="sidebar-footer hidden-small">
-                    <a data-toggle="tooltip" data-placement="top" title="Settings" href="<?= base_url('general_settings/company_type') ?>">
-                        <span class="glyphicon glyphicon-cog" aria-hidden="true"></span>
-                    </a>
-                    <a data-toggle="tooltip" data-placement="top" title="FullScreen" id="fullscreen_toggle">
-                        <span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>
-                    </a>
-                    <a data-toggle="tooltip" data-placement="top" title="Lock" class="lock_btn" href="<?= base_url('auth/lock_screen') ?>">
-                        <span class="glyphicon glyphicon-eye-close" aria-hidden="true"></span>
-                    </a>
-                    <a data-toggle="tooltip" data-placement="top" title="Logout" href="<?= base_url('welcome/logout') ?>">
-                        <span class="glyphicon glyphicon-off" aria-hidden="true"></span>
-                    </a>
+                    <div class="cf-sidebar-user">
+                        <div class="cf-user-avatar"><?= $user_initials ?></div>
+                        <div class="cf-user-info">
+                            <div class="cf-user-name"><?= htmlspecialchars($user_name) ?></div>
+                            <div class="cf-user-role"><?= htmlspecialchars($user_role) ?></div>
+                        </div>
+                        <a href="<?= base_url('general_settings/company_type') ?>" class="cf-user-settings" title="Settings">
+                            <?= cf_icon('settings', 16) ?>
+                        </a>
+                    </div>
                 </div>
-                <!-- /menu footer buttons -->
             </div>
         </div>
         <!-- /LEFT SIDEBAR -->
 
-        <!-- TOP NAVIGATION -->
+        <!-- TOP NAVIGATION - Minimal -->
         <div class="top_nav">
             <div class="nav_menu">
                 <div class="nav toggle">
                     <a id="menu_toggle"><i class="fa fa-bars"></i></a>
                 </div>
 
-                <nav class="nav navbar-nav">
-                    <ul class=" navbar-right">
-                        <!-- User Profile Dropdown -->
-                        <li class="nav-item dropdown" style="padding-left: 15px;">
-                            <a href="javascript:;" class="user-profile dropdown-toggle" aria-haspopup="true" id="navbarDropdown" data-toggle="dropdown" aria-expanded="false">
-                                <img src="<?= base_url('public/images/user.png') ?>" alt="">
-                                <?= isset($current_user->name) ? $current_user->name : 'Admin' ?>
-                            </a>
-                            <ul class="dropdown-menu dropdown-usermenu pull-right" aria-labelledby="navbarDropdown">
-                                <li><a href="<?= base_url('my_profile') ?>"><i class="fa fa-user pull-right"></i> My Profile</a></li>
-                                <li><a href="<?= base_url('general_settings/company_type') ?>"><i class="fa fa-building pull-right"></i> Company Profile</a></li>
-                                <li><a href="<?= base_url('change_psd') ?>"><i class="fa fa-key pull-right"></i> Change Password</a></li>
-                                <li><a href="<?= base_url('welcome/logout') ?>"><i class="fa fa-sign-out pull-right"></i> Log Out</a></li>
-                            </ul>
-                        </li>
+                <!-- Spacer pushes items to the right -->
+                <div style="flex:1;"></div>
 
-                        <!-- Notification Bell -->
-                        <li role="presentation" class="nav-item dropdown">
-                            <a href="javascript:;" class="dropdown-toggle info-number" id="navbarDropdown1" data-toggle="dropdown" aria-expanded="false">
-                                <i class="fa fa-bell-o"></i>
-                                <span class="badge bg-green" id="notification_count"><?= isset($notification_count) ? $notification_count : '0' ?></span>
-                            </a>
-                            <ul class="dropdown-menu list-unstyled msg_list" role="menu" aria-labelledby="navbarDropdown1" id="notification_list">
-                                <li class="nav-item">
-                                    <div class="text-center">
-                                        <a href="<?= base_url('notifications') ?>">
-                                            <strong>See All Notifications</strong>
-                                            <i class="fa fa-angle-right"></i>
-                                        </a>
-                                    </div>
-                                </li>
-                            </ul>
-                        </li>
+                <!-- Minimal Topbar: Search + Bell + Avatar -->
+                <div class="cf-topbar-actions">
+                    <!-- Search -->
+                    <div class="cf-topbar-search">
+                        <span class="cf-topbar-search-icon"><?= cf_icon('search', 16) ?></span>
+                        <input type="text" id="globalSearch" placeholder="Search..." class="cf-topbar-search-input">
+                    </div>
 
-                        <!-- Company / Client Label -->
-                        <li class="nav-item" style="padding-right: 15px; display: flex; align-items: center;">
-                            <?php if (isset($current_user->client_id)): ?>
-                                <span class="label label-primary" style="font-size: 12px;">
-                                    <i class="fa fa-building-o"></i> Client ID: <?= $current_user->client_id ?>
-                                </span>
-                            <?php endif; ?>
-                        </li>
-                    </ul>
-                </nav>
+                    <!-- Notification Bell -->
+                    <div class="dropdown cf-topbar-bell">
+                        <a href="javascript:;" class="dropdown-toggle cf-topbar-icon-btn" id="navbarDropdown1" data-toggle="dropdown" aria-expanded="false">
+                            <?= cf_icon('bell', 18) ?>
+                            <span class="cf-notif-dot" id="notification_count"><?= isset($notification_count) ? $notification_count : '0' ?></span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-right list-unstyled msg_list" role="menu" aria-labelledby="navbarDropdown1" id="notification_list">
+                            <li class="nav-item">
+                                <div class="text-center">
+                                    <a href="<?= base_url('notifications') ?>">
+                                        <strong>See All Notifications</strong>
+                                    </a>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- User Avatar -->
+                    <div class="dropdown cf-topbar-user">
+                        <a href="javascript:;" class="dropdown-toggle cf-topbar-avatar-btn" id="navbarDropdown" data-toggle="dropdown" aria-expanded="false">
+                            <span class="cf-topbar-avatar"><?= $user_initials ?></span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-right dropdown-usermenu" aria-labelledby="navbarDropdown">
+                            <li><a href="<?= base_url('my_profile') ?>"><i class="fa fa-user pull-right"></i> My Profile</a></li>
+                            <li><a href="<?= base_url('general_settings/company_type') ?>"><i class="fa fa-building pull-right"></i> Company Profile</a></li>
+                            <li><a href="<?= base_url('change_psd') ?>"><i class="fa fa-key pull-right"></i> Change Password</a></li>
+                            <li><a href="<?= base_url('welcome/logout') ?>"><i class="fa fa-sign-out pull-right"></i> Log Out</a></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
         <!-- /TOP NAVIGATION -->
@@ -474,12 +383,56 @@
         <!-- FOOTER -->
         <footer>
             <div class="pull-right">
-                Powered by <a href="javascript:;">CorpFile</a> &copy; <?= date('Y') ?>
+                Powered by <a href="javascript:;" style="color:var(--cf-accent); font-weight:500;">CorpFile</a> &copy; <?= date('Y') ?>
             </div>
             <div class="clearfix"></div>
         </footer>
         <!-- /FOOTER -->
 
+    </div>
+</div>
+
+<!-- AI AGENT FLOATING BUTTON -->
+<button class="ai-fab" id="aiFabBtn" onclick="toggleAIDrawer()" title="CorpFile AI Agent">
+    <i class="fa fa-bolt"></i>
+    <span class="pulse-ring"></span>
+</button>
+
+<!-- AI AGENT DRAWER OVERLAY -->
+<div class="ai-drawer-overlay" id="aiOverlay" onclick="toggleAIDrawer()"></div>
+
+<!-- AI AGENT DRAWER -->
+<div class="ai-drawer" id="aiDrawer">
+    <div class="ai-drawer-header">
+        <div class="ai-badge">
+            <span class="sparkle"><i class="fa fa-bolt"></i></span>
+            CorpFile AI
+        </div>
+        <button class="ai-drawer-close" onclick="toggleAIDrawer()">
+            <i class="fa fa-times"></i>
+        </button>
+    </div>
+
+    <div class="ai-suggestion-chips">
+        <button class="ai-chip" onclick="sendAIChip('Generate annual invoice for current clients')">Generate Invoice</button>
+        <button class="ai-chip" onclick="sendAIChip('Fill IR8A form for selected employee')">Fill IR8A</button>
+        <button class="ai-chip" onclick="sendAIChip('Run KYC screening check')">Run KYC</button>
+        <button class="ai-chip" onclick="sendAIChip('Export company report summary')">Export Report</button>
+        <button class="ai-chip" onclick="sendAIChip('Query company registration status')">Query Data</button>
+    </div>
+
+    <div class="ai-chat-body" id="aiChatBody">
+        <div class="ai-message assistant">
+            <span class="ai-avatar"><i class="fa fa-bolt"></i></span>
+            Hello! I'm CorpFile AI. I can help you generate documents, run compliance checks, query data, and automate routine tasks. How can I assist you today?
+        </div>
+    </div>
+
+    <div class="ai-chat-input">
+        <input type="text" id="aiInput" placeholder="Ask CorpFile AI anything..." onkeydown="if(event.key==='Enter')sendAIMessage()">
+        <button class="send-btn" onclick="sendAIMessage()">
+            <i class="fa fa-paper-plane"></i>
+        </button>
     </div>
 </div>
 
@@ -517,33 +470,120 @@
 <script src="<?= base_url('public/js/custom.min.js') ?>"></script>
 <script src="<?= base_url('public/js/custom.js') ?>"></script>
 
-<!-- Fullscreen Toggle -->
 <script>
-    $(document).ready(function () {
-        $('#fullscreen_toggle').on('click', function () {
-            if (!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen();
-                } else if (document.documentElement.msRequestFullscreen) {
-                    document.documentElement.msRequestFullscreen();
-                } else if (document.documentElement.mozRequestFullScreen) {
-                    document.documentElement.mozRequestFullScreen();
-                } else if (document.documentElement.webkitRequestFullscreen) {
-                    document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
-                }
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.msExitFullscreen) {
-                    document.msExitFullscreen();
-                } else if (document.mozCancelFullScreen) {
-                    document.mozCancelFullScreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                }
-            }
-        });
+/* ── Modern Theme JS ──────────────────────────────────────── */
+const BASE_URL = "<?= base_url() ?>";
+
+$(document).ready(function () {
+    /* Fullscreen toggle */
+    $('#fullscreen_toggle').on('click', function () {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen?.() ||
+            document.documentElement.webkitRequestFullscreen?.() ||
+            document.documentElement.mozRequestFullScreen?.();
+        } else {
+            document.exitFullscreen?.() ||
+            document.webkitExitFullscreen?.() ||
+            document.mozCancelFullScreen?.();
+        }
     });
+
+    /* Mobile sidebar toggle */
+    $('#menu_toggle').on('click', function() {
+        var sidebar = document.getElementById('modernSidebar');
+        sidebar.classList.toggle('show-sidebar');
+    });
+
+    /* Smooth page-load animation */
+    document.querySelectorAll('.kpi-card, .alert-item, .x_panel').forEach(function(el, i) {
+        el.classList.add('animate-in');
+        el.style.animationDelay = (i * 0.04) + 's';
+    });
+});
+
+/* ── AI Agent Drawer ──────────────────────────────────────── */
+function toggleAIDrawer() {
+    var drawer = document.getElementById('aiDrawer');
+    var overlay = document.getElementById('aiOverlay');
+    var isActive = drawer.classList.contains('active');
+    drawer.classList.toggle('active');
+    overlay.classList.toggle('active');
+    if (!isActive) {
+        document.getElementById('aiInput').focus();
+    }
+}
+
+function sendAIChip(text) {
+    document.getElementById('aiInput').value = text;
+    sendAIMessage();
+}
+
+function sendAIMessage() {
+    var input = document.getElementById('aiInput');
+    var message = input.value.trim();
+    if (!message) return;
+    input.value = '';
+
+    var chatBody = document.getElementById('aiChatBody');
+
+    /* User message */
+    var userDiv = document.createElement('div');
+    userDiv.className = 'ai-message user';
+    userDiv.textContent = message;
+    chatBody.appendChild(userDiv);
+
+    /* Typing indicator */
+    var typingDiv = document.createElement('div');
+    typingDiv.className = 'ai-typing';
+    typingDiv.id = 'aiTyping';
+    typingDiv.innerHTML = '<span></span><span></span><span></span>';
+    chatBody.appendChild(typingDiv);
+    chatBody.scrollTop = chatBody.scrollHeight;
+
+    /* Call AI API */
+    fetch(BASE_URL + 'ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var typing = document.getElementById('aiTyping');
+        if (typing) typing.remove();
+
+        var aiDiv = document.createElement('div');
+        aiDiv.className = 'ai-message assistant';
+
+        if (data.ok && data.response_text) {
+            aiDiv.innerHTML = '<span class="ai-avatar"><i class="fa fa-bolt"></i></span> ' + data.response_text;
+            aiDiv.innerHTML += '<div class="action-btns">' +
+                '<button onclick="copyToClipboard(this.closest(\'.ai-message\').textContent)"><i class="fa fa-copy"></i> Copy</button>' +
+                '</div>';
+        } else {
+            aiDiv.innerHTML = '<span class="ai-avatar"><i class="fa fa-bolt"></i></span> ' +
+                '<em style="color:var(--cf-text-secondary)">AI agent is being configured. Chat will be available once the backend is set up.</em>';
+        }
+
+        chatBody.appendChild(aiDiv);
+        chatBody.scrollTop = chatBody.scrollHeight;
+    })
+    .catch(function(err) {
+        var typing = document.getElementById('aiTyping');
+        if (typing) typing.remove();
+
+        var errDiv = document.createElement('div');
+        errDiv.className = 'ai-message assistant';
+        errDiv.innerHTML = '<span class="ai-avatar"><i class="fa fa-bolt"></i></span> <em style="color:var(--cf-text-secondary)">Unable to reach the AI service. Please try again later.</em>';
+        chatBody.appendChild(errDiv);
+        chatBody.scrollTop = chatBody.scrollHeight;
+    });
+}
+
+function copyToClipboard(text) {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text);
+    }
+}
 </script>
 
 </body>

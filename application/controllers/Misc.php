@@ -427,19 +427,13 @@ class Member_documents extends BaseController {
 class Corp_share_comp_list extends BaseController {
     public function index() {
         $this->requireAuth();
-        $data = ['page_title' => 'Corporate Shareholder - Company List', 'companies' => []];
+        $data = ['page_title' => 'Corporate Shareholder - Company List', 'shareholders' => []];
         if ($this->db) {
             $clientId = $_SESSION['client_id'] ?? '';
             $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
             if ($client) {
-                $data['companies'] = $this->db->fetchAll(
-                    "SELECT c.id, c.company_name, COALESCE(c.registration_number,'') as registration_number,
-                        COALESCE((SELECT a.address_text FROM addresses a WHERE a.entity_type='company' AND a.entity_id=c.id AND a.address_type='Registered Office' LIMIT 1), 'Not Specified') as registered_address,
-                        COALESCE((SELECT a.address_text FROM addresses a WHERE a.entity_type='company' AND a.entity_id=c.id AND a.address_type='Foreign' LIMIT 1), 'Not Specified') as foreign_address,
-                        COALESCE(c.country, '') as country
-                    FROM companies c
-                    WHERE c.is_corporate_shareholder = 1 AND c.client_id = ?
-                    ORDER BY c.company_name", [$client->id]
+                $data['shareholders'] = $this->db->fetchAll(
+                    "SELECT s.*, c.company_name, c.registration_number, COALESCE(SUM(cs.number_of_shares),0) as total_shares FROM shareholders s JOIN companies c ON c.id = s.company_id LEFT JOIN company_shares cs ON cs.shareholder_id = s.id AND cs.type = 'Allotment' WHERE s.shareholder_type = 'Corporate' AND c.client_id = ? GROUP BY s.id ORDER BY c.company_name", [$client->id]
                 );
             }
         }
@@ -572,31 +566,5 @@ class Add_account_type extends BaseController {
             }
         }
         $this->loadLayout('misc/add_account_type', $data);
-    }
-}
-
-// Register of Charges List (maps to /settings/register_charge_list)
-class Register_charge_list extends BaseController {
-    public function index() {
-        $this->requireAuth();
-        $data = [
-            'page_title' => 'Register of Charges',
-            'charges'    => [],
-        ];
-        if ($this->db) {
-            $clientId = $_SESSION['client_id'] ?? '';
-            $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
-            if ($client) {
-                $data['charges'] = $this->db->fetchAll(
-                    "SELECT rc.*, c.company_name
-                     FROM register_charges rc
-                     LEFT JOIN companies c ON c.id = rc.company_id
-                     WHERE rc.client_id = ?
-                     ORDER BY rc.date_of_registration DESC",
-                    [$client->id]
-                );
-            }
-        }
-        $this->loadLayout('misc/register_charge_list', $data);
     }
 }

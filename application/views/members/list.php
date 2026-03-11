@@ -1,10 +1,20 @@
-<!-- Page Title -->
+<!-- Individuals / Members List - Modern Rillet Style -->
 <div class="page-title">
     <div class="title_left">
-        <h3><?php echo $page_title; ?> <small>(Total: <?php echo $total; ?>)</small></h3>
+        <h3><?php echo $page_title; ?></h3>
+        <p style="color:var(--cf-text-secondary); font-size:14px; margin-top:4px;">
+            Manage individual profiles, directors, and shareholders
+        </p>
     </div>
     <div class="title_right">
-        <a href="<?php echo site_url('members/add_member'); ?>" class="btn btn-success pull-right"><i class="fa fa-plus"></i> Add Individual</a>
+        <div class="pull-right" style="display:flex; gap:8px; align-items:center;">
+            <span style="font-size:13px; color:var(--cf-text-secondary);">
+                <i class="fa fa-users" style="margin-right:4px;"></i> Total: <?php echo $total; ?>
+            </span>
+            <a href="<?php echo site_url('members/add_member'); ?>" class="btn btn-primary">
+                <i class="fa fa-plus" style="margin-right:4px;"></i> Add Individual
+            </a>
+        </div>
     </div>
 </div>
 <div class="clearfix"></div>
@@ -14,40 +24,59 @@
         <div class="x_panel">
             <div class="x_content">
 
-                <!-- Filter Row -->
-                <div class="row" style="margin-bottom:15px;">
-                    <div class="col-md-3">
-                        <select id="filter_status" class="form-control select2_filter" style="width:100%;">
-                            <option value="">-- Filter by Status --</option>
-                            <option value="Active">Active</option>
-                            <option value="Ceased">Ceased</option>
-                            <option value="Discharged">Discharged</option>
-                            <option value="Deceased">Deceased</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <select id="filter_nationality" class="form-control select2_filter" style="width:100%;">
-                            <option value="">-- Filter by Nationality --</option>
-                            <?php
-                            $nationalities = array();
-                            foreach ($members as $m) {
-                                if (!empty($m->nationality) && !in_array($m->nationality, $nationalities)) {
-                                    $nationalities[] = $m->nationality;
+                <!-- Modern Filter Bar -->
+                <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+                    <button class="btn btn-default" id="toggleFilter" style="border-radius:var(--cf-radius-sm);">
+                        <i class="fa fa-filter" style="margin-right:6px; color:var(--cf-accent);"></i> Filters
+                    </button>
+                    <div style="flex:1;"></div>
+                    <span style="font-size:13px; color:var(--cf-text-secondary);">
+                        <i class="fa fa-database" style="margin-right:4px;"></i>
+                        <?php echo $total; ?> records
+                    </span>
+                </div>
+
+                <!-- Collapsible Filter Panel -->
+                <div id="filterPanel" style="display:none; background:var(--cf-card-bg); padding:20px; border-radius:var(--cf-radius); margin-bottom:16px; border:1px solid var(--cf-border);">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label style="font-size:12px; font-weight:600; color:var(--cf-text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Status</label>
+                            <select id="filter_status" class="form-control select2_filter" style="width:100%;">
+                                <option value="">All Statuses</option>
+                                <option value="Active">Active</option>
+                                <option value="Ceased">Ceased</option>
+                                <option value="Discharged">Discharged</option>
+                                <option value="Deceased">Deceased</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label style="font-size:12px; font-weight:600; color:var(--cf-text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Nationality</label>
+                            <select id="filter_nationality" class="form-control select2_filter" style="width:100%;">
+                                <option value="">All Nationalities</option>
+                                <?php
+                                $nationalities = array();
+                                foreach ($members as $m) {
+                                    if (!empty($m->nationality) && !in_array($m->nationality, $nationalities)) {
+                                        $nationalities[] = $m->nationality;
+                                    }
                                 }
-                            }
-                            sort($nationalities);
-                            foreach ($nationalities as $nat): ?>
-                                <option value="<?php echo htmlspecialchars($nat); ?>"><?php echo htmlspecialchars($nat); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <button id="btn_reset_filter" class="btn btn-default"><i class="fa fa-refresh"></i> Reset</button>
+                                sort($nationalities);
+                                foreach ($nationalities as $nat): ?>
+                                    <option value="<?php echo htmlspecialchars($nat); ?>"><?php echo htmlspecialchars($nat); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3" style="display:flex; align-items:flex-end;">
+                            <button id="btn_reset_filter" class="btn btn-default btn-sm">
+                                <i class="fa fa-refresh" style="margin-right:4px;"></i> Reset
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <table id="datatable" class="table table-striped table-bordered dt-responsive nowrap" cellspacing="0" width="100%">
-                    <thead style="background:#206570;color:#fff;">
+                <!-- Data Table -->
+                <table id="datatable" class="table table-striped dt-responsive nowrap" cellspacing="0" width="100%">
+                    <thead>
                         <tr>
                             <th width="5%">S/No.</th>
                             <th>Individual Name</th>
@@ -56,7 +85,7 @@
                             <th>Address</th>
                             <th>Email</th>
                             <th>Contact No.</th>
-                            <th width="12%">Action</th>
+                            <th width="12%" style="min-width:140px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -64,33 +93,43 @@
                             $sno = 1;
                             foreach ($members as $row): ?>
                             <tr>
-                                <td><?php echo $sno++; ?></td>
-                                <td><?php echo htmlspecialchars($row->name ?? ''); ?></td>
-                                <td><?php echo htmlspecialchars($row->alias_name ?? ''); ?></td>
+                                <td style="color:var(--cf-text-muted); font-size:12px;"><?php echo $sno++; ?></td>
                                 <td>
+                                    <span style="font-weight:600; color:var(--cf-text);"><?php echo htmlspecialchars($row->name); ?></span>
+                                </td>
+                                <td style="color:var(--cf-text-secondary); font-size:12px;"><?php echo htmlspecialchars($row->alias_name); ?></td>
+                                <td style="font-family:monospace; font-size:12px;">
                                     <?php
                                     if (!empty($row->id_type) && !empty($row->id_number)) {
                                         echo htmlspecialchars($row->id_type) . ' / ' . htmlspecialchars($row->id_number);
                                     } else {
-                                        echo '-';
+                                        echo '<span style="color:var(--cf-text-muted);">--</span>';
                                     }
                                     ?>
                                 </td>
-                                <td>
+                                <td style="font-size:12px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                     <?php
                                     if (!empty($row->address)) {
                                         echo htmlspecialchars($row->address);
                                     } else {
-                                        echo '-';
+                                        echo '<span style="color:var(--cf-text-muted);">--</span>';
                                     }
                                     ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($row->email ?? ''); ?></td>
-                                <td><?php echo htmlspecialchars($row->contact_number ?? $row->mobile_number ?? ''); ?></td>
+                                <td style="font-size:12px;"><?php echo htmlspecialchars($row->email); ?></td>
+                                <td style="font-size:12px;"><?php echo htmlspecialchars($row->contact_number); ?></td>
                                 <td>
-                                    <a href="<?php echo site_url('members/edit_member/' . $row->id); ?>" class="btn btn-info btn-xs" title="Edit"><i class="fa fa-pencil"></i> Edit</a>
-                                    <a href="<?php echo site_url('members/view_member/' . $row->id); ?>" class="btn btn-primary btn-xs" title="View"><i class="fa fa-eye"></i> View</a>
-                                    <button class="btn btn-danger btn-xs delete_doc" data-id="<?php echo $row->id; ?>" title="Delete"><i class="fa fa-trash"></i></button>
+                                    <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                                        <a href="<?php echo site_url('members/edit_member/' . $row->id); ?>" class="btn btn-default btn-xs" title="Edit" style="border-radius:6px;">
+                                            <i class="fa fa-pencil"></i>
+                                        </a>
+                                        <a href="<?php echo site_url('members/view_member/' . $row->id); ?>" class="btn btn-default btn-xs" title="View" style="border-radius:6px;">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                        <button class="btn btn-default btn-xs delete_doc" data-id="<?php echo $row->id; ?>" title="Delete" style="border-radius:6px; color:var(--cf-danger);">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach;
@@ -113,24 +152,33 @@ $(document).ready(function() {
         "responsive": true,
         "language": {
             "emptyTable": "No individuals found",
-            "search": "Search:"
+            "search": "",
+            "searchPlaceholder": "Search individuals...",
+            "info": "Showing _START_ to _END_ of _TOTAL_ individuals",
+            "paginate": { "previous": '<i class="fa fa-chevron-left"></i>', "next": '<i class="fa fa-chevron-right"></i>' }
         },
         "dom": '<"row"<"col-sm-6"l><"col-sm-6"f>>rtip'
     });
 
-    // Select2 init for filter dropdowns
-    $('.select2_filter').select2({
-        allowClear: true,
-        placeholder: function() {
-            return $(this).find('option:first').text();
-        }
+    // Filter toggle
+    $('#toggleFilter').click(function() {
+        $('#filterPanel').slideToggle(200);
+        $(this).toggleClass('active');
     });
+
+    // Select2 init for filter dropdowns
+    if ($.fn.select2) {
+        $('.select2_filter').select2({
+            allowClear: true,
+            placeholder: function() {
+                return $(this).find('option:first').text();
+            }
+        });
+    }
 
     // Filter by Status
     $('#filter_status').on('change', function() {
         var val = $(this).val();
-        // Status is not directly in the table, but could be used for server-side filtering
-        // For client-side, we do a simple column search if status were visible
         table.draw();
     });
 
@@ -157,7 +205,7 @@ $(document).ready(function() {
             text: "You are about to delete this individual record. This action cannot be undone!",
             type: "warning",
             showCancelButton: true,
-            confirmButtonColor: "#DD6B55",
+            confirmButtonColor: "#EF4444",
             confirmButtonText: "Yes, delete it!",
             cancelButtonText: "Cancel",
             closeOnConfirm: false,

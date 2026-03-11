@@ -181,18 +181,14 @@ class Registers extends BaseController {
         switch ($type) {
             case 'register_of_members':
                 return $this->db->fetchAll(
-                    "SELECT m.name,
-                            MAX(mi.id_type) AS id_type,
-                            MAX(mi.id_number) AS id_number,
-                            m.nationality,
-                            MAX(CONCAT_WS(' ', a.block, a.address_text, a.building)) AS address,
+                    "SELECT m.name, mi.id_type, mi.id_number, m.nationality,
+                            CONCAT_WS(' ', a.block, a.address_text, a.building) AS address,
                             m.status
                      FROM members m
                      LEFT JOIN member_identifications mi ON mi.member_id = m.id
                      LEFT JOIN addresses a ON a.entity_type = 'member' AND a.entity_id = m.id AND a.is_default = 1
                      WHERE m.client_id = ?
-                     GROUP BY m.id, m.name, m.nationality, m.status
-                     ORDER BY m.name",
+                     GROUP BY m.id ORDER BY m.name",
                     [$cid]
                 );
 
@@ -223,11 +219,10 @@ class Registers extends BaseController {
 
             case 'register_of_seals':
                 return $this->db->fetchAll(
-                    "SELECT COALESCE(c.company_name, '') AS company_name,
-                            s.document_description, s.seal_date,
+                    "SELECT c.company_name, s.document_description, s.seal_date,
                             s.sealed_by, '' AS witness, '' AS remarks
                      FROM sealings s
-                     LEFT JOIN companies c ON c.id = s.company_id
+                     JOIN companies c ON c.id = s.company_id
                      WHERE s.client_id = ? ORDER BY s.seal_date DESC",
                     [$cid]
                 );

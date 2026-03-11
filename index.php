@@ -131,8 +131,15 @@ $controllerMap = [
     'view_member'  => ['file' => 'Members.php', 'class' => 'View_member'],
     'edit_member'  => ['file' => 'Members.php', 'class' => 'Edit_member'],
 
+    // ─── Chats ──────────────────────────────────────────────────
+    'chats' => ['file' => 'Chats.php', 'class' => 'Chats'],
+
     // ─── Dashboard ───────────────────────────────────────────────
     'dashboard' => ['file' => 'Dashboard.php', 'class' => 'Dashboard'],
+    'registration' => ['file' => 'Workspace.php', 'class' => 'Registration'],
+    'events_alerts' => ['file' => 'Workspace.php', 'class' => 'Events_alerts'],
+    'workflow' => ['file' => 'Workspace.php', 'class' => 'Workflow'],
+    'agents' => ['file' => 'Workspace.php', 'class' => 'Agents'],
 
     // ─── Auth ────────────────────────────────────────────────────
     'welcome' => ['file' => 'Welcome.php', 'class' => 'Welcome'],

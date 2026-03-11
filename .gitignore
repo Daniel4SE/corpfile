@@ -44,6 +44,10 @@ screenshots/
 # Firebase cache
 .firebase/
 
+# Legacy AI skill files
+openclaw/
+scripts/
+
 # IDE
 .vscode/
 .idea/

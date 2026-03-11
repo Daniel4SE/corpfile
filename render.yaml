@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: corpfile
+    runtime: docker
+    repo: https://github.com/Daniel4SE/corpfile.git
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /welcome
+    plan: starter
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: APP_BASE_URL
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 3306
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_NAME
+        sync: false

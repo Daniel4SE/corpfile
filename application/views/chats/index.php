@@ -1,0 +1,393 @@
+<!-- Chats - Full Page AI Chat Interface -->
+<style>
+.cf-chat-container {
+    display: flex;
+    height: calc(100vh - var(--cf-topbar-h) - 40px);
+    background: var(--cf-white);
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius);
+    overflow: hidden;
+}
+
+/* Left: Chat History Sidebar */
+.cf-chat-sidebar {
+    width: 280px;
+    border-right: 1px solid var(--cf-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    background: var(--cf-bg);
+}
+.cf-chat-sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--cf-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.cf-chat-sidebar-header h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cf-text);
+}
+.cf-chat-new-btn {
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--cf-border);
+    background: var(--cf-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--cf-text-secondary);
+    font-size: 14px;
+    transition: var(--cf-transition-fast);
+}
+.cf-chat-new-btn:hover {
+    background: var(--cf-primary);
+    color: #fff;
+    border-color: var(--cf-primary);
+}
+.cf-chat-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+.cf-chat-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--cf-transition-fast);
+    margin-bottom: 2px;
+}
+.cf-chat-item:hover { background: var(--cf-white); }
+.cf-chat-item.active { background: var(--cf-white); box-shadow: var(--cf-shadow-sm); }
+.cf-chat-item-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cf-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cf-chat-item-time {
+    font-size: 11px;
+    color: var(--cf-text-muted);
+    margin-top: 2px;
+}
+
+/* Right: Chat Main Area */
+.cf-chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.cf-chat-main-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--cf-border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.cf-chat-main-header .cf-chat-ai-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--cf-primary);
+}
+.cf-chat-main-header .cf-chat-ai-icon {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--cf-accent), var(--cf-primary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+}
+
+/* Quick suggestion chips */
+.cf-chat-chips {
+    padding: 12px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    border-bottom: 1px solid var(--cf-border);
+    flex-shrink: 0;
+}
+.cf-chat-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: var(--cf-card-bg);
+    border: 1px solid var(--cf-border);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--cf-text);
+    cursor: pointer;
+    transition: var(--cf-transition-fast);
+}
+.cf-chat-chip:hover {
+    background: var(--cf-primary);
+    color: #fff;
+    border-color: var(--cf-primary);
+}
+
+/* Messages area */
+.cf-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.cf-chat-msg {
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: var(--cf-radius);
+    font-size: 13px;
+    line-height: 1.6;
+}
+.cf-chat-msg.user {
+    background: var(--cf-primary);
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+.cf-chat-msg.assistant {
+    background: var(--cf-card-bg);
+    color: var(--cf-text);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+.cf-chat-msg .cf-msg-avatar {
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    background: linear-gradient(135deg, var(--cf-accent), var(--cf-primary));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 10px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+/* Input area */
+.cf-chat-input-area {
+    padding: 16px 20px;
+    border-top: 1px solid var(--cf-border);
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.cf-chat-input-area input {
+    flex: 1;
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    outline: none;
+    font-family: var(--cf-font) !important;
+    color: var(--cf-text);
+}
+.cf-chat-input-area input:focus {
+    border-color: var(--cf-accent);
+    box-shadow: 0 0 0 3px rgba(79,134,198,0.1);
+}
+.cf-chat-input-area input::placeholder { color: var(--cf-text-muted); }
+.cf-chat-send-btn {
+    width: 40px; height: 40px;
+    border-radius: var(--cf-radius-sm);
+    border: none;
+    background: var(--cf-primary);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    transition: var(--cf-transition-fast);
+}
+.cf-chat-send-btn:hover { background: var(--cf-primary-light); }
+
+/* Typing indicator */
+.cf-typing { display: flex; gap: 4px; padding: 10px 14px; align-self: flex-start; }
+.cf-typing span {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--cf-text-muted);
+    animation: cfTypePulse 1.4s infinite ease-in-out;
+}
+.cf-typing span:nth-child(2) { animation-delay: 0.2s; }
+.cf-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes cfTypePulse {
+    0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+/* Offline / setup notice */
+.cf-chat-offline {
+    background: #fef9ee !important;
+    border: 1px solid #f5e0b0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    max-width: 85% !important;
+}
+.cf-chat-offline strong {
+    color: var(--cf-text);
+    font-size: 13px;
+}
+
+@media (max-width: 768px) {
+    .cf-chat-sidebar { display: none; }
+}
+</style>
+
+<div class="cf-chat-container">
+    <!-- Left: Chat History -->
+    <div class="cf-chat-sidebar">
+        <div class="cf-chat-sidebar-header">
+            <h4>Conversations</h4>
+            <button class="cf-chat-new-btn" onclick="newChat()" title="New Chat">
+                <i class="fa fa-plus"></i>
+            </button>
+        </div>
+        <div class="cf-chat-list">
+            <div class="cf-chat-item active" data-chat="1">
+                <div class="cf-chat-item-title">General Assistant</div>
+                <div class="cf-chat-item-time">Active now</div>
+            </div>
+            <div class="cf-chat-item" data-chat="2">
+                <div class="cf-chat-item-title">IR8A Filing Query</div>
+                <div class="cf-chat-item-time">2 hours ago</div>
+            </div>
+            <div class="cf-chat-item" data-chat="3">
+                <div class="cf-chat-item-title">AGM Compliance Check</div>
+                <div class="cf-chat-item-time">Yesterday</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Chat Main -->
+    <div class="cf-chat-main">
+        <div class="cf-chat-main-header">
+            <div class="cf-chat-ai-badge">
+                <span class="cf-chat-ai-icon"><i class="fa fa-bolt"></i></span>
+                CorpFile AI
+            </div>
+        </div>
+
+        <div class="cf-chat-chips">
+            <button class="cf-chat-chip" onclick="sendChatChip('Generate annual invoice for current clients')">Generate Invoice</button>
+            <button class="cf-chat-chip" onclick="sendChatChip('Fill IR8A form for selected employee')">Fill IR8A</button>
+            <button class="cf-chat-chip" onclick="sendChatChip('Run KYC screening check')">Run KYC</button>
+            <button class="cf-chat-chip" onclick="sendChatChip('Export company report summary')">Export Report</button>
+            <button class="cf-chat-chip" onclick="sendChatChip('Show upcoming compliance deadlines')">Check Compliance</button>
+            <button class="cf-chat-chip" onclick="sendChatChip('Calculate Singapore payroll with CPF')">SG Payroll</button>
+        </div>
+
+        <div class="cf-chat-messages" id="chatMessages">
+            <div class="cf-chat-msg assistant">
+                <span class="cf-msg-avatar"><i class="fa fa-bolt"></i></span>
+                Hello! I'm CorpFile AI. I can help you generate documents, run compliance checks, query data, and automate routine tasks. How can I assist you today?
+            </div>
+        </div>
+
+        <div class="cf-chat-input-area">
+            <input type="text" id="chatInput" placeholder="Ask CorpFile AI anything..."
+                   onkeydown="if(event.key==='Enter')sendChatMessage()">
+            <button class="cf-chat-send-btn" onclick="sendChatMessage()">
+                <i class="fa fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+var BASE = "<?= base_url() ?>";
+
+function sendChatChip(text) {
+    document.getElementById('chatInput').value = text;
+    sendChatMessage();
+}
+
+function sendChatMessage() {
+    var input = document.getElementById('chatInput');
+    var message = input.value.trim();
+    if (!message) return;
+    input.value = '';
+
+    var chatBody = document.getElementById('chatMessages');
+
+    // User message
+    var userDiv = document.createElement('div');
+    userDiv.className = 'cf-chat-msg user';
+    userDiv.textContent = message;
+    chatBody.appendChild(userDiv);
+
+    // Typing indicator
+    var typingDiv = document.createElement('div');
+    typingDiv.className = 'cf-typing';
+    typingDiv.id = 'chatTyping';
+    typingDiv.innerHTML = '<span></span><span></span><span></span>';
+    chatBody.appendChild(typingDiv);
+    chatBody.scrollTop = chatBody.scrollHeight;
+
+    // Call AI API
+    fetch(BASE + 'ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var typing = document.getElementById('chatTyping');
+        if (typing) typing.remove();
+
+        var aiDiv = document.createElement('div');
+        aiDiv.className = 'cf-chat-msg assistant';
+
+        if (data.ok && data.response_text) {
+            aiDiv.innerHTML = '<span class="cf-msg-avatar"><i class="fa fa-bolt"></i></span> ' + data.response_text;
+        } else {
+            // AI backend not available - show friendly offline notice
+            aiDiv.className = 'cf-chat-msg assistant cf-chat-offline';
+            aiDiv.innerHTML = '<span class="cf-msg-avatar" style="background:linear-gradient(135deg,#f0ad4e,#ec971f)"><i class="fa fa-info"></i></span>' +
+                '<div>' +
+                '<strong>AI Agent is being configured</strong><br>' +
+                '<span style="font-size:12px;color:var(--cf-text-secondary)">The CorpFile AI backend is not yet connected. Once your administrator completes the setup, you will be able to chat with the AI agent for compliance checks, document generation, KYC screening, and more.</span>' +
+                '</div>';
+        }
+
+        chatBody.appendChild(aiDiv);
+        chatBody.scrollTop = chatBody.scrollHeight;
+    })
+    .catch(function(err) {
+        var typing = document.getElementById('chatTyping');
+        if (typing) typing.remove();
+
+        var errDiv = document.createElement('div');
+        errDiv.className = 'cf-chat-msg assistant cf-chat-offline';
+        errDiv.innerHTML = '<span class="cf-msg-avatar" style="background:linear-gradient(135deg,#f0ad4e,#ec971f)"><i class="fa fa-info"></i></span>' +
+            '<div>' +
+            '<strong>Connection unavailable</strong><br>' +
+            '<span style="font-size:12px;color:var(--cf-text-secondary)">Unable to reach the AI service. Please check your connection and try again later.</span>' +
+            '</div>';
+        chatBody.appendChild(errDiv);
+        chatBody.scrollTop = chatBody.scrollHeight;
+    });
+}
+
+function newChat() {
+    var chatBody = document.getElementById('chatMessages');
+    chatBody.innerHTML = '<div class="cf-chat-msg assistant"><span class="cf-msg-avatar"><i class="fa fa-bolt"></i></span> New conversation started. How can I help you?</div>';
+}
+</script>
