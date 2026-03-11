@@ -170,7 +170,7 @@ class Ai extends BaseController {
 
         // Always provide basic stats
         $companyCount = $this->db->count('companies', 'client_id = ?', [$client->id]);
-        $lines[] = "Client: {$client->client_name} (Code: {$client->client_id})";
+        $lines[] = "Client: {$client->company_name} (Code: {$client->client_id})";
         $lines[] = "Total companies under management: {$companyCount}";
 
         // Compliance / deadlines
