@@ -67,6 +67,16 @@ CREATE TABLE IF NOT EXISTS `oauth_users` (
 ) ENGINE=InnoDB;
 SQL
   echo "DB migrations done."
+
+  # Run Teamwork.sg data import (one-time, checks a flag)
+  IMPORT_DONE=$(mysql $MYSQL_OPTS -N -e "SELECT COUNT(*) FROM companies WHERE incorporation_date IS NOT NULL AND client_id = (SELECT id FROM clients LIMIT 1)" "$DB_NAME" 2>/dev/null || echo "0")
+  if [ "$IMPORT_DONE" -lt "30" ] && [ -f /var/www/html/data_import/import_to_corpfile.php ]; then
+    echo "Running Teamwork.sg data import..."
+    php /var/www/html/data_import/import_to_corpfile.php 2>&1 || true
+    echo "Teamwork.sg data import complete."
+  else
+    echo "Teamwork.sg data already imported, skipping."
+  fi
 fi
 
 # Start PHP built-in server (same as local dev)
