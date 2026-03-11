@@ -13,8 +13,34 @@ DB_PASS="${DB_PASS:-}"
 DB_NAME="${DB_NAME:-corporate_secretary}"
 
 if [ -n "$DB_HOST" ] && [ "$DB_HOST" != "localhost" ]; then
+  echo "Waiting for MySQL to be ready..."
+  for i in $(seq 1 30); do
+    if mysql -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USER" -p"$DB_PASS" -e "SELECT 1" "$DB_NAME" >/dev/null 2>&1; then
+      echo "MySQL is ready."
+      break
+    fi
+    echo "Waiting for MySQL... ($i/30)"
+    sleep 2
+  done
+
+  # Check if the database is empty (no 'clients' table = needs seeding)
+  TABLE_COUNT=$(mysql -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USER" -p"$DB_PASS" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='clients'" "$DB_NAME" 2>/dev/null || echo "0")
+
+  if [ "$TABLE_COUNT" = "0" ]; then
+    echo "Database is empty — importing seed data..."
+    if [ -f /var/www/html/db_seed.sql ]; then
+      mysql -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" < /var/www/html/db_seed.sql 2>&1
+      echo "Database seed import complete."
+    else
+      echo "WARNING: db_seed.sql not found, skipping import."
+    fi
+  else
+    echo "Database already has tables, skipping seed import."
+  fi
+
+  # Run additional migrations (idempotent)
   echo "Running DB migrations..."
-  mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null <<'SQL' || true
+  mysql -h"$DB_HOST" -P"${DB_PORT:-3306}" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" 2>/dev/null <<'SQL' || true
 CREATE TABLE IF NOT EXISTS `oauth_users` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT UNSIGNED NOT NULL,
