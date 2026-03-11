@@ -160,6 +160,14 @@ class Ai extends BaseController {
      * This gives Claude relevant workspace data to ground its answers.
      */
     private function buildContextSnippet($message) {
+        try {
+            return $this->doBuildContext($message);
+        } catch (\Exception $e) {
+            return "Context lookup error: " . $e->getMessage();
+        }
+    }
+
+    private function doBuildContext($message) {
         $client = $this->getClient();
         if (!$client) {
             return null;
@@ -330,14 +338,54 @@ class Ai extends BaseController {
             $lines[] = "\nTotal invoices: {$invoiceCount}";
         }
 
-        // ── Officers / directors / shareholders ──
+        // ── Officers / directors ──
         if (preg_match('/officer|director|secretary|shareholder|member|董事|股东|秘书/i', $lowerMsg)) {
-            $officerCount = $this->db->fetchOne(
-                "SELECT COUNT(*) AS cnt FROM company_officers WHERE company_id IN (SELECT id FROM companies WHERE client_id = ?)",
-                [$client->id]
-            );
-            if ($officerCount) {
-                $lines[] = "\nTotal officers across all companies: {$officerCount->cnt}";
+            try {
+                // Find companies with specific director counts if asked
+                if (preg_match('/(\d+)\s*(?:director|董事)/i', $lowerMsg, $dm)) {
+                    $targetCount = (int)$dm[1];
+                    $companiesWithNDirs = $this->db->fetchAll(
+                        "SELECT c.company_name, c.registration_number, COUNT(d.id) AS dir_count
+                         FROM companies c
+                         JOIN directors d ON d.company_id = c.id
+                         WHERE c.client_id = ? AND d.role = 'director'
+                         GROUP BY c.id, c.company_name, c.registration_number
+                         HAVING dir_count = ?
+                         ORDER BY c.company_name ASC
+                         LIMIT 30",
+                        [$client->id, $targetCount]
+                    );
+                    if ($companiesWithNDirs) {
+                        $lines[] = "\nCompanies with exactly {$targetCount} directors (" . count($companiesWithNDirs) . " found):";
+                        foreach ($companiesWithNDirs as $co) {
+                            $lines[] = "- {$co->company_name} | Reg: " . ($co->registration_number ?: 'N/A') . " | Directors: {$co->dir_count}";
+                        }
+                    } else {
+                        $lines[] = "\nNo companies found with exactly {$targetCount} directors.";
+                    }
+                } else {
+                    // General director stats
+                    $dirStats = $this->db->fetchAll(
+                        "SELECT c.company_name, COUNT(d.id) AS dir_count
+                         FROM companies c
+                         LEFT JOIN directors d ON d.company_id = c.id AND d.role = 'director'
+                         WHERE c.client_id = ?
+                         GROUP BY c.id, c.company_name
+                         ORDER BY dir_count DESC
+                         LIMIT 20",
+                        [$client->id]
+                    );
+                    if ($dirStats) {
+                        $totalDirs = array_sum(array_map(function($r) { return $r->dir_count; }, $dirStats));
+                        $lines[] = "\nDirector overview (top 20 companies by director count, total directors: {$totalDirs}):";
+                        foreach ($dirStats as $co) {
+                            $lines[] = "- {$co->company_name}: {$co->dir_count} directors";
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // Table may not exist in some environments
+                $lines[] = "\n(Director data not available)";
             }
         }
 
