@@ -215,16 +215,16 @@ foreach ($existingCompanies as $existing) {
         }
     }
 
-    // Common seal, company stamp
+    // Common seal, company stamp (varchar(10) — truncate to fit)
     $seal = $detail['common_seal'] ?? null;
     if ($seal && $seal !== '' && $seal !== 'Select' && (!$existing['common_seal'] || $existing['common_seal'] === '')) {
         $updates[] = 'common_seal = ?';
-        $params[] = $seal;
+        $params[] = substr($seal, 0, 10);
     }
     $stamp = $detail['company_stamp'] ?? null;
     if ($stamp && $stamp !== '' && $stamp !== 'Select' && (!$existing['company_stamp'] || $existing['company_stamp'] === '')) {
         $updates[] = 'company_stamp = ?';
-        $params[] = $stamp;
+        $params[] = substr($stamp, 0, 10);
     }
 
     // Risk assessment
@@ -288,8 +288,13 @@ foreach ($existingCompanies as $existing) {
     if (!empty($updates)) {
         $params[] = $existing['id'];
         $sql = "UPDATE companies SET " . implode(', ', $updates) . " WHERE id = ?";
-        $pdo->prepare($sql)->execute($params);
-        $updated++;
+        try {
+            $pdo->prepare($sql)->execute($params);
+            $updated++;
+        } catch (Exception $e) {
+            echo "  WARN: Failed to update '{$existing['company_name']}': " . $e->getMessage() . "\n";
+            $skipped++;
+        }
     } else {
         $skipped++;
     }
