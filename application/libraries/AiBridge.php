@@ -49,11 +49,6 @@ class AiBridge {
      * @return array              ['ok' => bool, 'response_text' => string, 'error' => string|null, ...]
      */
     public function runTurn($message, $options = []) {
-        $message = trim((string) $message);
-        if ($message === '') {
-            return ['ok' => false, 'error' => 'Prompt is required.'];
-        }
-
         if (empty($this->apiKey)) {
             return ['ok' => false, 'error' => 'AI_API_KEY not configured. Please set the AI_API_KEY environment variable.'];
         }
@@ -63,9 +58,18 @@ class AiBridge {
         $timeout     = (int) ($options['timeout']       ?? 90);
         $timeout     = max(15, min($timeout, 300));
 
-        // Build messages array (support conversation context)
+        // Build messages array (support conversation context / multi-turn)
         $messages = [];
-        if (!empty($options['context']) && is_array($options['context'])) {
+        if (!empty($options['messages']) && is_array($options['messages'])) {
+            // Full message history provided (multi-turn)
+            foreach ($options['messages'] as $msg) {
+                $messages[] = [
+                    'role'    => $msg['role'] ?? 'user',
+                    'content' => $msg['content'] ?? '',
+                ];
+            }
+        } elseif (!empty($options['context']) && is_array($options['context'])) {
+            // Legacy: prior context + current message
             foreach ($options['context'] as $msg) {
                 $messages[] = [
                     'role'    => $msg['role'] ?? 'user',
@@ -73,7 +77,16 @@ class AiBridge {
                 ];
             }
         }
-        $messages[] = ['role' => 'user', 'content' => $message];
+
+        // If a message string is provided, append as latest user turn
+        $message = trim((string) ($message ?? ''));
+        if ($message !== '') {
+            $messages[] = ['role' => 'user', 'content' => $message];
+        }
+
+        if (empty($messages)) {
+            return ['ok' => false, 'error' => 'Prompt is required.'];
+        }
 
         // System prompt
         $systemPrompt = $options['system_prompt'] ?? $this->systemPrompt;

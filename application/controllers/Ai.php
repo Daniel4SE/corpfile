@@ -43,7 +43,8 @@ class Ai extends BaseController {
 
     /**
      * POST /ai/chat — Chat endpoint for both the AI drawer and the full-page chat.
-     * Accepts { message: string } and returns { ok, response_text, error }.
+     * Accepts { message, conversation_id?, source?, agent? }
+     * Returns { ok, response_text, conversation_id, error }.
      */
     public function chat() {
         $this->requireAuth();
@@ -63,6 +64,63 @@ class Ai extends BaseController {
             $message = substr($message, 0, 4000);
         }
 
+        $conversationId = (int) ($payload['conversation_id'] ?? 0);
+        $source = $payload['source'] ?? 'chat';
+        $agent  = $payload['agent']  ?? null;
+        $userId = (int) ($_SESSION['user_id'] ?? 1);
+
+        // Resolve client DB id
+        $clientDbId = 0;
+        $client = $this->getClient();
+        if ($client) {
+            $clientDbId = (int) $client->id;
+        }
+
+        // Auto-create conversation if none provided
+        if ($conversationId <= 0 && $this->db) {
+            try {
+                $title = mb_substr($message, 0, 80);
+                $conversationId = (int) $this->db->insert('chat_conversations', [
+                    'user_id'   => $userId,
+                    'client_id' => $clientDbId,
+                    'title'     => $title,
+                    'agent'     => $agent,
+                    'source'    => in_array($source, ['chat','drawer','agent']) ? $source : 'chat',
+                ]);
+            } catch (\Exception $e) {
+                // Non-fatal — chat still works without persistence
+                $conversationId = 0;
+            }
+        }
+
+        // Save user message
+        if ($conversationId > 0 && $this->db) {
+            try {
+                $this->db->insert('chat_messages', [
+                    'conversation_id' => $conversationId,
+                    'role'    => 'user',
+                    'content' => $message,
+                ]);
+            } catch (\Exception $e) { /* non-fatal */ }
+        }
+
+        // Build conversation history for multi-turn context
+        $history = [];
+        if ($conversationId > 0 && $this->db) {
+            try {
+                $rows = $this->db->fetchAll(
+                    "SELECT role, content FROM chat_messages
+                     WHERE conversation_id = ?
+                     ORDER BY id ASC
+                     LIMIT 20",
+                    [$conversationId]
+                );
+                foreach ($rows as $r) {
+                    $history[] = ['role' => $r->role, 'content' => $r->content];
+                }
+            } catch (\Exception $e) { /* non-fatal */ }
+        }
+
         // Build context: enrich the user message with workspace data when relevant
         $contextInfo = $this->buildContextSnippet($message);
         $enrichedMessage = $message;
@@ -73,28 +131,219 @@ class Ai extends BaseController {
         @set_time_limit(300);
 
         $bridge = new AiBridge();
-        $result = $bridge->runTurn($enrichedMessage, [
+
+        // If we have multi-turn history, pass it to the bridge
+        $opts = [
             'max_tokens'  => 4096,
             'temperature' => 0.3,
             'timeout'     => 180,
-        ]);
+        ];
+        if (count($history) > 1) {
+            // Replace the last user message with enriched version (with context)
+            $history[count($history) - 1]['content'] = $enrichedMessage;
+            $opts['messages'] = $history;
+            $result = $bridge->runTurn(null, $opts);
+        } else {
+            $result = $bridge->runTurn($enrichedMessage, $opts);
+        }
 
         if (empty($result['ok'])) {
             $this->json([
-                'ok'            => false,
-                'error'         => $result['error'] ?? 'AI agent is currently unavailable.',
-                'response_text' => null,
+                'ok'              => false,
+                'error'           => $result['error'] ?? 'AI agent is currently unavailable.',
+                'response_text'   => null,
+                'conversation_id' => $conversationId ?: null,
             ]);
             return;
         }
 
+        // Save assistant response
+        if ($conversationId > 0 && $this->db) {
+            try {
+                $usage = $result['usage'] ?? [];
+                $this->db->insert('chat_messages', [
+                    'conversation_id' => $conversationId,
+                    'role'       => 'assistant',
+                    'content'    => $result['response_text'],
+                    'model'      => $result['model'] ?? null,
+                    'tokens_in'  => $usage['input_tokens'] ?? null,
+                    'tokens_out' => $usage['output_tokens'] ?? null,
+                ]);
+                // Update conversation timestamp
+                $this->db->update('chat_conversations', [
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ], 'id = ?', [$conversationId]);
+            } catch (\Exception $e) { /* non-fatal */ }
+        }
+
         $this->json([
-            'ok'            => true,
-            'response_text' => $result['response_text'],
-            'model'         => $result['model'] ?? null,
-            'provider'      => $result['provider'] ?? null,
-            'usage'         => $result['usage'] ?? null,
+            'ok'              => true,
+            'response_text'   => $result['response_text'],
+            'conversation_id' => $conversationId ?: null,
+            'model'           => $result['model'] ?? null,
+            'provider'        => $result['provider'] ?? null,
+            'usage'           => $result['usage'] ?? null,
         ]);
+    }
+
+    /* ================================================================
+     * Chat History API
+     * ================================================================ */
+
+    /**
+     * GET /ai/conversations — List conversations for the current user.
+     */
+    public function conversations() {
+        $this->requireAuth();
+
+        if (!$this->db) {
+            $this->json(['ok' => true, 'conversations' => []]);
+            return;
+        }
+
+        $userId = (int) ($_SESSION['user_id'] ?? 1);
+        $source = $_GET['source'] ?? null;
+
+        try {
+            $sql = "SELECT c.id, c.title, c.agent, c.source, c.created_at, c.updated_at,
+                           (SELECT COUNT(*) FROM chat_messages WHERE conversation_id = c.id) as msg_count
+                    FROM chat_conversations c
+                    WHERE c.user_id = ?";
+            $params = [$userId];
+
+            if ($source) {
+                $sql .= " AND c.source = ?";
+                $params[] = $source;
+            }
+
+            $sql .= " ORDER BY c.updated_at DESC LIMIT 50";
+
+            $rows = $this->db->fetchAll($sql, $params);
+            $conversations = [];
+            foreach ($rows as $r) {
+                $conversations[] = [
+                    'id'         => (int) $r->id,
+                    'title'      => $r->title,
+                    'agent'      => $r->agent,
+                    'source'     => $r->source,
+                    'msg_count'  => (int) $r->msg_count,
+                    'created_at' => $r->created_at,
+                    'updated_at' => $r->updated_at,
+                ];
+            }
+
+            $this->json(['ok' => true, 'conversations' => $conversations]);
+        } catch (\Exception $e) {
+            $this->json(['ok' => true, 'conversations' => []]);
+        }
+    }
+
+    /**
+     * GET /ai/conversation?id=123 — Load messages for a conversation.
+     */
+    public function conversation() {
+        $this->requireAuth();
+
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            $this->json(['ok' => false, 'error' => 'Invalid conversation ID']);
+            return;
+        }
+
+        if (!$this->db) {
+            $this->json(['ok' => false, 'error' => 'Database unavailable']);
+            return;
+        }
+
+        $userId = (int) ($_SESSION['user_id'] ?? 1);
+
+        try {
+            // Verify ownership
+            $conv = $this->db->fetchOne(
+                "SELECT * FROM chat_conversations WHERE id = ? AND user_id = ?",
+                [$id, $userId]
+            );
+            if (!$conv) {
+                $this->json(['ok' => false, 'error' => 'Conversation not found']);
+                return;
+            }
+
+            $messages = $this->db->fetchAll(
+                "SELECT id, role, content, model, created_at
+                 FROM chat_messages
+                 WHERE conversation_id = ?
+                 ORDER BY id ASC",
+                [$id]
+            );
+
+            $msgs = [];
+            foreach ($messages as $m) {
+                $msgs[] = [
+                    'id'         => (int) $m->id,
+                    'role'       => $m->role,
+                    'content'    => $m->content,
+                    'model'      => $m->model,
+                    'created_at' => $m->created_at,
+                ];
+            }
+
+            $this->json([
+                'ok'       => true,
+                'conversation' => [
+                    'id'    => (int) $conv->id,
+                    'title' => $conv->title,
+                    'agent' => $conv->agent,
+                    'source' => $conv->source,
+                ],
+                'messages' => $msgs,
+            ]);
+        } catch (\Exception $e) {
+            $this->json(['ok' => false, 'error' => 'Failed to load conversation']);
+        }
+    }
+
+    /**
+     * POST /ai/deleteConversation — Delete a conversation.
+     * Accepts { id: int }
+     */
+    public function deleteConversation() {
+        $this->requireAuth();
+
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->json(['ok' => false, 'error' => 'Method not allowed'], 405);
+            return;
+        }
+
+        $payload = $this->getJsonInput();
+        $id = (int) ($payload['id'] ?? 0);
+        if ($id <= 0) {
+            $this->json(['ok' => false, 'error' => 'Invalid conversation ID']);
+            return;
+        }
+
+        if (!$this->db) {
+            $this->json(['ok' => false, 'error' => 'Database unavailable']);
+            return;
+        }
+
+        $userId = (int) ($_SESSION['user_id'] ?? 1);
+
+        try {
+            // Verify ownership before delete
+            $conv = $this->db->fetchOne(
+                "SELECT id FROM chat_conversations WHERE id = ? AND user_id = ?",
+                [$id, $userId]
+            );
+            if (!$conv) {
+                $this->json(['ok' => false, 'error' => 'Conversation not found']);
+                return;
+            }
+
+            $this->db->delete('chat_conversations', 'id = ?', [$id]);
+            $this->json(['ok' => true]);
+        } catch (\Exception $e) {
+            $this->json(['ok' => false, 'error' => 'Failed to delete conversation']);
+        }
     }
 
     /**

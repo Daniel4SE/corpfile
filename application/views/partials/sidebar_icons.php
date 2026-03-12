@@ -43,10 +43,17 @@ $sidebar_icons = [
 function cf_icon($name, $size = 20) {
     global $sidebar_icons;
     if (!isset($sidebar_icons[$name])) return '';
-    return str_replace(
+    $svg = str_replace(
         ['width="24"', 'height="24"'],
         ['width="'.$size.'"', 'height="'.$size.'"'],
         $sidebar_icons[$name]
     );
+    // Force inline style so no CSS can hide the icon
+    $svg = str_replace(
+        '<svg ',
+        '<svg style="display:inline-block!important;visibility:visible!important;opacity:1!important;stroke:#6B7280!important;overflow:visible!important;" ',
+        $svg
+    );
+    return $svg;
 }
 ?>

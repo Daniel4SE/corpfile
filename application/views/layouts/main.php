@@ -178,22 +178,17 @@
                                 </ul>
                             </li>
 
-                            <!-- 8. Workflow (SOP) -->
-                            <li class="<?= ($current_url == 'workflow') ? 'active' : '' ?>">
-                                <a href="<?= base_url('workflow') ?>">
-                                    <span class="cf-nav-icon"><?= cf_icon('workflow') ?></span>
-                                    <span>Workflow (SOP)</span>
-                                </a>
-                            </li>
-
-                            <!-- 9. Projects (expandable) -->
-                            <li class="<?= in_array($current_url, ['projects','tasks','timesheet']) ? 'active' : '' ?>">
+                            <!-- 8. Projects (expandable, includes Workflow) -->
+                            <li class="<?= in_array($current_url, ['projects','tasks','timesheet','workflow']) ? 'active' : '' ?>">
                                 <a>
                                     <span class="cf-nav-icon"><?= cf_icon('projects') ?></span>
                                     <span>Projects</span>
                                     <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
                                 </a>
                                 <ul class="nav child_menu">
+                                    <li class="<?= ($current_url == 'workflow') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('workflow') ?>">Workflow (SOP)</a>
+                                    </li>
                                     <li class="<?= ($current_url == 'tasks') ? 'active' : '' ?>">
                                         <a href="<?= base_url('tasks') ?>">Tasks</a>
                                     </li>
@@ -667,7 +662,7 @@ function sendAIMessage() {
     fetch(BASE_URL + 'ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message }),
+        body: JSON.stringify({ message: message, source: 'drawer' }),
         signal: abortCtrl.signal
     })
     .then(function(r) {
@@ -722,6 +717,14 @@ function copyToClipboard(text) {
         navigator.clipboard.writeText(text);
     }
 }
+
+/* Fix sidebar icon colors for active items (white on navy) */
+(function(){
+    var activeItems = document.querySelectorAll('.nav.side-menu > li.active > a .cf-nav-icon svg');
+    for (var i = 0; i < activeItems.length; i++) {
+        activeItems[i].style.stroke = '#fff';
+    }
+})();
 </script>
 
 </body>

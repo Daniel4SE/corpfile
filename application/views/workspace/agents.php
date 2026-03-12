@@ -886,7 +886,7 @@
         fetch(BASE_URL + 'ai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: enrichedMsg }),
+            body: JSON.stringify({ message: enrichedMsg, source: 'agent', agent: selectedAgent || 'general' }),
             signal: controller.signal
         })
         .then(function(r) {

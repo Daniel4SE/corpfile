@@ -66,6 +66,35 @@ CREATE TABLE IF NOT EXISTS `oauth_users` (
   UNIQUE KEY `uk_provider_uid` (`provider`, `provider_uid`)
 ) ENGINE=InnoDB;
 SQL
+
+  # Chat history tables
+  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
+CREATE TABLE IF NOT EXISTS `chat_conversations` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT UNSIGNED NOT NULL,
+  `client_id` INT UNSIGNED NOT NULL,
+  `title` VARCHAR(255) DEFAULT 'New Chat',
+  `agent` VARCHAR(50) DEFAULT NULL COMMENT 'null=general, or agent key like compliance, tax, etc',
+  `source` ENUM('chat','drawer','agent') DEFAULT 'chat' COMMENT 'which UI originated this',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_user_client` (`user_id`, `client_id`),
+  INDEX `idx_updated` (`updated_at` DESC)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `chat_messages` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `conversation_id` INT UNSIGNED NOT NULL,
+  `role` ENUM('user','assistant') NOT NULL,
+  `content` TEXT NOT NULL,
+  `model` VARCHAR(100) DEFAULT NULL,
+  `tokens_in` INT DEFAULT NULL,
+  `tokens_out` INT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`conversation_id`) REFERENCES `chat_conversations`(`id`) ON DELETE CASCADE,
+  INDEX `idx_conversation` (`conversation_id`)
+) ENGINE=InnoDB;
+SQL
   echo "DB migrations done."
 
   # Run Teamwork.sg data import (one-time, checks if enough companies have incorp dates)
