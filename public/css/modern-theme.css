@@ -171,7 +171,7 @@ body.modern-theme .cf-logo-badge {
     color: #fff;
     font-weight: 700;
     font-size: 14px;
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
@@ -477,8 +477,8 @@ body.modern-theme.nav-sm .container.body .col-md-3.left_col .left_col {
     width: 70px !important;
     background: var(--cf-white) !important;
 }
-body.modern-theme.nav-sm .cf-logo-text { display: none; }
-body.modern-theme.nav-sm .cf-logo-badge { width: 32px; height: 32px; font-size: 12px; }
+body.modern-theme.nav-sm .cf-logo-text { display: none !important; }
+body.modern-theme.nav-sm .cf-logo-badge { display: inline-flex !important; width: 32px; height: 32px; font-size: 12px; }
 body.modern-theme.nav-sm .cf-logo-link { justify-content: center; }
 body.modern-theme.nav-sm .cf-badge-count { display: none; }
 body.modern-theme.nav-sm .cf-chevron { display: none; }
