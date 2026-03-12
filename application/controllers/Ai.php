@@ -7,6 +7,50 @@ require_once APPPATH . 'libraries/AiBridge.php';
  * JSON endpoints for the CorpFile AI agent (drawer + full-page chat).
  */
 class Ai extends BaseController {
+    /**
+     * GET /ai/dbcheck — Temporary debug endpoint. Remove after verification.
+     */
+    public function dbcheck() {
+        $this->requireAuth();
+        if (!$this->db) {
+            $this->json(['ok' => false, 'error' => 'No DB']);
+            return;
+        }
+        $results = [];
+
+        // 1. Search for Workflos in companies
+        $results['workflos_search'] = $this->db->fetchAll(
+            "SELECT id, company_name FROM companies WHERE LOWER(company_name) LIKE '%workflo%' LIMIT 10"
+        );
+
+        // 2. Check chat tables exist
+        try {
+            $convCount = $this->db->fetchOne("SELECT COUNT(*) as cnt FROM chat_conversations");
+            $msgCount = $this->db->fetchOne("SELECT COUNT(*) as cnt FROM chat_messages");
+            $results['chat_conversations_count'] = (int) $convCount->cnt;
+            $results['chat_messages_count'] = (int) $msgCount->cnt;
+        } catch (\Exception $e) {
+            $results['chat_tables_error'] = $e->getMessage();
+        }
+
+        // 3. Show recent conversations if any
+        try {
+            $results['recent_conversations'] = $this->db->fetchAll(
+                "SELECT id, title, source, agent, created_at FROM chat_conversations ORDER BY id DESC LIMIT 5"
+            );
+        } catch (\Exception $e) {}
+
+        // 4. Total companies count
+        $results['total_companies'] = (int) $this->db->fetchOne("SELECT COUNT(*) as cnt FROM companies")->cnt;
+
+        // 5. Sample company names (first 5)
+        $results['sample_companies'] = $this->db->fetchAll(
+            "SELECT id, company_name FROM companies ORDER BY id ASC LIMIT 5"
+        );
+
+        $this->json(['ok' => true, 'results' => $results]);
+    }
+
     private function getClient() {
         if (!$this->db) {
             return null;
