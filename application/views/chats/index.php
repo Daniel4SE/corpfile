@@ -371,6 +371,17 @@ function sendChatMessage() {
         if (data.ok && data.response_text) {
             aiDiv.innerHTML = '<span class="cf-msg-avatar"><i class="fa fa-bolt"></i></span> ' +
                 '<div class="cf-ai-content">' + renderMarkdown(data.response_text) + '</div>';
+            if (typeof cfMakeActionBar === 'function') {
+                aiDiv.appendChild(cfMakeActionBar(data.response_text, function() {
+                    /* Redo: resend the last user message */
+                    var lastUser = chatBody.querySelectorAll('.cf-chat-msg.user');
+                    if (lastUser.length) {
+                        document.getElementById('chatInput').value = lastUser[lastUser.length - 1].textContent;
+                        aiDiv.remove();
+                        sendChat();
+                    }
+                }));
+            }
         } else {
             aiDiv.className = 'cf-chat-msg assistant cf-chat-offline';
             aiDiv.innerHTML = '<span class="cf-msg-avatar" style="background:linear-gradient(135deg,#f0ad4e,#ec971f)"><i class="fa fa-info"></i></span>' +

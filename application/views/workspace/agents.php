@@ -903,7 +903,19 @@
             sendBtn.disabled = false;
 
             if (data.ok && data.response_text) {
-                addMessage('assistant', data.response_text);
+                var row = addMessage('assistant', data.response_text);
+                if (typeof cfMakeActionBar === 'function') {
+                    var bubble = row.querySelector('.cf-agent-msg-bubble');
+                    if (bubble) bubble.appendChild(cfMakeActionBar(data.response_text, function() {
+                        /* Redo: resend the last user message */
+                        var msgs = msgArea.querySelectorAll('.cf-agent-msg.user');
+                        if (msgs.length) {
+                            chatInput.value = msgs[msgs.length - 1].querySelector('.cf-agent-msg-bubble').textContent;
+                            row.remove();
+                            sendMessage();
+                        }
+                    }));
+                }
             } else {
                 var errRow = addMessage('assistant', '**Error:** ' + (data.error || 'Something went wrong. Please try again.'));
                 errRow.classList.add('cf-agent-msg-error');

@@ -486,6 +486,63 @@ $(document).ready(function () {
     });
 });
 
+/* ── AI Response Action Buttons ── */
+function cfMakeActionBar(rawText, redoCallback) {
+    var bar = document.createElement('div');
+    bar.className = 'cf-ai-actions';
+
+    /* Copy */
+    var copyBtn = document.createElement('button');
+    copyBtn.className = 'cf-ai-action-btn';
+    copyBtn.title = 'Copy';
+    copyBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    copyBtn.addEventListener('click', function() {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(rawText).then(function() {
+                copyBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                setTimeout(function() {
+                    copyBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+                }, 1500);
+            });
+        }
+    });
+
+    /* Upvote */
+    var upBtn = document.createElement('button');
+    upBtn.className = 'cf-ai-action-btn';
+    upBtn.title = 'Good response';
+    upBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>';
+    upBtn.addEventListener('click', function() {
+        upBtn.style.color = '#22c55e';
+        downBtn.style.color = '';
+    });
+
+    /* Downvote */
+    var downBtn = document.createElement('button');
+    downBtn.className = 'cf-ai-action-btn';
+    downBtn.title = 'Bad response';
+    downBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>';
+    downBtn.addEventListener('click', function() {
+        downBtn.style.color = '#ef4444';
+        upBtn.style.color = '';
+    });
+
+    /* Redo */
+    var redoBtn = document.createElement('button');
+    redoBtn.className = 'cf-ai-action-btn';
+    redoBtn.title = 'Regenerate';
+    redoBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>';
+    if (typeof redoCallback === 'function') {
+        redoBtn.addEventListener('click', redoCallback);
+    }
+
+    bar.appendChild(copyBtn);
+    bar.appendChild(upBtn);
+    bar.appendChild(downBtn);
+    bar.appendChild(redoBtn);
+    return bar;
+}
+
 /* ── Markdown renderer (shared, supports tables/hr/blockquotes) ── */
 function cfRenderMarkdown(text) {
     /* 1. Extract code blocks first to protect them */
@@ -631,9 +688,15 @@ function sendAIMessage() {
         if (data.ok && data.response_text) {
             aiDiv.innerHTML = '<span class="ai-avatar"><i class="fa fa-bolt"></i></span> ' +
                 '<div style="display:inline">' + renderMd(data.response_text) + '</div>';
-            aiDiv.innerHTML += '<div class="action-btns">' +
-                '<button onclick="copyToClipboard(this.closest(\'.ai-message\').innerText)"><i class="fa fa-copy"></i> Copy</button>' +
-                '</div>';
+            aiDiv.appendChild(cfMakeActionBar(data.response_text, function() {
+                /* Redo: resend the last user message */
+                var lastUser = chatBody.querySelectorAll('.ai-message.user');
+                if (lastUser.length) {
+                    document.getElementById('aiInput').value = lastUser[lastUser.length - 1].textContent;
+                    aiDiv.remove();
+                    sendAIMessage();
+                }
+            }));
         } else {
             aiDiv.innerHTML = '<span class="ai-avatar"><i class="fa fa-bolt"></i></span> ' +
                 '<em style="color:var(--cf-text-secondary)">' + (data.error || 'AI agent encountered an error. Please try again.') + '</em>';
