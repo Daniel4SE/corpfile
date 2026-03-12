@@ -486,22 +486,83 @@ $(document).ready(function () {
     });
 });
 
-/* ── Simple Markdown renderer ──────────────────────────────── */
-function renderMd(text) {
-    var h = text
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/```([\s\S]*?)```/g, '<pre style="background:#f4f5f7;padding:8px;border-radius:4px;font-size:12px;overflow-x:auto"><code>$1</code></pre>')
-        .replace(/`([^`]+)`/g, '<code style="background:#f4f5f7;padding:1px 4px;border-radius:3px;font-size:12px">$1</code>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/^### (.+)$/gm, '<div style="font-weight:700;font-size:12px;margin:6px 0 2px">$1</div>')
-        .replace(/^## (.+)$/gm, '<div style="font-weight:700;font-size:13px;margin:8px 0 3px">$1</div>')
-        .replace(/^# (.+)$/gm, '<div style="font-weight:700;font-size:14px;margin:8px 0 4px">$1</div>')
-        .replace(/^\d+\.\s+(.+)$/gm, '<div style="margin-left:12px">&#8226; $1</div>')
-        .replace(/^[-•]\s+(.+)$/gm, '<div style="margin-left:12px">&#8226; $1</div>')
-        .replace(/\n/g, '<br>');
-    return h;
+/* ── Markdown renderer (shared, supports tables/hr/blockquotes) ── */
+function cfRenderMarkdown(text) {
+    /* 1. Extract code blocks first to protect them */
+    var codeBlocks = [];
+    text = text.replace(/```([\s\S]*?)```/g, function(m, code) {
+        codeBlocks.push(code);
+        return '%%CODEBLOCK' + (codeBlocks.length - 1) + '%%';
+    });
+
+    /* 2. Escape HTML */
+    text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    /* 3. Tables: detect lines with pipes */
+    text = text.replace(/((?:^[ \t]*\|.+\|[ \t]*$\n?)+)/gm, function(tableBlock) {
+        var rows = tableBlock.trim().split('\n');
+        if (rows.length < 2) return tableBlock;
+
+        var html = '<table style="border-collapse:collapse;width:100%;margin:8px 0;font-size:13px">';
+        var isHeader = true;
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i].trim();
+            if (!row) continue;
+            /* Skip separator row (|---|---| or |:---:|) */
+            if (/^\|[\s\-:]+\|$/.test(row) || /^\|(\s*:?-+:?\s*\|)+$/.test(row)) {
+                isHeader = false;
+                continue;
+            }
+            var cells = row.split('|').filter(function(c, idx, arr) { return idx > 0 && idx < arr.length - 1; });
+            var tag = (i === 0) ? 'th' : 'td';
+            var bgStyle = (i === 0) ? 'background:#f1f5f9;font-weight:600;' : '';
+            html += '<tr>';
+            for (var j = 0; j < cells.length; j++) {
+                html += '<' + tag + ' style="' + bgStyle + 'border:1px solid #e2e8f0;padding:6px 10px;text-align:left">' + cells[j].trim() + '</' + tag + '>';
+            }
+            html += '</tr>';
+        }
+        html += '</table>';
+        return html;
+    });
+
+    /* 4. Horizontal rules */
+    text = text.replace(/^-{3,}$/gm, '<hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0">');
+
+    /* 5. Inline formatting */
+    text = text.replace(/`([^`]+)`/g, '<code style="background:#f4f5f7;padding:1px 5px;border-radius:3px;font-size:12px">$1</code>');
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    /* 6. Headings */
+    text = text.replace(/^### (.+)$/gm, '<h5 style="margin:8px 0 4px;font-size:13px;font-weight:700">$1</h5>');
+    text = text.replace(/^## (.+)$/gm, '<h4 style="margin:10px 0 4px;font-size:14px;font-weight:700">$1</h4>');
+    text = text.replace(/^# (.+)$/gm, '<h3 style="margin:10px 0 6px;font-size:15px;font-weight:700">$1</h3>');
+
+    /* 7. Blockquotes */
+    text = text.replace(/^&gt;\s?(.+)$/gm, '<div style="border-left:3px solid #cbd5e1;padding:4px 12px;margin:6px 0;color:#475569;background:#f8fafc">$1</div>');
+
+    /* 8. Lists */
+    text = text.replace(/^\d+\.\s+(.+)$/gm, '<li style="margin-left:16px;list-style:decimal">$1</li>');
+    text = text.replace(/^[-•]\s+(.+)$/gm, '<li style="margin-left:16px;list-style:disc">$1</li>');
+
+    /* 9. Newlines → <br>, but clean up around block elements */
+    text = text.replace(/\n/g, '<br>');
+    text = text.replace(/<br>\s*(<h[345])/g, '$1').replace(/(<\/h[345]>)\s*<br>/g, '$1');
+    text = text.replace(/<br>\s*(<table)/g, '$1').replace(/(<\/table>)\s*<br>/g, '$1');
+    text = text.replace(/<br>\s*(<hr)/g, '$1').replace(/(margin:12px 0">)\s*<br>/g, '$1');
+    text = text.replace(/<br>\s*(<div style="border-left)/g, '$1').replace(/(<\/div>)\s*<br>/g, '$1');
+    text = text.replace(/<br>\s*(%%CODEBLOCK)/g, '$1').replace(/(%%CODEBLOCK\d+%%)\s*<br>/g, '$1');
+
+    /* 10. Restore code blocks */
+    text = text.replace(/%%CODEBLOCK(\d+)%%/g, function(m, idx) {
+        return '<pre style="background:#f4f5f7;padding:10px;border-radius:6px;font-size:12px;overflow-x:auto;margin:6px 0;white-space:pre-wrap"><code>' + codeBlocks[parseInt(idx)] + '</code></pre>';
+    });
+
+    return text;
 }
+/* Aliases for backward compat */
+var renderMd = cfRenderMarkdown;
 
 /* ── AI Agent Drawer ──────────────────────────────────────── */
 function toggleAIDrawer() {

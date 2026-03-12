@@ -856,23 +856,9 @@
         if (t) t.remove();
     }
 
-    /* ── Markdown renderer ── */
+    /* Use shared markdown renderer from main layout */
     function renderMarkdown(text) {
-        var html = text
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
-            .replace(/^### (.+)$/gm, '<h5 style="margin:8px 0 4px;font-size:13px;font-weight:700">$1</h5>')
-            .replace(/^## (.+)$/gm, '<h4 style="margin:10px 0 4px;font-size:14px;font-weight:700">$1</h4>')
-            .replace(/^# (.+)$/gm, '<h3 style="margin:10px 0 6px;font-size:15px;font-weight:700">$1</h3>')
-            .replace(/^\d+\.\s+(.+)$/gm, '<li style="margin-left:16px;list-style:decimal">$1</li>')
-            .replace(/^[-\u2022]\s+(.+)$/gm, '<li style="margin-left:16px;list-style:disc">$1</li>')
-            .replace(/\n/g, '<br>');
-        html = html.replace(/<br>\s*(<h[345])/g, '$1').replace(/(<\/h[345]>)\s*<br>/g, '$1');
-        html = html.replace(/<br>\s*(<pre>)/g, '$1').replace(/(<\/pre>)\s*<br>/g, '$1');
-        return html;
+        return (typeof cfRenderMarkdown === 'function') ? cfRenderMarkdown(text) : text;
     }
 
     /* ── Send message ── */
