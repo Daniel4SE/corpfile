@@ -41,7 +41,7 @@
                 <div class="kpi-trend up"><i class="fa fa-check"></i> Active</div>
             </a>
 
-            <a href="<?= base_url('company_non_client') ?>" class="kpi-card animate-in animate-in-delay-3" style="border-left: 3px solid var(--cf-text-secondary);">
+            <a href="<?= base_url('company_non_client') ?>" class="kpi-card animate-in animate-in-delay-3">
                 <div class="kpi-header">
                     <span class="kpi-label">Non-Client</span>
                     <div class="kpi-icon" style="background:rgba(107,114,128,0.1); color:var(--cf-text-secondary);"><i class="fa fa-building"></i></div>
@@ -53,7 +53,7 @@
 
         <!-- KPI Row 2: Client Segmentation -->
         <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0;">
-            <div class="kpi-card animate-in" style="border-left: 3px solid #6366F1;">
+            <div class="kpi-card animate-in">
                 <div class="kpi-header">
                     <span class="kpi-label">CSS Clients</span>
                     <div class="kpi-icon" style="background:rgba(99,102,241,0.1); color:#6366F1;"><i class="fa fa-briefcase"></i></div>
@@ -62,7 +62,7 @@
                 <div class="kpi-trend neutral"><i class="fa fa-users"></i> Corp Sec</div>
             </div>
 
-            <div class="kpi-card animate-in animate-in-delay-1" style="border-left: 3px solid #EC4899;">
+            <div class="kpi-card animate-in animate-in-delay-1">
                 <div class="kpi-header">
                     <span class="kpi-label">Accounting</span>
                     <div class="kpi-icon" style="background:rgba(236,72,153,0.1); color:#EC4899;"><i class="fa fa-calculator"></i></div>
@@ -71,7 +71,7 @@
                 <div class="kpi-trend neutral"><i class="fa fa-file-text-o"></i> Clients</div>
             </div>
 
-            <div class="kpi-card animate-in animate-in-delay-2" style="border-left: 3px solid #F97316;">
+            <div class="kpi-card animate-in animate-in-delay-2">
                 <div class="kpi-header">
                     <span class="kpi-label">Audit Clients</span>
                     <div class="kpi-icon" style="background:rgba(249,115,22,0.1); color:#F97316;"><i class="fa fa-search"></i></div>
@@ -80,7 +80,7 @@
                 <div class="kpi-trend neutral"><i class="fa fa-shield"></i> Audit</div>
             </div>
 
-            <div class="kpi-card animate-in animate-in-delay-3" style="border-left: 3px solid #8B5CF6;">
+            <div class="kpi-card animate-in animate-in-delay-3">
                 <div class="kpi-header">
                     <span class="kpi-label">Listed-Related</span>
                     <div class="kpi-icon" style="background:rgba(139,92,246,0.1); color:#8B5CF6;"><i class="fa fa-star"></i></div>

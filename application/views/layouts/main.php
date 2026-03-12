@@ -61,6 +61,42 @@
     <div class="main_container">
 
         <!-- LEFT SIDEBAR - Light Theme with SVG Icons -->
+        <style>
+            #modernSidebar .cf-nav-icon {
+                display: inline-flex !important;
+                width: 22px !important;
+                height: 20px !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin-right: 10px !important;
+                flex-shrink: 0 !important;
+                vertical-align: middle !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+            #modernSidebar .cf-nav-icon svg {
+                display: inline-block !important;
+                width: 20px !important;
+                height: 20px !important;
+                stroke: #6B7280 !important;
+                fill: none !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                overflow: visible !important;
+            }
+            #modernSidebar .nav.side-menu > li.active > a .cf-nav-icon svg {
+                stroke: #fff !important;
+            }
+            #modernSidebar .nav.side-menu > li > a {
+                display: flex !important;
+                align-items: center !important;
+                color: #111827 !important;
+                font-weight: 500 !important;
+            }
+            #modernSidebar .nav.side-menu > li.active > a {
+                color: #fff !important;
+            }
+        </style>
         <div class="col-md-3 left_col" id="modernSidebar">
             <div class="left_col scroll-view">
                 <!-- CF Logo Badge -->
