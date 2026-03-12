@@ -51,10 +51,17 @@ function cf_icon($name, $size = 20) {
         ['width="'.$size.'"', 'height="'.$size.'"', 'stroke="#6B7280"'],
         $sidebar_icons[$name]
     );
-    // Force inline style so no CSS can hide the icon
+    // Force inline style so no CSS can override the icon appearance
     $svg = str_replace(
         '<svg ',
-        '<svg style="display:inline-block!important;visibility:visible!important;opacity:1!important;stroke:#6B7280!important;fill:none!important;overflow:visible!important;" ',
+        '<svg style="display:inline-block!important;visibility:visible!important;opacity:1!important;stroke:#6B7280!important;color:#6B7280!important;fill:none!important;overflow:visible!important;" ',
+        $svg
+    );
+    // Also set stroke on every child element (path, rect, circle, line, polyline)
+    // so CSS inheritance from parent <a> color cannot override
+    $svg = preg_replace(
+        '/<(path|rect|circle|line|polyline|ellipse)(\s)/',
+        '<$1 style="stroke:#6B7280!important;fill:none!important;" $2',
         $svg
     );
     return $svg;

@@ -86,6 +86,15 @@
             }
             #modernSidebar .nav.side-menu > li.active > a .cf-nav-icon svg {
                 stroke: #fff !important;
+                filter: brightness(0) invert(1) !important;
+            }
+            #modernSidebar .nav.side-menu > li.active > a .cf-nav-icon svg *,
+            #modernSidebar .nav.side-menu > li.active > a .cf-nav-icon svg path,
+            #modernSidebar .nav.side-menu > li.active > a .cf-nav-icon svg rect,
+            #modernSidebar .nav.side-menu > li.active > a .cf-nav-icon svg circle,
+            #modernSidebar .nav.side-menu > li.active > a .cf-nav-icon svg line,
+            #modernSidebar .nav.side-menu > li.active > a .cf-nav-icon svg polyline {
+                stroke: #fff !important;
             }
             #modernSidebar .nav.side-menu > li > a {
                 display: flex !important;

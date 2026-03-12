@@ -286,6 +286,11 @@ body.modern-theme .nav.side-menu > li.active > a .cf-nav-icon svg,
 .modern-theme .nav.side-menu > li.active > a .cf-nav-icon svg {
     stroke: #fff !important;
     color: #fff !important;
+    filter: brightness(0) invert(1) !important;
+}
+body.modern-theme .nav.side-menu > li.active > a .cf-nav-icon svg *,
+.modern-theme .nav.side-menu > li.active > a .cf-nav-icon svg * {
+    stroke: #fff !important;
 }
 
 /* -- Chevron for expandable items ----------------------------- */
