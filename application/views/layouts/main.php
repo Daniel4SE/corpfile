@@ -214,11 +214,11 @@
                                 </a>
                             </li>
 
-                            <!-- 11. Skills (Workflows) -->
+                            <!-- 11. Reports -->
                             <li class="<?= ($current_url == 'report_module') ? 'active' : '' ?>">
                                 <a href="<?= base_url('report_module/default_report') ?>">
-                                    <span class="cf-nav-icon"><?= cf_icon('workflow') ?></span>
-                                    <span>Skills</span>
+                                    <span class="cf-nav-icon"><?= cf_icon('reports') ?></span>
+                                    <span>Reports</span>
                                 </a>
                             </li>
 
