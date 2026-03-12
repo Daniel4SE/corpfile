@@ -38,7 +38,7 @@
     <link href="<?= base_url('public/css/custom.min.css') ?>" rel="stylesheet">
     <link href="<?= base_url('public/css/custom.css') ?>" rel="stylesheet">
     <!-- Modern Theme (Rillet AI ERP + Glassmorphism) -->
-    <link href="<?= base_url('public/css/modern-theme.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('public/css/modern-theme.css') ?>?v=<?= time() ?>" rel="stylesheet">
 </head>
 
 <?php

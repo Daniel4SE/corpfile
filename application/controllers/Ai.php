@@ -159,6 +159,10 @@ class Ai extends BaseController {
      * Build a short context snippet from the database based on the user's query.
      * This gives Claude relevant workspace data to ground its answers.
      */
+    /**
+     * Build comprehensive context from the database for the AI agent.
+     * Always loads a full snapshot so the AI can answer ANY question.
+     */
     private function buildContextSnippet($message) {
         try {
             return $this->doBuildContext($message);
@@ -177,218 +181,370 @@ class Ai extends BaseController {
         $lowerMsg = strtolower($message);
         $today = date('Y-m-d');
 
-        // Always provide basic stats
-        $companyCount = $this->db->count('companies', 'client_id = ?', [$client->id]);
+        // ════════════════════════════════════════════
+        // 1. ALWAYS: Basic stats
+        // ════════════════════════════════════════════
+        $companyCount = (int) $this->db->count('companies', 'client_id = ?', [$client->id]);
+        $memberCount  = (int) $this->db->count('members', 'client_id = ?', [$client->id]);
+        $docCount     = (int) $this->db->count('documents', 'client_id = ?', [$client->id]);
+
+        $lines[] = "=== CORPFILE DATABASE CONTEXT ===";
         $lines[] = "Client: {$client->company_name} (Code: {$client->client_id})";
-        $lines[] = "Total companies under management: {$companyCount}";
-        $lines[] = "Today's date: {$today}";
+        $lines[] = "Today: {$today}";
+        $lines[] = "Total companies: {$companyCount} | Total individuals/members: {$memberCount} | Total documents: {$docCount}";
 
-        // ── Recent registrations / incorporations (past N months) ──
-        if (preg_match('/recent|new|register|incorporat|past.*month|最近|新注册|注册|成立/i', $lowerMsg)) {
-            // Detect time range from message (default 3 months)
-            $months = 3;
-            if (preg_match('/(\d+)\s*(?:month|个月)/i', $lowerMsg, $m)) {
-                $months = min((int)$m[1], 24);
-            }
-            $sinceDate = date('Y-m-d', strtotime("-{$months} months"));
-
-            $recentCompanies = $this->db->fetchAll(
-                "SELECT company_name, registration_number, incorporation_date, entity_status, internal_css_status
-                 FROM companies
-                 WHERE client_id = ?
-                   AND incorporation_date >= ?
-                 ORDER BY incorporation_date DESC
-                 LIMIT 50",
-                [$client->id, $sinceDate]
-            );
-            $lines[] = "\nCompanies incorporated in the past {$months} months (since {$sinceDate}):";
-            if ($recentCompanies) {
-                $lines[] = "Found " . count($recentCompanies) . " companies:";
-                foreach ($recentCompanies as $co) {
-                    $lines[] = "- {$co->company_name} | Reg: " . ($co->registration_number ?: 'N/A')
-                        . " | Incorporated: " . ($co->incorporation_date ?: 'N/A')
-                        . " | Status: " . ($co->entity_status ?: 'N/A')
-                        . " | CSS Status: " . ($co->internal_css_status ?: 'N/A');
-                }
-            } else {
-                $lines[] = "No companies found with incorporation_date in this period.";
-
-                // Fallback: show companies created recently in system
-                $recentCreated = $this->db->fetchAll(
-                    "SELECT company_name, registration_number, incorporation_date, entity_status, created_at
-                     FROM companies
-                     WHERE client_id = ?
-                     ORDER BY COALESCE(incorporation_date, created_at) DESC
-                     LIMIT 20",
-                    [$client->id]
-                );
-                if ($recentCreated) {
-                    $lines[] = "\nMost recently added companies (by system record):";
-                    foreach ($recentCreated as $co) {
-                        $lines[] = "- {$co->company_name} | Reg: " . ($co->registration_number ?: 'N/A')
-                            . " | Incorporated: " . ($co->incorporation_date ?: 'N/A')
-                            . " | Added: " . ($co->created_at ?: 'N/A');
-                    }
-                }
+        // ════════════════════════════════════════════
+        // 2. ALWAYS: Company status breakdown
+        // ════════════════════════════════════════════
+        $statusSummary = $this->db->fetchAll(
+            "SELECT COALESCE(entity_status, 'Unknown') AS status, COUNT(*) AS cnt
+             FROM companies WHERE client_id = ?
+             GROUP BY entity_status ORDER BY cnt DESC",
+            [$client->id]
+        );
+        if ($statusSummary) {
+            $lines[] = "\n--- Company Status Breakdown ---";
+            foreach ($statusSummary as $s) {
+                $lines[] = "  {$s->status}: {$s->cnt}";
             }
         }
 
-        // ── Compliance / deadlines ──
-        if (preg_match('/deadline|due|compliance|agm|annual|overdue|alert|fye/i', $lowerMsg)) {
-            $deadlines = $this->db->fetchAll(
-                "SELECT COALESCE(c.company_name, 'N/A') AS company_name,
-                        d.event_name, d.due_date, d.status
-                 FROM due_dates d
-                 LEFT JOIN companies c ON c.id = d.company_id
-                 WHERE d.client_id = ?
-                 ORDER BY COALESCE(d.due_date, '9999-12-31') ASC
-                 LIMIT 20",
+        // ════════════════════════════════════════════
+        // 3. ALWAYS: All companies with director/shareholder/secretary counts
+        // ════════════════════════════════════════════
+        $companies = $this->db->fetchAll(
+            "SELECT c.id, c.company_name, c.registration_number, c.incorporation_date,
+                    c.entity_status, c.company_type, c.fye_date, c.email,
+                    (SELECT COUNT(*) FROM directors d WHERE d.company_id = c.id) AS director_count,
+                    (SELECT COUNT(*) FROM shareholders s WHERE s.company_id = c.id) AS shareholder_count,
+                    (SELECT COUNT(*) FROM secretaries sec WHERE sec.company_id = c.id) AS secretary_count,
+                    (SELECT COUNT(*) FROM documents doc WHERE doc.entity_type = 'company' AND doc.entity_id = c.id) AS doc_count
+             FROM companies c
+             WHERE c.client_id = ?
+             ORDER BY c.company_name ASC
+             LIMIT 300",
+            [$client->id]
+        );
+        if ($companies) {
+            $lines[] = "\n--- All Companies ({$companyCount}) ---";
+            $lines[] = "Format: Name | UEN/Reg | Incorp Date | Status | Type | FYE | Directors | Shareholders | Secretaries | Docs";
+            foreach ($companies as $co) {
+                $lines[] = "- {$co->company_name} | "
+                    . ($co->registration_number ?: '-') . " | "
+                    . ($co->incorporation_date ?: '-') . " | "
+                    . ($co->entity_status ?: '-') . " | "
+                    . ($co->company_type ?: '-') . " | "
+                    . ($co->fye_date ?: '-') . " | "
+                    . "D:{$co->director_count} S:{$co->shareholder_count} Sec:{$co->secretary_count} | "
+                    . "Docs:{$co->doc_count}";
+            }
+        }
+
+        // ════════════════════════════════════════════
+        // 4. ALWAYS: Directors with company names
+        // ════════════════════════════════════════════
+        try {
+            $directors = $this->db->fetchAll(
+                "SELECT d.name, d.id_number, d.nationality, d.role, d.appointment_date, d.cessation_date,
+                        c.company_name, c.registration_number
+                 FROM directors d
+                 JOIN companies c ON c.id = d.company_id
+                 WHERE c.client_id = ?
+                 ORDER BY c.company_name, d.name
+                 LIMIT 500",
                 [$client->id]
             );
-            if ($deadlines) {
-                $lines[] = "\nUpcoming deadlines:";
-                foreach ($deadlines as $d) {
-                    $lines[] = "- {$d->company_name} | {$d->event_name} | Due: " . ($d->due_date ?: 'N/A') . " | Status: " . ($d->status ?: 'Pending');
+            if ($directors) {
+                $lines[] = "\n--- All Directors (" . count($directors) . ") ---";
+                $lines[] = "Format: Name | ID | Nationality | Role | Appointed | Ceased | Company";
+                foreach ($directors as $d) {
+                    $lines[] = "- {$d->name} | "
+                        . ($d->id_number ?: '-') . " | "
+                        . ($d->nationality ?: '-') . " | "
+                        . ($d->role ?: 'director') . " | "
+                        . ($d->appointment_date ?: '-') . " | "
+                        . ($d->cessation_date ?: 'current') . " | "
+                        . $d->company_name;
                 }
             }
-        }
+        } catch (\Exception $e) {}
 
-        // ── IR8A / payroll / tax ──
-        if (preg_match('/ir8a|payroll|tax|cpf|iras|sdl|fwl/i', $lowerMsg)) {
-            $docs = $this->db->fetchAll(
-                "SELECT document_name, created_at
-                 FROM documents
-                 WHERE client_id = ?
-                   AND (document_name LIKE '%IR8A%' OR document_name LIKE '%Tax%' OR document_name LIKE '%payroll%')
-                 ORDER BY created_at DESC
-                 LIMIT 10",
+        // ════════════════════════════════════════════
+        // 5. ALWAYS: Shareholders with company names
+        // ════════════════════════════════════════════
+        try {
+            $shareholders = $this->db->fetchAll(
+                "SELECT s.name, s.share_type, s.num_shares, s.nationality,
+                        c.company_name, c.registration_number
+                 FROM shareholders s
+                 JOIN companies c ON c.id = s.company_id
+                 WHERE c.client_id = ?
+                 ORDER BY c.company_name, s.name
+                 LIMIT 500",
                 [$client->id]
             );
-            if ($docs) {
-                $lines[] = "\nTax/payroll documents:";
-                foreach ($docs as $doc) {
-                    $lines[] = "- {$doc->document_name} (" . ($doc->created_at ?: 'no date') . ")";
+            if ($shareholders) {
+                $lines[] = "\n--- All Shareholders (" . count($shareholders) . ") ---";
+                $lines[] = "Format: Name | Share Type | Shares | Nationality | Company";
+                foreach ($shareholders as $s) {
+                    $lines[] = "- {$s->name} | "
+                        . ($s->share_type ?: 'Ordinary') . " | "
+                        . ($s->num_shares ?: '-') . " | "
+                        . ($s->nationality ?: '-') . " | "
+                        . $s->company_name;
                 }
             }
-        }
+        } catch (\Exception $e) {}
 
-        // ── Company list / search ──
-        if (preg_match('/compan|director|share|list|清单|公司|列表/i', $lowerMsg)) {
-            // Check if user is searching for specific company
-            $searchTerm = null;
-            if (preg_match('/(?:named?|called|search|find|查找|搜索)\s+["\']?([^"\']+)["\']?/i', $lowerMsg, $sm)) {
-                $searchTerm = trim($sm[1]);
-            }
-
-            if ($searchTerm) {
-                $companies = $this->db->fetchAll(
-                    "SELECT company_name, registration_number, incorporation_date, entity_status, internal_css_status
-                     FROM companies
-                     WHERE client_id = ? AND (company_name LIKE ? OR registration_number LIKE ?)
-                     ORDER BY company_name ASC
-                     LIMIT 20",
-                    [$client->id, "%{$searchTerm}%", "%{$searchTerm}%"]
-                );
-            } else {
-                $companies = $this->db->fetchAll(
-                    "SELECT company_name, registration_number, incorporation_date, entity_status, internal_css_status
-                     FROM companies
-                     WHERE client_id = ?
-                     ORDER BY company_name ASC
-                     LIMIT 30",
-                    [$client->id]
-                );
-            }
-            if ($companies) {
-                $lines[] = $searchTerm
-                    ? "\nCompanies matching '{$searchTerm}' (" . count($companies) . " found):"
-                    : "\nCompanies (first " . count($companies) . "):";
-                foreach ($companies as $co) {
-                    $lines[] = "- {$co->company_name} | Reg: " . ($co->registration_number ?: 'N/A')
-                        . " | Incorporated: " . ($co->incorporation_date ?: 'N/A')
-                        . " | Status: " . ($co->entity_status ?: 'Active');
-                }
-                if (count($companies) >= 30) {
-                    $lines[] = "(Showing first 30 of {$companyCount} total)";
-                }
-            }
-        }
-
-        // ── Company status summary ──
-        if (preg_match('/status|active|dormant|struck|terminated|状态|活跃/i', $lowerMsg)) {
-            $statusSummary = $this->db->fetchAll(
-                "SELECT COALESCE(entity_status, 'Unknown') AS status, COUNT(*) AS cnt
-                 FROM companies
-                 WHERE client_id = ?
-                 GROUP BY entity_status
-                 ORDER BY cnt DESC",
+        // ════════════════════════════════════════════
+        // 6. ALWAYS: Secretaries
+        // ════════════════════════════════════════════
+        try {
+            $secretaries = $this->db->fetchAll(
+                "SELECT s.name, s.appointment_date, s.cessation_date,
+                        c.company_name
+                 FROM secretaries s
+                 JOIN companies c ON c.id = s.company_id
+                 WHERE c.client_id = ?
+                 ORDER BY c.company_name, s.name
+                 LIMIT 300",
                 [$client->id]
             );
-            if ($statusSummary) {
-                $lines[] = "\nCompany status breakdown:";
-                foreach ($statusSummary as $s) {
-                    $lines[] = "- {$s->status}: {$s->cnt} companies";
+            if ($secretaries) {
+                $lines[] = "\n--- All Secretaries (" . count($secretaries) . ") ---";
+                foreach ($secretaries as $s) {
+                    $lines[] = "- {$s->name} | Appointed: " . ($s->appointment_date ?: '-')
+                        . " | Ceased: " . ($s->cessation_date ?: 'current')
+                        . " | {$s->company_name}";
                 }
+            }
+        } catch (\Exception $e) {}
+
+        // ════════════════════════════════════════════
+        // 7. ALWAYS: Due dates / deadlines (next 30)
+        // ════════════════════════════════════════════
+        $deadlines = $this->db->fetchAll(
+            "SELECT COALESCE(c.company_name, d.company_name, 'N/A') AS company_name,
+                    d.event_name, d.due_date, d.status, d.pic
+             FROM due_dates d
+             LEFT JOIN companies c ON c.id = d.company_id
+             WHERE d.client_id = ?
+             ORDER BY COALESCE(d.due_date, '9999-12-31') ASC
+             LIMIT 50",
+            [$client->id]
+        );
+        if ($deadlines) {
+            $lines[] = "\n--- Upcoming Deadlines (" . count($deadlines) . ") ---";
+            $lines[] = "Format: Company | Event | Due Date | Status | PIC";
+            foreach ($deadlines as $d) {
+                $daysLeft = '';
+                if ($d->due_date) {
+                    $diff = (int) (new \DateTimeImmutable('today'))->diff(new \DateTimeImmutable($d->due_date))->format('%r%a');
+                    $daysLeft = $diff < 0 ? " (OVERDUE by " . abs($diff) . " days)" : " ({$diff} days left)";
+                }
+                $lines[] = "- {$d->company_name} | {$d->event_name} | " . ($d->due_date ?: '-') . $daysLeft
+                    . " | " . ($d->status ?: 'Pending')
+                    . " | PIC: " . ($d->pic ?: '-');
             }
         }
 
-        // ── Invoice / billing ──
-        if (preg_match('/invoice|bill|fee|payment|发票|账单/i', $lowerMsg)) {
-            $invoiceCount = $this->db->count('invoices', 'client_id = ?', [$client->id]);
-            $lines[] = "\nTotal invoices: {$invoiceCount}";
-        }
-
-        // ── Officers / directors ──
-        if (preg_match('/officer|director|secretary|shareholder|member|董事|股东|秘书/i', $lowerMsg)) {
-            try {
-                // Find companies with specific director counts if asked
-                if (preg_match('/(\d+)\s*(?:director|董事)/i', $lowerMsg, $dm)) {
-                    $targetCount = (int)$dm[1];
-                    $companiesWithNDirs = $this->db->fetchAll(
-                        "SELECT c.company_name, c.registration_number, COUNT(d.id) AS dir_count
-                         FROM companies c
-                         JOIN directors d ON d.company_id = c.id
-                         WHERE c.client_id = ? AND d.role = 'director'
-                         GROUP BY c.id, c.company_name, c.registration_number
-                         HAVING dir_count = ?
-                         ORDER BY c.company_name ASC
-                         LIMIT 30",
-                        [$client->id, $targetCount]
-                    );
-                    if ($companiesWithNDirs) {
-                        $lines[] = "\nCompanies with exactly {$targetCount} directors (" . count($companiesWithNDirs) . " found):";
-                        foreach ($companiesWithNDirs as $co) {
-                            $lines[] = "- {$co->company_name} | Reg: " . ($co->registration_number ?: 'N/A') . " | Directors: {$co->dir_count}";
-                        }
-                    } else {
-                        $lines[] = "\nNo companies found with exactly {$targetCount} directors.";
-                    }
-                } else {
-                    // General director stats
-                    $dirStats = $this->db->fetchAll(
-                        "SELECT c.company_name, COUNT(d.id) AS dir_count
-                         FROM companies c
-                         LEFT JOIN directors d ON d.company_id = c.id AND d.role = 'director'
-                         WHERE c.client_id = ?
-                         GROUP BY c.id, c.company_name
-                         ORDER BY dir_count DESC
-                         LIMIT 20",
-                        [$client->id]
-                    );
-                    if ($dirStats) {
-                        $totalDirs = array_sum(array_map(function($r) { return $r->dir_count; }, $dirStats));
-                        $lines[] = "\nDirector overview (top 20 companies by director count, total directors: {$totalDirs}):";
-                        foreach ($dirStats as $co) {
-                            $lines[] = "- {$co->company_name}: {$co->dir_count} directors";
-                        }
-                    }
-                }
-            } catch (\Exception $e) {
-                // Table may not exist in some environments
-                $lines[] = "\n(Director data not available)";
+        // ════════════════════════════════════════════
+        // 8. ALWAYS: Recent documents
+        // ════════════════════════════════════════════
+        $docs = $this->db->fetchAll(
+            "SELECT d.document_name, d.created_at,
+                    COALESCE(c.company_name, 'General') AS company_name
+             FROM documents d
+             LEFT JOIN companies c ON c.id = d.entity_id AND d.entity_type = 'company'
+             WHERE d.client_id = ?
+             ORDER BY d.created_at DESC
+             LIMIT 30",
+            [$client->id]
+        );
+        if ($docs) {
+            $lines[] = "\n--- Recent Documents (last 30) ---";
+            foreach ($docs as $doc) {
+                $lines[] = "- {$doc->document_name} | {$doc->company_name} | " . ($doc->created_at ?: '-');
             }
         }
+
+        // ════════════════════════════════════════════
+        // 9. ALWAYS: Members / individuals
+        // ════════════════════════════════════════════
+        $members = $this->db->fetchAll(
+            "SELECT m.name, m.nationality, m.status, m.email, m.phone,
+                    (SELECT COUNT(*) FROM company_officials co WHERE co.member_id = m.id) AS role_count
+             FROM members m
+             WHERE m.client_id = ?
+             ORDER BY m.name ASC
+             LIMIT 400",
+            [$client->id]
+        );
+        if ($members) {
+            $lines[] = "\n--- All Individuals/Members (" . count($members) . ") ---";
+            $lines[] = "Format: Name | Nationality | Status | Email | Roles";
+            foreach ($members as $m) {
+                $lines[] = "- {$m->name} | "
+                    . ($m->nationality ?: '-') . " | "
+                    . ($m->status ?: '-') . " | "
+                    . ($m->email ?: '-') . " | "
+                    . "Roles: {$m->role_count}";
+            }
+        }
+
+        // ════════════════════════════════════════════
+        // 10. ALWAYS: Company events
+        // ════════════════════════════════════════════
+        try {
+            $events = $this->db->fetchAll(
+                "SELECT ce.event_type, ce.event_date, ce.description,
+                        COALESCE(c.company_name, 'N/A') AS company_name
+                 FROM company_events ce
+                 LEFT JOIN companies c ON c.id = ce.company_id
+                 WHERE ce.client_id = ?
+                 ORDER BY ce.event_date DESC
+                 LIMIT 30",
+                [$client->id]
+            );
+            if ($events) {
+                $lines[] = "\n--- Recent Company Events (last 30) ---";
+                foreach ($events as $ev) {
+                    $lines[] = "- {$ev->company_name} | {$ev->event_type} | " . ($ev->event_date ?: '-') . " | " . ($ev->description ?: '-');
+                }
+            }
+        } catch (\Exception $e) {}
+
+        // ════════════════════════════════════════════
+        // 11. SMART: Specific company lookup if user mentions a company
+        // ════════════════════════════════════════════
+        $this->addSpecificCompanyContext($lines, $lowerMsg, $client);
+
+        // ════════════════════════════════════════════
+        // 12. Invoices count
+        // ════════════════════════════════════════════
+        try {
+            $invoiceCount = (int) $this->db->count('invoices', 'client_id = ?', [$client->id]);
+            if ($invoiceCount > 0) {
+                $lines[] = "\n--- Invoices ---";
+                $lines[] = "Total invoices: {$invoiceCount}";
+            }
+        } catch (\Exception $e) {}
+
+        $lines[] = "\n=== END OF DATABASE CONTEXT ===";
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * If the user mentions a specific company name, load detailed info about it.
+     */
+    private function addSpecificCompanyContext(&$lines, $lowerMsg, $client) {
+        // Try to match a company name from the message
+        $allCompanyNames = $this->db->fetchAll(
+            "SELECT id, company_name FROM companies WHERE client_id = ? ORDER BY LENGTH(company_name) DESC",
+            [$client->id]
+        );
+
+        $matchedCompany = null;
+        foreach ($allCompanyNames as $co) {
+            if (stripos($lowerMsg, strtolower($co->company_name)) !== false) {
+                $matchedCompany = $co;
+                break;
+            }
+            // Also try partial match (first 2 words)
+            $words = explode(' ', $co->company_name);
+            if (count($words) >= 2) {
+                $partial = strtolower($words[0] . ' ' . $words[1]);
+                if (strlen($partial) > 5 && stripos($lowerMsg, $partial) !== false) {
+                    $matchedCompany = $co;
+                    break;
+                }
+            }
+        }
+
+        if (!$matchedCompany) return;
+
+        $cid = $matchedCompany->id;
+        $lines[] = "\n--- DETAILED LOOKUP: {$matchedCompany->company_name} ---";
+
+        // Full company record
+        $detail = $this->db->fetchOne("SELECT * FROM companies WHERE id = ?", [$cid]);
+        if ($detail) {
+            $fields = ['registration_number', 'acra_registration_number', 'incorporation_date',
+                       'company_type', 'entity_status', 'fye_date', 'email', 'website', 'phone',
+                       'ssic_code', 'ssic_description', 'registered_address', 'country',
+                       'paid_up_capital', 'currency', 'contact_person', 'internal_css_status'];
+            foreach ($fields as $f) {
+                if (!empty($detail->$f)) {
+                    $lines[] = "  " . str_replace('_', ' ', ucfirst($f)) . ": {$detail->$f}";
+                }
+            }
+        }
+
+        // Directors for this company
+        try {
+            $dirs = $this->db->fetchAll(
+                "SELECT name, id_number, nationality, role, appointment_date, cessation_date
+                 FROM directors WHERE company_id = ? ORDER BY name", [$cid]);
+            if ($dirs) {
+                $lines[] = "  Directors (" . count($dirs) . "):";
+                foreach ($dirs as $d) {
+                    $lines[] = "    - {$d->name} | {$d->nationality} | Since: " . ($d->appointment_date ?: '-')
+                        . ($d->cessation_date ? " | Ceased: {$d->cessation_date}" : '');
+                }
+            }
+        } catch (\Exception $e) {}
+
+        // Shareholders for this company
+        try {
+            $shares = $this->db->fetchAll(
+                "SELECT name, share_type, num_shares, nationality
+                 FROM shareholders WHERE company_id = ? ORDER BY name", [$cid]);
+            if ($shares) {
+                $lines[] = "  Shareholders (" . count($shares) . "):";
+                foreach ($shares as $s) {
+                    $lines[] = "    - {$s->name} | " . ($s->share_type ?: 'Ordinary') . " | Shares: " . ($s->num_shares ?: '-');
+                }
+            }
+        } catch (\Exception $e) {}
+
+        // Secretaries for this company
+        try {
+            $secs = $this->db->fetchAll(
+                "SELECT name, appointment_date, cessation_date
+                 FROM secretaries WHERE company_id = ? ORDER BY name", [$cid]);
+            if ($secs) {
+                $lines[] = "  Secretaries (" . count($secs) . "):";
+                foreach ($secs as $s) {
+                    $lines[] = "    - {$s->name} | Since: " . ($s->appointment_date ?: '-');
+                }
+            }
+        } catch (\Exception $e) {}
+
+        // Addresses
+        try {
+            $addrs = $this->db->fetchAll(
+                "SELECT address_type, CONCAT_WS(', ', block, address_text, building, postal_code) AS full_address
+                 FROM addresses WHERE entity_type = 'company' AND entity_id = ?
+                 LIMIT 5", [$cid]);
+            if ($addrs) {
+                $lines[] = "  Addresses:";
+                foreach ($addrs as $a) {
+                    $lines[] = "    - " . ($a->address_type ?: 'Address') . ": {$a->full_address}";
+                }
+            }
+        } catch (\Exception $e) {}
+
+        // Due dates for this company
+        try {
+            $dues = $this->db->fetchAll(
+                "SELECT event_name, due_date, status FROM due_dates WHERE company_id = ? ORDER BY due_date ASC LIMIT 10", [$cid]);
+            if ($dues) {
+                $lines[] = "  Due Dates:";
+                foreach ($dues as $d) {
+                    $lines[] = "    - {$d->event_name} | Due: " . ($d->due_date ?: '-') . " | " . ($d->status ?: 'Pending');
+                }
+            }
+        } catch (\Exception $e) {}
     }
 }

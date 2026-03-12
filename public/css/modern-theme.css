@@ -254,9 +254,11 @@ body.modern-theme .cf-nav-icon {
 }
 body.modern-theme .cf-nav-icon svg,
 body.modern-theme .nav.side-menu > li > a .cf-nav-icon svg,
-body.modern-theme .nav.side-menu > li > a > .cf-nav-icon svg {
-    stroke: var(--cf-text-secondary) !important;
-    color: var(--cf-text-secondary) !important;
+body.modern-theme .nav.side-menu > li > a > .cf-nav-icon svg,
+.modern-theme .cf-nav-icon svg,
+.cf-nav-icon svg {
+    stroke: #6B7280 !important;
+    color: #6B7280 !important;
     fill: none !important;
     transition: var(--cf-transition-fast);
     display: inline-block !important;
@@ -264,16 +266,26 @@ body.modern-theme .nav.side-menu > li > a > .cf-nav-icon svg {
     opacity: 1 !important;
     width: 20px !important;
     height: 20px !important;
+    overflow: visible !important;
 }
-body.modern-theme .nav.side-menu > li > a:hover .cf-nav-icon svg {
-    stroke: var(--cf-primary) !important;
-    color: var(--cf-primary) !important;
+body.modern-theme .nav.side-menu > li > a:hover .cf-nav-icon svg,
+.modern-theme .nav.side-menu > li > a:hover .cf-nav-icon svg {
+    stroke: #1E3A5F !important;
+    color: #1E3A5F !important;
 }
 /* Override custom.css white color on sidebar links */
 body.modern-theme .nav.side-menu > li > a,
-body.modern-theme .nav.side-menu > li > a > span {
-    color: var(--cf-text) !important;
+body.modern-theme .nav.side-menu > li > a > span,
+.modern-theme .nav.side-menu > li > a,
+.modern-theme .nav.side-menu > li > a > span {
+    color: #111827 !important;
     font-weight: 500 !important;
+}
+/* Active state: white icons on navy background */
+body.modern-theme .nav.side-menu > li.active > a .cf-nav-icon svg,
+.modern-theme .nav.side-menu > li.active > a .cf-nav-icon svg {
+    stroke: #fff !important;
+    color: #fff !important;
 }
 
 /* -- Chevron for expandable items ----------------------------- */
