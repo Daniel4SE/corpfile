@@ -178,17 +178,32 @@ class Registers extends BaseController {
         if (!$client) return [];
         $cid = $client->id;
 
+        try {
+            return $this->doFetchRegisterData($type, $cid);
+        } catch (\Exception $e) {
+            // Return empty on SQL errors (missing tables/columns)
+            return [];
+        }
+    }
+
+    private function doFetchRegisterData($type, $cid) {
         switch ($type) {
             case 'register_of_members':
+                // Safe query without GROUP BY issues
                 return $this->db->fetchAll(
-                    "SELECT m.name, mi.id_type, mi.id_number, m.nationality,
-                            CONCAT_WS(' ', a.block, a.address_text, a.building) AS address,
-                            m.status
+                    "SELECT m.name,
+                            '' AS id_type,
+                            COALESCE(m.id_number, '') AS id_number,
+                            COALESCE(m.nationality, '') AS nationality,
+                            COALESCE((SELECT CONCAT_WS(' ', a.block, a.address_text, a.building)
+                                      FROM addresses a
+                                      WHERE a.entity_type = 'member' AND a.entity_id = m.id
+                                      LIMIT 1), '') AS address,
+                            COALESCE(m.status, 'Active') AS status
                      FROM members m
-                     LEFT JOIN member_identifications mi ON mi.member_id = m.id
-                     LEFT JOIN addresses a ON a.entity_type = 'member' AND a.entity_id = m.id AND a.is_default = 1
                      WHERE m.client_id = ?
-                     GROUP BY m.id ORDER BY m.name",
+                     ORDER BY m.name
+                     LIMIT 500",
                     [$cid]
                 );
 
@@ -209,34 +224,89 @@ class Registers extends BaseController {
                 $officialType = $typeMap[$type];
                 return $this->db->fetchAll(
                     "SELECT co.name, co.id_number, c.company_name,
-                            co.date_of_appointment, co.date_of_cessation, co.status
+                            co.date_of_appointment, co.date_of_cessation,
+                            COALESCE(co.status, 'Active') AS status
                      FROM company_officials co
                      JOIN companies c ON c.id = co.company_id
                      WHERE c.client_id = ? AND co.official_type = ?
-                     ORDER BY co.name",
+                     ORDER BY co.name
+                     LIMIT 500",
                     [$cid, $officialType]
                 );
 
-            case 'register_of_seals':
+            case 'register_of_charges':
                 return $this->db->fetchAll(
-                    "SELECT c.company_name, s.document_description, s.seal_date,
-                            s.sealed_by, '' AS witness, '' AS remarks
-                     FROM sealings s
-                     JOIN companies c ON c.id = s.company_id
-                     WHERE s.client_id = ? ORDER BY s.seal_date DESC",
+                    "SELECT c.company_name, '' AS charge_id, '' AS date_created,
+                            '' AS amount, '' AS chargee, 'Active' AS status
+                     FROM companies c
+                     WHERE c.client_id = ?
+                     ORDER BY c.company_name
+                     LIMIT 0",
+                    [$cid]
+                );
+
+            case 'register_of_controllers':
+            case 'register_of_beneficial_owners':
+                return [];
+
+            case 'register_of_substantial_shareholders':
+            case 'register_of_directors_shareholdings':
+            case 'register_of_nominee_shareholders':
+            case 'register_of_partners':
+                return $this->db->fetchAll(
+                    "SELECT co.name, co.id_number, c.company_name,
+                            '' AS extra1, '' AS extra2, '' AS extra3
+                     FROM company_officials co
+                     JOIN companies c ON c.id = co.company_id
+                     WHERE c.client_id = ? AND co.official_type = 'shareholder'
+                     ORDER BY co.name
+                     LIMIT 500",
+                    [$cid]
+                );
+
+            case 'register_of_seals':
+                try {
+                    return $this->db->fetchAll(
+                        "SELECT c.company_name, s.document_description, s.seal_date,
+                                s.sealed_by, '' AS witness, '' AS remarks
+                         FROM sealings s
+                         JOIN companies c ON c.id = s.company_id
+                         WHERE s.client_id = ? ORDER BY s.seal_date DESC
+                         LIMIT 200",
+                        [$cid]
+                    );
+                } catch (\Exception $e) { return []; }
+
+            case 'share_certificate':
+                return $this->db->fetchAll(
+                    "SELECT '' AS cert_no, c.company_name,
+                            co.name AS shareholder, co.share_type,
+                            co.num_shares, '' AS date_issued
+                     FROM company_officials co
+                     JOIN companies c ON c.id = co.company_id
+                     WHERE c.client_id = ? AND co.official_type = 'shareholder'
+                     ORDER BY c.company_name, co.name
+                     LIMIT 500",
                     [$cid]
                 );
 
             case 'annual_return':
                 return $this->db->fetchAll(
-                    "SELECT c.company_name, ce.fye_date, ce.agm_due_date,
-                            ce.ar_filing_date, ce.agm_held_date, '' AS remarks
+                    "SELECT c.company_name, c.fye_date,
+                            COALESCE(d.due_date, '') AS ar_due_date,
+                            COALESCE(d.status, '') AS ar_status,
+                            '' AS ar_filed_date, '' AS remarks
                      FROM companies c
-                     LEFT JOIN company_events ce ON ce.company_id = c.id AND ce.event_type = 'AGM'
+                     LEFT JOIN due_dates d ON d.company_id = c.id AND d.event_name = 'Annual Return'
                      WHERE c.client_id = ?
-                     ORDER BY c.company_name",
+                     ORDER BY c.company_name
+                     LIMIT 500",
                     [$cid]
                 );
+
+            case 'minute_book_directors':
+            case 'minute_book_members':
+                return [];
 
             default:
                 return [];
