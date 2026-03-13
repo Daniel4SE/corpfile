@@ -183,8 +183,8 @@
                             </li>
 
                             <!-- 5. Registration -->
-                            <li class="<?= ($current_url == 'add_company') ? 'active' : '' ?>">
-                                <a href="<?= base_url('add_company') ?>">
+                            <li class="<?= in_array($current_url, ['registration','add_company']) ? 'active' : '' ?>">
+                                <a href="<?= base_url('registration') ?>">
                                     <span class="cf-nav-icon"><?= cf_icon('registration') ?></span>
                                     <span>Registration</span>
                                 </a>
