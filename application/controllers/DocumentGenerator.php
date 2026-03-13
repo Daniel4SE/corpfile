@@ -38,6 +38,7 @@ class DocumentGenerator extends BaseController {
      */
     public function generate() {
         $this->requireAuth();
+        set_time_limit(120);
         header('Content-Type: application/json');
 
         $templateId = $this->input('template_id', '');
@@ -99,6 +100,8 @@ class DocumentGenerator extends BaseController {
             'system_prompt' => $context['system'],
             'max_tokens' => 4096,
             'temperature' => 0.3,
+            'timeout' => 55,
+            'model' => 'claude-sonnet-4-6',
         ]);
 
         if (!empty($result['ok']) && !empty($result['response_text'])) {
