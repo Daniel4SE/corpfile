@@ -55,29 +55,33 @@ class DocumentGenerator extends BaseController {
         $secretary = null;
         
         if ($companyId && $this->db) {
-            $company = $this->db->fetchOne("SELECT * FROM companies WHERE id = ?", [$companyId]);
-            $directors = $this->db->fetchAll(
-                "SELECT d.*, m.name, m.id_number, m.nationality, m.email, m.address 
-                 FROM directors d 
-                 LEFT JOIN members m ON m.id = d.member_id 
-                 WHERE d.company_id = ? AND (d.status = 'Active' OR d.status IS NULL)",
-                [$companyId]
-            );
-            $shareholders = $this->db->fetchAll(
-                "SELECT s.*, m.name, m.id_number, m.nationality, m.email, m.address 
-                 FROM shareholders s 
-                 LEFT JOIN members m ON m.id = s.member_id 
-                 WHERE s.company_id = ? AND (s.status = 'Active' OR s.status IS NULL)",
-                [$companyId]
-            );
-            $secretary = $this->db->fetchOne(
-                "SELECT o.*, m.name, m.id_number 
-                 FROM officials o 
-                 LEFT JOIN members m ON m.id = o.member_id 
-                 WHERE o.company_id = ? AND o.role = 'Secretary' AND (o.status = 'Active' OR o.status IS NULL)
-                 LIMIT 1",
-                [$companyId]
-            );
+            try {
+                $company = $this->db->fetchOne("SELECT * FROM companies WHERE id = ?", [$companyId]);
+            } catch (\Exception $e) { $company = null; }
+            try {
+                $directors = $this->db->fetchAll(
+                    "SELECT d.*, m.name as member_name, m.id_number, m.nationality, m.email, m.address 
+                     FROM directors d 
+                     LEFT JOIN members m ON m.id = d.member_id 
+                     WHERE d.company_id = ? AND (d.status = 'Active' OR d.status IS NULL)",
+                    [$companyId]
+                );
+            } catch (\Exception $e) { $directors = []; }
+            try {
+                $shareholders = $this->db->fetchAll(
+                    "SELECT s.*, m.name as member_name, m.id_number, m.nationality, m.email, m.address 
+                     FROM shareholders s 
+                     LEFT JOIN members m ON m.id = s.member_id 
+                     WHERE s.company_id = ? AND (s.status = 'Active' OR s.status IS NULL)",
+                    [$companyId]
+                );
+            } catch (\Exception $e) { $shareholders = []; }
+            try {
+                $secretary = $this->db->fetchOne(
+                    "SELECT * FROM secretaries WHERE company_id = ? AND (status = 'Active' OR status IS NULL) LIMIT 1",
+                    [$companyId]
+                );
+            } catch (\Exception $e) { $secretary = null; }
         }
 
         // Build context for AI generation
@@ -97,10 +101,10 @@ class DocumentGenerator extends BaseController {
             'temperature' => 0.3,
         ]);
 
-        if (!empty($result['content'])) {
+        if (!empty($result['ok']) && !empty($result['response_text'])) {
             echo json_encode([
                 'success' => true,
-                'content' => $result['content'],
+                'content' => $result['response_text'],
                 'template_name' => $context['name'],
             ]);
         } else {
@@ -119,11 +123,13 @@ class DocumentGenerator extends BaseController {
         
         $directorList = '';
         foreach ($directors as $d) {
-            $directorList .= "- {$d->name} (ID: {$d->id_number}, Nationality: {$d->nationality})\n";
+            $name = $d->member_name ?? $d->name ?? 'Unknown';
+            $directorList .= "- {$name} (ID: " . ($d->id_number ?? 'N/A') . ", Nationality: " . ($d->nationality ?? 'N/A') . ")\n";
         }
         $shareholderList = '';
         foreach ($shareholders as $s) {
-            $shareholderList .= "- {$s->name} (ID: {$s->id_number}, Shares: " . ($s->shares_held ?? 'N/A') . ")\n";
+            $name = $s->member_name ?? $s->name ?? 'Unknown';
+            $shareholderList .= "- {$name} (ID: " . ($s->id_number ?? 'N/A') . ", Shares: " . ($s->shares_held ?? 'N/A') . ")\n";
         }
         $secretaryName = $secretary->name ?? '[Secretary Name]';
 
