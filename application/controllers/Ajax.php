@@ -802,6 +802,88 @@ class Ajax extends BaseController {
         $this->json(['success' => true, 'data' => $results, 'total' => $total]);
     }
 
+    /**
+     * Delete a single document
+     * POST /Ajax/delete_document
+     */
+    public function delete_document() {
+        $this->requireAuth();
+        $id = $this->input('id');
+        if (!$id) {
+            $this->json(['success' => false, 'message' => 'Document ID required'], 400);
+            return;
+        }
+        if ($this->db) {
+            $doc = $this->db->fetchOne("SELECT * FROM documents WHERE id = ?", [$id]);
+            if ($doc) {
+                if (!empty($doc->file_path)) {
+                    $fullPath = BASEPATH . $doc->file_path;
+                    if (file_exists($fullPath)) { unlink($fullPath); }
+                }
+                $this->db->delete('documents', 'id = ?', [$id]);
+                $this->json(['success' => true, 'message' => 'Document deleted']);
+                return;
+            }
+        }
+        $this->json(['success' => false, 'message' => 'Document not found'], 404);
+    }
+
+    /**
+     * Bulk delete documents
+     * POST /Ajax/bulk_delete_documents
+     */
+    public function bulk_delete_documents() {
+        $this->requireAuth();
+        $raw = file_get_contents('php://input');
+        $body = json_decode($raw, true);
+        $ids = $body['ids'] ?? [];
+        if (empty($ids) || !is_array($ids)) {
+            $this->json(['success' => false, 'message' => 'No document IDs provided'], 400);
+            return;
+        }
+        $deleted = 0;
+        if ($this->db) {
+            foreach ($ids as $id) {
+                $id = (int)$id;
+                $doc = $this->db->fetchOne("SELECT * FROM documents WHERE id = ?", [$id]);
+                if ($doc) {
+                    if (!empty($doc->file_path)) {
+                        $fullPath = BASEPATH . $doc->file_path;
+                        if (file_exists($fullPath)) { unlink($fullPath); }
+                    }
+                    $this->db->delete('documents', 'id = ?', [$id]);
+                    $deleted++;
+                }
+            }
+        }
+        $this->json(['success' => true, 'message' => "{$deleted} document(s) deleted", 'deleted' => $deleted]);
+    }
+
+    /**
+     * Bulk download documents (returns list of download URLs)
+     * POST /Ajax/bulk_download_documents
+     */
+    public function bulk_download_documents() {
+        $this->requireAuth();
+        $raw = file_get_contents('php://input');
+        $body = json_decode($raw, true);
+        $ids = $body['ids'] ?? [];
+        if (empty($ids) || !is_array($ids)) {
+            $this->json(['success' => false, 'message' => 'No document IDs provided'], 400);
+            return;
+        }
+        $urls = [];
+        if ($this->db) {
+            foreach ($ids as $id) {
+                $doc = $this->db->fetchOne("SELECT id, document_name FROM documents WHERE id = ?", [(int)$id]);
+                if ($doc) {
+                    $urls[] = ['id' => $doc->id, 'name' => $doc->document_name, 'url' => base_url("documents/download/{$doc->id}")];
+                }
+            }
+        }
+        $this->json(['success' => true, 'files' => $urls]);
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────
 
     /**

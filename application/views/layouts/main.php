@@ -192,7 +192,6 @@
                                 <a>
                                     <span class="cf-nav-icon"><?= cf_icon('events') ?></span>
                                     <span>Events & Alerts</span>
-                                    <span class="cf-badge-count">5</span>
                                     <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
                                 </a>
                                 <ul class="nav child_menu">
@@ -291,7 +290,6 @@
                                 <a>
                                     <span class="cf-nav-icon"><?= cf_icon('admin') ?></span>
                                     <span>Admin</span>
-                                    <span class="cf-badge-count">2</span>
                                     <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
                                 </a>
                                 <ul class="nav child_menu">

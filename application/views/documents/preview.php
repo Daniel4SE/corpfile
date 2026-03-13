@@ -1,7 +1,7 @@
 <div class="page-title"><div class="title_left"><h3>File Preview</h3></div><div class="title_right"><div class="pull-right">
 <a href="javascript:history.back()" class="btn btn-default"><i class="fa fa-arrow-left"></i> Back</a>
 <?php if (!empty($document)): ?>
-<a href="<?= base_url('companies/download_file/' . ($document->id ?? '')) ?>" class="btn btn-success"><i class="fa fa-download"></i> Download</a>
+<a href="<?= base_url('documents/download/' . ($document->id ?? '')) ?>" class="btn btn-success"><i class="fa fa-download"></i> Download</a>
 <?php endif; ?>
 </div></div></div><div class="clearfix"></div>
 
@@ -12,7 +12,7 @@
 <div class="x_content">
 <?php if (!empty($document)):
     $ext = strtolower(pathinfo($document->file_path ?? '', PATHINFO_EXTENSION));
-    $file_url = base_url('uploads/' . ($document->file_path ?? ''));
+    $file_url = base_url($document->file_path ?? '');
 ?>
     <?php if (in_array($ext, ['jpg','jpeg','png','gif','bmp','svg'])): ?>
         <div class="text-center"><img src="<?= $file_url ?>" class="img-responsive" style="max-height:80vh;margin:auto;"></div>
