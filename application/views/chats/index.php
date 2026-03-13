@@ -282,6 +282,7 @@
     box-sizing: border-box;
 }
 .cf-chat-input-box textarea::placeholder { color: #94a3b8; }
+.cf-chat-input-box textarea:focus { outline: none !important; outline-style: none !important; box-shadow: none !important; }
 .cf-chat-input-toolbar {
     display: flex;
     align-items: center;

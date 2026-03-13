@@ -683,6 +683,7 @@
     border-radius: 16px 16px 0 0;
 }
 .cf-agents-chatinput::placeholder { color: #94a3b8; }
+.cf-agents-chatinput:focus { outline: none !important; outline-style: none !important; box-shadow: none !important; }
 
 .cf-agents-chatbar-toolbar {
     display: flex;
