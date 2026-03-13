@@ -291,28 +291,56 @@
 .cf-chat-toolbar-left {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
 }
 .cf-chat-toolbar-right {
     display: flex;
     align-items: center;
     gap: 8px;
 }
-.cf-chat-attach-btn {
-    width: 32px; height: 32px;
-    border-radius: 8px;
-    border: none;
-    background: transparent;
-    color: #94a3b8;
+/* Circle + button */
+.cf-chat-plus-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid #e0e0e0;
+    background: #fff;
+    color: #9ca3af;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.15s;
+    flex-shrink: 0;
 }
-.cf-chat-attach-btn:hover {
-    background: #f1f5f9;
+.cf-chat-plus-circle:hover {
+    border-color: #bbb;
     color: var(--cf-text, #1e293b);
+    background: #f9fafb;
+}
+/* Agent / Model pill */
+.cf-chat-agent-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 20px;
+    background: #fff;
+    color: var(--cf-text, #1e293b);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    font-family: var(--cf-font, inherit) !important;
+}
+.cf-chat-agent-pill:hover {
+    border-color: #bbb;
+    background: #f9fafb;
+}
+.cf-chat-agent-pill svg {
+    color: #6b7280;
+    flex-shrink: 0;
 }
 /* Plus Menu */
 .cf-plus-menu-wrap {
@@ -375,32 +403,6 @@
 .cf-model-selector-wrap {
     position: relative;
 }
-.cf-model-selector-btn {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 12px;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 20px;
-    background: #f8fafc;
-    color: var(--cf-text-secondary, #64748b);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.15s;
-    font-family: var(--cf-font, inherit) !important;
-}
-.cf-model-selector-btn:hover {
-    border-color: #c7d2fe;
-    background: #f5f3ff;
-    color: var(--cf-text, #1e293b);
-}
-.cf-model-selector-btn .cf-model-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
 .cf-model-dropdown {
     display: none;
     position: fixed;
@@ -460,8 +462,8 @@
 .cf-model-dropdown-item.active .cf-model-check { opacity: 1; }
 /* Send button */
 .cf-chat-send-btn {
-    width: 34px; height: 34px;
-    border-radius: 10px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
     border: none;
     background: var(--cf-primary, #1e3a5f);
     color: #fff;
@@ -473,7 +475,7 @@
     transition: all 0.15s;
 }
 .cf-chat-send-btn:hover { background: var(--cf-primary-light, #2a4f7a); }
-.cf-chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.cf-chat-send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* Typing indicator */
 .cf-typing { display: flex; gap: 4px; padding: 10px 14px; align-self: flex-start; }
@@ -581,8 +583,8 @@
                 <div class="cf-chat-input-toolbar">
                     <div class="cf-chat-toolbar-left">
                         <div class="cf-plus-menu-wrap" id="chatPlusWrap">
-                            <button class="cf-chat-attach-btn" id="chatPlusBtn" title="More options" type="button">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <button class="cf-chat-plus-circle" id="chatPlusBtn" title="More options" type="button">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             </button>
                             <div class="cf-plus-dropdown" id="chatPlusDropdown">
                                 <button class="cf-plus-dropdown-item" type="button" onclick="document.getElementById('chatFileInput').click(); closeChatPlusMenu();">
@@ -601,16 +603,15 @@
                             </div>
                         </div>
                         <input type="file" id="chatFileInput" style="display:none" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
-                    </div>
-                    <div class="cf-chat-toolbar-right">
                         <div class="cf-model-selector-wrap" id="chatModelWrap">
-                            <button class="cf-model-selector-btn" id="chatModelBtn" type="button" title="Select model">
-                                <span class="cf-model-dot" id="chatModelDot" style="background:#10b981;"></span>
+                            <button class="cf-chat-agent-pill" id="chatModelBtn" type="button" title="Select model">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                                 <span id="chatModelLabel">Sonnet 4.6</span>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
                             <div class="cf-model-dropdown" id="chatModelDropdown"></div>
                         </div>
+                    </div>
+                    <div class="cf-chat-toolbar-right">
                         <button class="cf-chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()" title="Send" type="button">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                         </button>
@@ -664,7 +665,7 @@ function openChatModelDropdown() {
     var btn = document.getElementById('chatModelBtn');
     var rect = btn.getBoundingClientRect();
     dd.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
-    dd.style.right = (window.innerWidth - rect.right) + 'px';
+    dd.style.left = rect.left + 'px';
     dd.classList.add('open');
 }
 function closeChatModelDropdown() {
