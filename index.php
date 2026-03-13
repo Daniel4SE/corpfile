@@ -119,6 +119,8 @@ $controllerMap = [
     'company_non_client' => ['file' => 'Companies.php', 'class' => 'Company_non_client'],
     'company_fee_list'   => ['file' => 'Companies.php', 'class' => 'Company_fee_list'],
     'settings_company_fee_list' => ['file' => 'Companies.php', 'class' => 'Company_fee_list'],
+    'new_registration'   => ['file' => 'Companies.php', 'class' => 'New_registration'],
+    'transfer_in'        => ['file' => 'Companies.php', 'class' => 'Transfer_in'],
     'company_pdf'        => ['file' => 'Companies.php', 'class' => 'Company_pdf'],
     'settings_view_company_pdf' => ['file' => 'Companies.php', 'class' => 'Company_pdf'],
     'company_type'       => ['file' => 'Settings.php', 'class' => 'Settings_master'],

@@ -27,8 +27,10 @@
                     <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-right">
-                    <li><a href="<?= base_url('add_company') ?>"><i class="fa fa-plus-circle" style="margin-right:8px; color:var(--cf-accent);"></i> New Registration</a></li>
-                    <li><a href="<?= base_url('add_company?type=transfer') ?>"><i class="fa fa-exchange" style="margin-right:8px; color:var(--cf-warning);"></i> Transfer In</a></li>
+                    <li><a href="<?= base_url('new_registration') ?>"><i class="fa fa-plus-circle" style="margin-right:8px; color:var(--cf-accent);"></i> New Registration</a></li>
+                    <li><a href="<?= base_url('transfer_in') ?>"><i class="fa fa-exchange" style="margin-right:8px; color:var(--cf-warning);"></i> Transfer In</a></li>
+                    <li class="divider"></li>
+                    <li><a href="<?= base_url('add_company') ?>"><i class="fa fa-pencil-square-o" style="margin-right:8px; color:var(--cf-text-muted);"></i> Manual Add (Legacy)</a></li>
                 </ul>
             </div>
         </div>
