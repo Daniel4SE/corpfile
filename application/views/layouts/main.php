@@ -662,6 +662,8 @@ function cfRenderMarkdown(text) {
 var renderMd = cfRenderMarkdown;
 
 /* ── AI Agent Drawer ──────────────────────────────────────── */
+var drawerConversationId = 0; /* Track conversation for multi-turn in drawer */
+
 function toggleAIDrawer() {
     var drawer = document.getElementById('aiDrawer');
     var overlay = document.getElementById('aiOverlay');
@@ -707,7 +709,7 @@ function sendAIMessage() {
     fetch(BASE_URL + 'ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message, source: 'drawer' }),
+        body: JSON.stringify({ message: message, source: 'drawer', conversation_id: drawerConversationId || 0 }),
         signal: abortCtrl.signal
     })
     .then(function(r) {
@@ -721,6 +723,11 @@ function sendAIMessage() {
     .then(function(data) {
         var typing = document.getElementById('aiTyping');
         if (typing) typing.remove();
+
+        /* Track conversation_id for multi-turn */
+        if (data.conversation_id) {
+            drawerConversationId = data.conversation_id;
+        }
 
         var aiDiv = document.createElement('div');
         aiDiv.className = 'ai-message assistant';

@@ -87,10 +87,15 @@
                 <span class="cf-agents-chat-agent-icon" id="chatAgentIcon"></span>
                 <span class="cf-agents-chat-agent-name" id="chatAgentName">Compliance Monitor</span>
             </div>
-            <button class="cf-agents-chat-back" id="chatBackBtn" title="Back to agents">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                Back
-            </button>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <a href="<?= base_url('chats') ?>" style="font-size:12px;color:var(--cf-accent);text-decoration:none;white-space:nowrap;" title="View all chat history">
+                    <i class="fa fa-history"></i> History
+                </a>
+                <button class="cf-agents-chat-back" id="chatBackBtn" title="Back to agents">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    Back
+                </button>
+            </div>
         </div>
         <div class="cf-agents-messages" id="agentsMessages"></div>
     </div>
@@ -643,6 +648,7 @@
     var selectedAgent = null;
     var isChatting = false;
     var isSending = false;
+    var agentConversationId = 0; /* Track conversation for multi-turn */
 
     /* ── DOM refs ── */
     var page = document.getElementById('agentsPage');
@@ -724,6 +730,7 @@
         isChatting = false;
         page.classList.remove('chatting');
         msgArea.innerHTML = '';
+        agentConversationId = 0; /* Reset for new conversation */
     }
 
     backBtn.addEventListener('click', exitChatMode);
@@ -757,6 +764,7 @@
                 e.stopPropagation();
                 selectCard(card);
                 closeDropdown();
+                agentConversationId = 0; /* New agent = new conversation */
                 if (isChatting) {
                     addMessage('assistant', 'Switched to **' + label + '**. How can I help?');
                 }
@@ -886,7 +894,12 @@
         fetch(BASE_URL + 'ai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: enrichedMsg, source: 'agent', agent: selectedAgent || 'general' }),
+            body: JSON.stringify({
+                message: enrichedMsg,
+                source: 'agent',
+                agent: selectedAgent || 'general',
+                conversation_id: agentConversationId || 0
+            }),
             signal: controller.signal
         })
         .then(function(r) {
@@ -901,6 +914,11 @@
             removeTyping();
             isSending = false;
             sendBtn.disabled = false;
+
+            /* Track conversation_id for multi-turn */
+            if (data.conversation_id) {
+                agentConversationId = data.conversation_id;
+            }
 
             if (data.ok && data.response_text) {
                 var row = addMessage('assistant', data.response_text);

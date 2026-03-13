@@ -358,9 +358,27 @@ function renderMarkdown(text) {
     return (typeof cfRenderMarkdown === 'function') ? cfRenderMarkdown(text) : text;
 }
 
-/* ── Sidebar: Load conversation list ── */
+/* ── Source/Agent label helpers ── */
+var agentLabels = {
+    compliance: 'Compliance', docgen: 'Doc Gen', kyc: 'KYC',
+    tax: 'IR8A/Tax', invoice: 'Invoice', payroll: 'Payroll'
+};
+function sourceLabel(conv) {
+    if (conv.source === 'agent' && conv.agent) {
+        return agentLabels[conv.agent] || conv.agent;
+    }
+    if (conv.source === 'drawer') return 'Quick';
+    return '';
+}
+function sourceBadgeColor(conv) {
+    if (conv.source === 'agent') return '#8B5CF6';
+    if (conv.source === 'drawer') return '#F59E0B';
+    return '';
+}
+
+/* ── Sidebar: Load conversation list (ALL sources) ── */
 function loadConversations() {
-    fetch(BASE + 'ai/conversations?source=chat')
+    fetch(BASE + 'ai/conversations')
     .then(function(r) { return r.json(); })
     .then(function(data) {
         var list = document.getElementById('chatList');
@@ -378,10 +396,22 @@ function loadConversations() {
             info.className = 'cf-chat-item-info';
             info.onclick = function() { loadConversation(conv.id); };
 
-            var title = document.createElement('div');
+            var titleRow = document.createElement('div');
+            titleRow.style.cssText = 'display:flex;align-items:center;gap:5px;';
+
+            var badge = sourceLabel(conv);
+            if (badge) {
+                var badgeEl = document.createElement('span');
+                badgeEl.style.cssText = 'font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;color:#fff;background:' + sourceBadgeColor(conv) + ';flex-shrink:0;';
+                badgeEl.textContent = badge;
+                titleRow.appendChild(badgeEl);
+            }
+
+            var title = document.createElement('span');
             title.className = 'cf-chat-item-title';
             title.textContent = conv.title || 'New Chat';
-            info.appendChild(title);
+            titleRow.appendChild(title);
+            info.appendChild(titleRow);
 
             var time = document.createElement('div');
             time.className = 'cf-chat-item-time';
@@ -408,6 +438,10 @@ function loadConversations() {
     });
 }
 
+/* ── Track which agent/source the current conversation belongs to ── */
+var currentConvAgent = null;
+var currentConvSource = 'chat';
+
 /* ── Load a specific conversation ── */
 function loadConversation(id) {
     currentConversationId = id;
@@ -432,6 +466,11 @@ function loadConversation(id) {
         if (!data.ok || !data.messages || data.messages.length === 0) {
             chatBody.innerHTML = '<div class="cf-chat-msg assistant"><span class="cf-msg-avatar"><i class="fa fa-bolt"></i></span> Conversation is empty. Send a message to begin.</div>';
             return;
+        }
+        // Remember agent/source for continued conversation
+        if (data.conversation) {
+            currentConvAgent = data.conversation.agent || null;
+            currentConvSource = data.conversation.source || 'chat';
         }
         data.messages.forEach(function(msg) {
             appendMessage(msg.role, msg.content);
@@ -493,6 +532,8 @@ function deleteConversation(id) {
 /* ── New Chat ── */
 function newChat() {
     currentConversationId = 0;
+    currentConvAgent = null;
+    currentConvSource = 'chat';
     var chatBody = document.getElementById('chatMessages');
     chatBody.innerHTML = '<div class="cf-chat-msg assistant"><span class="cf-msg-avatar"><i class="fa fa-bolt"></i></span> New conversation started. How can I help you?</div>';
 
@@ -541,14 +582,17 @@ function sendChatMessage() {
     var controller = new AbortController();
     var timeoutId = setTimeout(function() { controller.abort(); }, 180000);
 
+    var chatPayload = {
+        message: message,
+        conversation_id: currentConversationId || 0,
+        source: currentConvSource || 'chat'
+    };
+    if (currentConvAgent) chatPayload.agent = currentConvAgent;
+
     fetch(BASE + 'ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            message: message,
-            conversation_id: currentConversationId || 0,
-            source: 'chat'
-        }),
+        body: JSON.stringify(chatPayload),
         signal: controller.signal
     })
     .then(function(r) {
