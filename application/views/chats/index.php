@@ -563,12 +563,7 @@
         </div>
 
         <div class="cf-chat-chips" id="chatChips">
-            <button class="cf-chat-chip" onclick="sendChatChip('Generate annual invoice for current clients')">Generate Invoice</button>
             <button class="cf-chat-chip" onclick="sendChatChip('Fill IR8A form for selected employee')">Fill IR8A</button>
-            <button class="cf-chat-chip" onclick="sendChatChip('Run KYC screening check')">Run KYC</button>
-            <button class="cf-chat-chip" onclick="sendChatChip('Export company report summary')">Export Report</button>
-            <button class="cf-chat-chip" onclick="sendChatChip('Show upcoming compliance deadlines')">Check Compliance</button>
-            <button class="cf-chat-chip" onclick="sendChatChip('Calculate Singapore payroll with CPF')">SG Payroll</button>
         </div>
 
         <div class="cf-chat-messages" id="chatMessages">
