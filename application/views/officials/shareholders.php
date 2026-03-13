@@ -21,7 +21,6 @@
                         <tr>
                             <th style="width:40px;">S/No.</th>
                             <th>Name</th>
-                            <th>Type</th>
                             <th>Company</th>
                             <th>ID No.</th>
                             <th>Nationality</th>
@@ -39,16 +38,6 @@
                                 <?php if (!empty($s->email)): ?>
                                     <div style="font-size:11px; color:var(--cf-text-muted);"><?= htmlspecialchars($s->email) ?></div>
                                 <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php
-                                    $shType = $s->shareholder_type ?? 'Individual';
-                                    $shBg = $shType === 'Corporate' ? 'rgba(139,92,246,0.08)' : 'rgba(79,134,198,0.08)';
-                                    $shColor = $shType === 'Corporate' ? '#8b5cf6' : 'var(--cf-accent)';
-                                ?>
-                                <span style="display:inline-flex; align-items:center; padding:2px 10px; border-radius:10px; background:<?= $shBg ?>; color:<?= $shColor ?>; font-size:12px; font-weight:600;">
-                                    <?= htmlspecialchars($shType) ?>
-                                </span>
                             </td>
                             <td>
                                 <div style="font-weight:500;"><?= htmlspecialchars($s->company_name ?? '') ?></div>
@@ -88,7 +77,7 @@ $(document).ready(function() {
         $('#datatable-shareholders').DataTable({
             pageLength: 25,
             lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-            order: [[3, 'asc'], [1, 'asc']],
+            order: [[2, 'asc'], [1, 'asc']],
             language: {
                 search: '',
                 searchPlaceholder: 'Search shareholders...',
