@@ -253,8 +253,9 @@
     border-radius: 16px;
     background: #fff;
     box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-    overflow: hidden;
+    overflow: visible;
     transition: border-color 0.15s;
+    position: relative;
 }
 .cf-chat-input-box:focus-within {
     border-color: var(--cf-accent, #4f86c6);
@@ -273,6 +274,7 @@
     line-height: 1.5;
     min-height: 24px;
     max-height: 160px;
+    border-radius: 16px 16px 0 0;
     box-sizing: border-box;
 }
 .cf-chat-input-box textarea::placeholder { color: #94a3b8; }
@@ -340,16 +342,14 @@
 }
 .cf-model-dropdown {
     display: none;
-    position: absolute;
-    bottom: calc(100% + 8px);
-    right: 0;
+    position: fixed;
     min-width: 220px;
     background: #fff;
     border: 1.5px solid #e5e7eb;
     border-radius: 14px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.12);
     padding: 6px;
-    z-index: 100;
+    z-index: 9999;
     animation: cfModelDropIn 0.15s ease;
 }
 .cf-model-dropdown.open { display: block; }
@@ -581,7 +581,12 @@ function buildChatModelDropdown() {
 }
 function openChatModelDropdown() {
     buildChatModelDropdown();
-    document.getElementById('chatModelDropdown').classList.add('open');
+    var dd = document.getElementById('chatModelDropdown');
+    var btn = document.getElementById('chatModelBtn');
+    var rect = btn.getBoundingClientRect();
+    dd.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+    dd.style.right = (window.innerWidth - rect.right) + 'px';
+    dd.classList.add('open');
 }
 function closeChatModelDropdown() {
     document.getElementById('chatModelDropdown').classList.remove('open');
