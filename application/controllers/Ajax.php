@@ -580,150 +580,224 @@ class Ajax extends BaseController {
         $keyword = trim($this->input('q', ''));
         if (strlen($keyword) < 2) {
             $this->json(['success' => true, 'data' => [], 'total' => 0]);
+            return;
         }
         
         $results = [];
         $clientId = $this->getClientDbId();
+        
+        // Build fuzzy LIKE patterns: full keyword + each word individually
         $like = '%' . $keyword . '%';
+        // Also build per-word patterns for multi-word fuzzy matching
+        // e.g. "social labs" matches "SOCIALABS PTE LTD" via individual word LIKEs
+        $words = preg_split('/[\s\-_\.]+/', $keyword);
+        $words = array_filter($words, function($w) { return strlen($w) >= 2; });
+        
+        // Build a fuzzy condition: match if ALL words appear somewhere in the field
+        // This enables "soc lab" to match "SOCIALABS PTE. LTD."
+        function buildFuzzyCondition($columns, $words) {
+            if (empty($words)) return '0';
+            $conditions = [];
+            foreach ($words as $word) {
+                $colConditions = [];
+                foreach ($columns as $col) {
+                    $colConditions[] = "{$col} LIKE ?";
+                }
+                $conditions[] = '(' . implode(' OR ', $colConditions) . ')';
+            }
+            return '(' . implode(' AND ', $conditions) . ')';
+        }
+        
+        function buildFuzzyParams($columns, $words) {
+            $params = [];
+            foreach ($words as $word) {
+                $wordLike = '%' . $word . '%';
+                foreach ($columns as $col) {
+                    $params[] = $wordLike;
+                }
+            }
+            return $params;
+        }
         
         if ($this->db) {
-            // 1. Search Companies
-            $companies = $this->db->fetchAll(
-                "SELECT id, company_name, registration_number, entity_status, country
-                 FROM companies 
-                 WHERE client_id = ? AND (
-                     company_name LIKE ? OR 
-                     registration_number LIKE ? OR 
-                     acra_registration_number LIKE ? OR
-                     former_name LIKE ? OR
-                     trading_name LIKE ? OR
-                     email LIKE ? OR
-                     contact_person LIKE ?
-                 )
-                 ORDER BY company_name ASC
-                 LIMIT 8",
-                [$clientId, $like, $like, $like, $like, $like, $like, $like]
-            );
-            foreach ($companies as $c) {
-                $results[] = [
-                    'type'     => 'company',
-                    'icon'     => 'building',
-                    'title'    => $c->company_name,
-                    'subtitle' => trim(($c->registration_number ?: '') . ($c->country ? ' · ' . $c->country : '')),
-                    'badge'    => $c->entity_status ?: '',
-                    'url'      => base_url('view_company/' . $c->id),
-                ];
-            }
+            // 1. Search Companies — fuzzy across multiple fields
+            try {
+                $compCols = ['company_name', 'registration_number', 'acra_registration_number', 'former_name', 'trading_name'];
+                $fuzzyWhere = buildFuzzyCondition($compCols, $words);
+                $fuzzyParams = array_merge([$clientId], buildFuzzyParams($compCols, $words));
+                
+                $companies = $this->db->fetchAll(
+                    "SELECT id, company_name, registration_number, entity_status, country
+                     FROM companies 
+                     WHERE client_id = ? AND {$fuzzyWhere}
+                     ORDER BY 
+                        CASE WHEN company_name LIKE ? THEN 0 ELSE 1 END,
+                        company_name ASC
+                     LIMIT 10",
+                    array_merge($fuzzyParams, [$like])
+                );
+                foreach ($companies as $c) {
+                    $results[] = [
+                        'type'     => 'company',
+                        'icon'     => 'building',
+                        'title'    => $c->company_name,
+                        'subtitle' => trim(($c->registration_number ?: '') . ($c->country ? ' · ' . $c->country : '')),
+                        'badge'    => $c->entity_status ?: '',
+                        'url'      => base_url('view_company/' . $c->id),
+                    ];
+                }
+            } catch (\Exception $e) { /* skip on error */ }
             
             // 2. Search Members/Individuals
-            $members = $this->db->fetchAll(
-                "SELECT m.id, m.name, m.email, m.nationality, m.mobile_number
-                 FROM members m
-                 WHERE m.client_id = ? AND (
-                     m.name LIKE ? OR 
-                     m.email LIKE ? OR
-                     m.former_name LIKE ? OR
-                     m.mobile_number LIKE ?
-                 )
-                 ORDER BY m.name ASC
-                 LIMIT 8",
-                [$clientId, $like, $like, $like, $like]
-            );
-            foreach ($members as $m) {
-                $subtitle = [];
-                if ($m->email) $subtitle[] = $m->email;
-                if ($m->nationality) $subtitle[] = $m->nationality;
-                $results[] = [
-                    'type'     => 'member',
-                    'icon'     => 'user',
-                    'title'    => $m->name,
-                    'subtitle' => implode(' · ', $subtitle),
-                    'badge'    => '',
-                    'url'      => base_url('view_member/' . $m->id),
-                ];
-            }
+            try {
+                $memCols = ['m.name', 'm.email', 'm.former_name'];
+                $fuzzyWhere = buildFuzzyCondition($memCols, $words);
+                $fuzzyParams = array_merge([$clientId], buildFuzzyParams($memCols, $words));
+                
+                $members = $this->db->fetchAll(
+                    "SELECT m.id, m.name, m.email, m.nationality, m.mobile_number
+                     FROM members m
+                     WHERE m.client_id = ? AND {$fuzzyWhere}
+                     ORDER BY m.name ASC
+                     LIMIT 8",
+                    $fuzzyParams
+                );
+                foreach ($members as $m) {
+                    $subtitle = [];
+                    if ($m->email) $subtitle[] = $m->email;
+                    if ($m->nationality) $subtitle[] = $m->nationality;
+                    $results[] = [
+                        'type'     => 'member',
+                        'icon'     => 'user',
+                        'title'    => $m->name,
+                        'subtitle' => implode(' · ', $subtitle),
+                        'badge'    => '',
+                        'url'      => base_url('view_member/' . $m->id),
+                    ];
+                }
+            } catch (\Exception $e) { /* skip on error */ }
             
             // 3. Search Directors
-            $directors = $this->db->fetchAll(
-                "SELECT d.id, d.name, d.id_number, d.company_id, c.company_name
-                 FROM directors d
-                 LEFT JOIN companies c ON c.id = d.company_id
-                 WHERE c.client_id = ? AND (
-                     d.name LIKE ? OR 
-                     d.id_number LIKE ?
-                 )
-                 ORDER BY d.name ASC
-                 LIMIT 5",
-                [$clientId, $like, $like]
-            );
-            foreach ($directors as $d) {
-                $results[] = [
-                    'type'     => 'director',
-                    'icon'     => 'briefcase',
-                    'title'    => $d->name,
-                    'subtitle' => 'Director' . ($d->company_name ? ' · ' . $d->company_name : ''),
-                    'badge'    => '',
-                    'url'      => base_url('view_company/' . $d->company_id),
-                ];
-            }
+            try {
+                $dirCols = ['d.name', 'd.id_number'];
+                $fuzzyWhere = buildFuzzyCondition($dirCols, $words);
+                $fuzzyParams = array_merge([$clientId], buildFuzzyParams($dirCols, $words));
+                
+                $directors = $this->db->fetchAll(
+                    "SELECT d.id, d.name, d.id_number, d.status, d.company_id, c.company_name
+                     FROM directors d
+                     LEFT JOIN companies c ON c.id = d.company_id
+                     WHERE c.client_id = ? AND {$fuzzyWhere}
+                     ORDER BY d.name ASC
+                     LIMIT 8",
+                    $fuzzyParams
+                );
+                foreach ($directors as $d) {
+                    $results[] = [
+                        'type'     => 'director',
+                        'icon'     => 'briefcase',
+                        'title'    => $d->name,
+                        'subtitle' => 'Director' . ($d->company_name ? ' · ' . $d->company_name : ''),
+                        'badge'    => $d->status ?: '',
+                        'url'      => base_url('view_company/' . $d->company_id),
+                    ];
+                }
+            } catch (\Exception $e) { /* skip on error */ }
             
-            // 4. Search Documents
-            $documents = $this->db->fetchAll(
-                "SELECT d.id, d.document_name, d.entity_type, d.entity_id, d.file_type, d.created_at
-                 FROM documents d
-                 WHERE d.client_id = ? AND d.document_name LIKE ?
-                 ORDER BY d.created_at DESC
-                 LIMIT 5",
-                [$clientId, $like]
-            );
-            foreach ($documents as $doc) {
-                $docUrl = $doc->entity_type === 'company' 
-                    ? base_url('view_company/' . $doc->entity_id) 
-                    : base_url('view_member/' . $doc->entity_id);
-                $results[] = [
-                    'type'     => 'document',
-                    'icon'     => 'file',
-                    'title'    => $doc->document_name,
-                    'subtitle' => ucfirst($doc->entity_type) . ' document' . ($doc->created_at ? ' · ' . date('d M Y', strtotime($doc->created_at)) : ''),
-                    'badge'    => '',
-                    'url'      => $docUrl,
-                ];
-            }
+            // 4. Search Shareholders
+            try {
+                $shCols = ['s.name', 's.id_number'];
+                $fuzzyWhere = buildFuzzyCondition($shCols, $words);
+                $fuzzyParams = array_merge([$clientId], buildFuzzyParams($shCols, $words));
+                
+                $shareholders = $this->db->fetchAll(
+                    "SELECT s.id, s.name, s.shareholder_type, s.status, s.company_id, c.company_name
+                     FROM shareholders s
+                     LEFT JOIN companies c ON c.id = s.company_id
+                     WHERE c.client_id = ? AND {$fuzzyWhere}
+                     ORDER BY s.name ASC
+                     LIMIT 8",
+                    $fuzzyParams
+                );
+                foreach ($shareholders as $s) {
+                    $results[] = [
+                        'type'     => 'shareholder',
+                        'icon'     => 'users',
+                        'title'    => $s->name,
+                        'subtitle' => ($s->shareholder_type ?: 'Individual') . ' Shareholder' . ($s->company_name ? ' · ' . $s->company_name : ''),
+                        'badge'    => $s->status ?: '',
+                        'url'      => base_url('view_company/' . $s->company_id),
+                    ];
+                }
+            } catch (\Exception $e) { /* skip on error */ }
             
-            // 5. Search Events (AGM/AR etc.)
-            $events = $this->db->fetchAll(
-                "SELECT e.id, e.company_id, e.event_type, e.status, e.due_date, c.company_name
-                 FROM company_events e
-                 LEFT JOIN companies c ON c.id = e.company_id
-                 WHERE c.client_id = ? AND (
-                     e.event_type LIKE ? OR 
-                     c.company_name LIKE ?
-                 )
-                 ORDER BY e.due_date DESC
-                 LIMIT 5",
-                [$clientId, $like, $like]
-            );
-            foreach ($events as $ev) {
-                $results[] = [
-                    'type'     => 'event',
-                    'icon'     => 'calendar',
-                    'title'    => ($ev->event_type ?: 'Event') . ' — ' . ($ev->company_name ?: ''),
-                    'subtitle' => ($ev->status ?: '') . ($ev->due_date ? ' · Due ' . date('d M Y', strtotime($ev->due_date)) : ''),
-                    'badge'    => $ev->status ?: '',
-                    'url'      => base_url('view_company/' . $ev->company_id),
-                ];
-            }
+            // 5. Search Documents
+            try {
+                $docCols = ['d.document_name'];
+                $fuzzyWhere = buildFuzzyCondition($docCols, $words);
+                $fuzzyParams = array_merge([$clientId], buildFuzzyParams($docCols, $words));
+                
+                $documents = $this->db->fetchAll(
+                    "SELECT d.id, d.document_name, d.entity_type, d.entity_id, d.file_type, d.created_at,
+                            c.company_name
+                     FROM documents d
+                     LEFT JOIN companies c ON c.id = d.entity_id AND d.entity_type = 'company'
+                     WHERE d.client_id = ? AND {$fuzzyWhere}
+                     ORDER BY d.created_at DESC
+                     LIMIT 8",
+                    $fuzzyParams
+                );
+                foreach ($documents as $doc) {
+                    $docUrl = $doc->entity_type === 'company' 
+                        ? base_url('view_company/' . $doc->entity_id) 
+                        : ($doc->entity_type === 'member' ? base_url('view_member/' . $doc->entity_id) : base_url('alldocuments'));
+                    $results[] = [
+                        'type'     => 'document',
+                        'icon'     => 'file',
+                        'title'    => $doc->document_name,
+                        'subtitle' => ($doc->company_name ?: ucfirst($doc->entity_type ?: 'General')) . ($doc->created_at ? ' · ' . date('d M Y', strtotime($doc->created_at)) : ''),
+                        'badge'    => '',
+                        'url'      => $docUrl,
+                    ];
+                }
+            } catch (\Exception $e) { /* skip on error */ }
+            
+            // 6. Search Events (AGM/AR etc.) — wrapped in try/catch in case table doesn't exist
+            try {
+                $events = $this->db->fetchAll(
+                    "SELECT e.id, e.company_id, e.event_type, e.status, e.due_date, c.company_name
+                     FROM company_events e
+                     LEFT JOIN companies c ON c.id = e.company_id
+                     WHERE c.client_id = ? AND (
+                         e.event_type LIKE ? OR 
+                         c.company_name LIKE ?
+                     )
+                     ORDER BY e.due_date DESC
+                     LIMIT 5",
+                    [$clientId, $like, $like]
+                );
+                foreach ($events as $ev) {
+                    $results[] = [
+                        'type'     => 'event',
+                        'icon'     => 'calendar',
+                        'title'    => ($ev->event_type ?: 'Event') . ' — ' . ($ev->company_name ?: ''),
+                        'subtitle' => ($ev->status ?: '') . ($ev->due_date ? ' · Due ' . date('d M Y', strtotime($ev->due_date)) : ''),
+                        'badge'    => $ev->status ?: '',
+                        'url'      => base_url('view_company/' . $ev->company_id),
+                    ];
+                }
+            } catch (\Exception $e) { /* skip — table may not exist */ }
         }
         
         // Sort: companies first, then members, then the rest
-        $typeOrder = ['company' => 0, 'member' => 1, 'director' => 2, 'document' => 3, 'event' => 4];
+        $typeOrder = ['company' => 0, 'member' => 1, 'director' => 2, 'shareholder' => 3, 'document' => 4, 'event' => 5];
         usort($results, function($a, $b) use ($typeOrder) {
             return ($typeOrder[$a['type']] ?? 9) - ($typeOrder[$b['type']] ?? 9);
         });
         
         // Limit total results
         $total = count($results);
-        $results = array_slice($results, 0, 20);
+        $results = array_slice($results, 0, 25);
         
         $this->json(['success' => true, 'data' => $results, 'total' => $total]);
     }
