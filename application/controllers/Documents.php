@@ -8,10 +8,35 @@ class Documents extends BaseController {
     public function index() {
         $this->requireAuth();
         $documents = [];
+        $companyFolders = [];
+        $totalDocs = 0;
+        $recentDocs = [];
+        $categories = [];
+
         if ($this->db) {
             $clientId = $_SESSION['client_id'] ?? '';
             $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
             if ($client) {
+                // Get company folders with document counts
+                $companyFolders = $this->db->fetchAll(
+                    "SELECT c.id, c.company_name, c.registration_number, c.entity_status,
+                            COUNT(d.id) as doc_count,
+                            MAX(d.created_at) as latest_doc
+                     FROM companies c
+                     LEFT JOIN documents d ON d.entity_id = c.id AND d.entity_type = 'company'
+                     WHERE c.client_id = ?
+                     GROUP BY c.id
+                     ORDER BY c.company_name ASC",
+                    [$client->id]
+                );
+
+                // Count unlinked/general docs
+                $generalCount = $this->db->fetchOne(
+                    "SELECT COUNT(*) as cnt FROM documents WHERE client_id = ? AND (entity_id IS NULL OR entity_type != 'company')",
+                    [$client->id]
+                );
+
+                // Get all documents (flat)
                 $documents = $this->db->fetchAll(
                     "SELECT d.*, c.company_name as company, u.name as uploaded_by 
                      FROM documents d 
@@ -22,20 +47,37 @@ class Documents extends BaseController {
                      LIMIT 500",
                     [$client->id]
                 );
+
+                $totalDocs = count($documents);
+
                 // Add computed fields
                 foreach ($documents as &$doc) {
                     $doc->name = $doc->document_name ?? $doc->file_name ?? 'Untitled';
                     $doc->type = $doc->document_type ?? $doc->category_name ?? 'General';
-                    $ext = pathinfo($doc->file_name ?? '', PATHINFO_EXTENSION);
-                    $iconMap = ['pdf'=>'pdf-o','doc'=>'word-o','docx'=>'word-o','xls'=>'excel-o','xlsx'=>'excel-o','jpg'=>'image-o','png'=>'image-o'];
-                    $doc->icon = $iconMap[strtolower($ext)] ?? 'o';
+                    $ext = strtolower(pathinfo($doc->document_name ?? $doc->file_name ?? '', PATHINFO_EXTENSION));
+                    $iconMap = ['pdf'=>'pdf-o','doc'=>'word-o','docx'=>'word-o','xls'=>'excel-o','xlsx'=>'excel-o','jpg'=>'image-o','jpeg'=>'image-o','png'=>'image-o','gif'=>'image-o','txt'=>'text-o','csv'=>'excel-o','zip'=>'archive-o','rar'=>'archive-o'];
+                    $doc->icon = $iconMap[$ext] ?? 'o';
                     $doc->size = !empty($doc->file_size) ? $this->formatBytes($doc->file_size) : '';
                 }
+
+                // Recent docs (last 10)
+                $recentDocs = array_slice($documents, 0, 10);
+
+                // Categories
+                $categories = $this->db->fetchAll(
+                    "SELECT * FROM document_categories WHERE client_id = ? ORDER BY category_name",
+                    [$client->id]
+                );
             }
         }
         $data = [
             'page_title' => 'Document Management',
             'documents' => $documents,
+            'company_folders' => $companyFolders,
+            'total_docs' => $totalDocs,
+            'general_count' => (int) ($generalCount->cnt ?? 0),
+            'recent_docs' => $recentDocs,
+            'categories' => $categories,
         ];
         $this->loadLayout('documents/index', $data);
     }
