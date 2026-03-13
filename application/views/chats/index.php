@@ -310,6 +310,63 @@
     background: #f1f5f9;
     color: var(--cf-text, #1e293b);
 }
+/* Plus Menu */
+.cf-plus-menu-wrap {
+    position: relative;
+}
+.cf-plus-dropdown {
+    display: none;
+    position: fixed;
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    padding: 6px;
+    z-index: 9999;
+    animation: cfPlusDropIn 0.15s ease;
+}
+.cf-plus-dropdown.open { display: block; }
+@keyframes cfPlusDropIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.cf-plus-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.12s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cf-text, #1e293b);
+    font-family: var(--cf-font, inherit) !important;
+}
+.cf-plus-dropdown-item:hover {
+    background: #f5f7fa;
+}
+.cf-plus-dropdown-item svg {
+    color: #64748b;
+    flex-shrink: 0;
+}
+.cf-plus-dropdown-item:hover svg {
+    color: var(--cf-text, #1e293b);
+}
+.cf-plus-item-badge {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cf-accent, #4f86c6);
+    background: #eef2ff;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
 /* Model Selector */
 .cf-model-selector-wrap {
     position: relative;
@@ -519,15 +576,33 @@
                 <textarea id="chatInput" rows="1" placeholder="Ask CorpFile AI anything..." autocomplete="off"></textarea>
                 <div class="cf-chat-input-toolbar">
                     <div class="cf-chat-toolbar-left">
-                        <button class="cf-chat-attach-btn" title="Attach file" type="button">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        </button>
+                        <div class="cf-plus-menu-wrap" id="chatPlusWrap">
+                            <button class="cf-chat-attach-btn" id="chatPlusBtn" title="More options" type="button">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            </button>
+                            <div class="cf-plus-dropdown" id="chatPlusDropdown">
+                                <button class="cf-plus-dropdown-item" type="button" onclick="document.getElementById('chatFileInput').click(); closeChatPlusMenu();">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                    <span>Files & Images</span>
+                                </button>
+                                <button class="cf-plus-dropdown-item" type="button" onclick="insertTemplate(); closeChatPlusMenu();">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                    <span>Templates</span>
+                                </button>
+                                <button class="cf-plus-dropdown-item" type="button" onclick="toggleWebSearch(); closeChatPlusMenu();">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                    <span>Web Search</span>
+                                    <span class="cf-plus-item-badge" id="chatWebSearchBadge">Auto</span>
+                                </button>
+                            </div>
+                        </div>
+                        <input type="file" id="chatFileInput" style="display:none" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
                     </div>
                     <div class="cf-chat-toolbar-right">
                         <div class="cf-model-selector-wrap" id="chatModelWrap">
                             <button class="cf-model-selector-btn" id="chatModelBtn" type="button" title="Select model">
                                 <span class="cf-model-dot" id="chatModelDot" style="background:#10b981;"></span>
-                                <span id="chatModelLabel">Sonnet 4</span>
+                                <span id="chatModelLabel">Sonnet 4.6</span>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
                             <div class="cf-model-dropdown" id="chatModelDropdown"></div>
@@ -549,9 +624,9 @@ var isSending = false;
 
 /* ── Model Selector ── */
 var cfModels = [
-    { id: 'claude-sonnet-4-20250514', label: 'Sonnet 4', desc: 'Fast & capable', color: '#10b981' },
-    { id: 'claude-opus-4-20250514', label: 'Opus 4', desc: 'Most intelligent', color: '#8b5cf6' },
-    { id: 'claude-haiku-3-5-20241022', label: 'Haiku 3.5', desc: 'Fastest responses', color: '#f59e0b' }
+    { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', desc: 'Fast & intelligent', color: '#10b981' },
+    { id: 'claude-opus-4-6', label: 'Opus 4.6', desc: 'Most intelligent', color: '#8b5cf6' },
+    { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', desc: 'Fastest responses', color: '#f59e0b' }
 ];
 var selectedModelIndex = 0;
 
@@ -596,7 +671,70 @@ document.getElementById('chatModelBtn').addEventListener('click', function(e) {
     var dd = document.getElementById('chatModelDropdown');
     if (dd.classList.contains('open')) { closeChatModelDropdown(); } else { openChatModelDropdown(); }
 });
-document.addEventListener('click', function() { closeChatModelDropdown(); });
+document.addEventListener('click', function() { closeChatModelDropdown(); closeChatPlusMenu(); });
+
+/* ── Plus Menu ── */
+function openChatPlusMenu() {
+    var dd = document.getElementById('chatPlusDropdown');
+    var btn = document.getElementById('chatPlusBtn');
+    var rect = btn.getBoundingClientRect();
+    dd.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+    dd.style.left = rect.left + 'px';
+    dd.classList.add('open');
+}
+function closeChatPlusMenu() {
+    document.getElementById('chatPlusDropdown').classList.remove('open');
+}
+document.getElementById('chatPlusBtn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    var dd = document.getElementById('chatPlusDropdown');
+    if (dd.classList.contains('open')) { closeChatPlusMenu(); } else { openChatPlusMenu(); }
+});
+
+/* File upload handler */
+document.getElementById('chatFileInput').addEventListener('change', function(e) {
+    var files = e.target.files;
+    if (!files || !files.length) return;
+    var names = [];
+    for (var i = 0; i < files.length; i++) names.push(files[i].name);
+    var ta = document.getElementById('chatInput');
+    var prefix = ta.value ? ta.value + '\n' : '';
+    ta.value = prefix + '[Attached: ' + names.join(', ') + ']';
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
+    ta.focus();
+    e.target.value = ''; /* reset for re-upload */
+});
+
+/* Templates popup */
+function insertTemplate() {
+    var templates = [
+        'Generate a board resolution for change of registered address',
+        'Draft annual return filing summary for all active companies',
+        'Create a KYC due diligence report for a new client',
+        'Prepare IR8A tax filing data for all employees',
+        'Generate monthly invoice for corporate secretary services',
+        'Draft director appointment resolution'
+    ];
+    var choice = prompt('Choose a template number:\\n' + templates.map(function(t, i) { return (i+1) + '. ' + t; }).join('\\n'));
+    if (choice && templates[parseInt(choice) - 1]) {
+        var ta = document.getElementById('chatInput');
+        ta.value = templates[parseInt(choice) - 1];
+        ta.style.height = 'auto';
+        ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
+        ta.focus();
+    }
+}
+
+/* Web Search toggle */
+var chatWebSearchEnabled = true;
+function toggleWebSearch() {
+    chatWebSearchEnabled = !chatWebSearchEnabled;
+    var badge = document.getElementById('chatWebSearchBadge');
+    badge.textContent = chatWebSearchEnabled ? 'Auto' : 'Off';
+    badge.style.background = chatWebSearchEnabled ? '#eef2ff' : '#f1f5f9';
+    badge.style.color = chatWebSearchEnabled ? 'var(--cf-accent, #4f86c6)' : '#94a3b8';
+}
 
 /* ── Textarea auto-grow ── */
 (function() {

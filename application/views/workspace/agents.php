@@ -127,9 +127,27 @@
             <textarea class="cf-agents-chatinput" id="agentChatInput" rows="1" placeholder="Ask me anything..." autocomplete="off"></textarea>
             <div class="cf-agents-chatbar-toolbar">
                 <div class="cf-agents-toolbar-left">
-                    <button class="cf-chat-attach-btn" title="Attach file" type="button">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    </button>
+                    <div class="cf-plus-menu-wrap" id="agentPlusWrap">
+                        <button class="cf-chat-attach-btn" id="agentPlusBtn" title="More options" type="button">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                        <div class="cf-plus-dropdown" id="agentPlusDropdown">
+                            <button class="cf-plus-dropdown-item" type="button" onclick="document.getElementById('agentFileInput').click(); closeAgentPlusMenu();">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                <span>Files & Images</span>
+                            </button>
+                            <button class="cf-plus-dropdown-item" type="button" onclick="insertAgentTemplate(); closeAgentPlusMenu();">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                <span>Templates</span>
+                            </button>
+                            <button class="cf-plus-dropdown-item" type="button" onclick="toggleAgentWebSearch(); closeAgentPlusMenu();">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                <span>Web Search</span>
+                                <span class="cf-plus-item-badge" id="agentWebSearchBadge">Auto</span>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="file" id="agentFileInput" style="display:none" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
                 </div>
                 <div class="cf-agents-toolbar-right">
                     <div class="cf-agent-selector-wrap" id="agentSelectorWrap">
@@ -143,7 +161,7 @@
                     <div class="cf-model-selector-wrap" id="agentModelWrap">
                         <button class="cf-model-selector-btn" id="agentModelBtn" type="button" title="Select model">
                             <span class="cf-model-dot" id="agentModelDot" style="background:#10b981;"></span>
-                            <span id="agentModelLabel">Sonnet 4</span>
+                            <span id="agentModelLabel">Sonnet 4.6</span>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
                         <div class="cf-model-dropdown" id="agentModelDropdown"></div>
@@ -700,6 +718,56 @@
     background: #f1f5f9;
     color: var(--cf-text, #1e293b);
 }
+/* Plus Menu */
+.cf-plus-menu-wrap {
+    position: relative;
+}
+.cf-plus-dropdown {
+    display: none;
+    position: fixed;
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    padding: 6px;
+    z-index: 9999;
+    animation: cfPlusDropIn 0.15s ease;
+}
+.cf-plus-dropdown.open { display: block; }
+@keyframes cfPlusDropIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.cf-plus-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.12s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cf-text, #1e293b);
+    font-family: var(--cf-font, inherit) !important;
+}
+.cf-plus-dropdown-item:hover { background: #f5f7fa; }
+.cf-plus-dropdown-item svg { color: #64748b; flex-shrink: 0; }
+.cf-plus-dropdown-item:hover svg { color: var(--cf-text, #1e293b); }
+.cf-plus-item-badge {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cf-accent, #4f86c6);
+    background: #eef2ff;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
 /* Model Selector (shared between pages) */
 .cf-model-selector-wrap {
     position: relative;
@@ -946,9 +1014,9 @@
 
     /* ── Model selector state ── */
     var cfAgentModels = [
-        { id: 'claude-sonnet-4-20250514', label: 'Sonnet 4', desc: 'Fast & capable', color: '#10b981' },
-        { id: 'claude-opus-4-20250514', label: 'Opus 4', desc: 'Most intelligent', color: '#8b5cf6' },
-        { id: 'claude-haiku-3-5-20241022', label: 'Haiku 3.5', desc: 'Fastest responses', color: '#f59e0b' }
+        { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', desc: 'Fast & intelligent', color: '#10b981' },
+        { id: 'claude-opus-4-6', label: 'Opus 4.6', desc: 'Most intelligent', color: '#8b5cf6' },
+        { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', desc: 'Fastest responses', color: '#f59e0b' }
     ];
     var agentSelectedModelIndex = 0;
 
@@ -1152,10 +1220,72 @@
         toggleDropdown();
     });
 
+    /* ── Plus Menu ── */
+    function openAgentPlusMenu() {
+        var dd = document.getElementById('agentPlusDropdown');
+        var btn = document.getElementById('agentPlusBtn');
+        var rect = btn.getBoundingClientRect();
+        dd.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+        dd.style.left = rect.left + 'px';
+        dd.classList.add('open');
+    }
+    function closeAgentPlusMenu() {
+        document.getElementById('agentPlusDropdown').classList.remove('open');
+    }
+    document.getElementById('agentPlusBtn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dd = document.getElementById('agentPlusDropdown');
+        if (dd.classList.contains('open')) { closeAgentPlusMenu(); } else { openAgentPlusMenu(); }
+    });
+
+    /* File upload handler */
+    document.getElementById('agentFileInput').addEventListener('change', function(e) {
+        var files = e.target.files;
+        if (!files || !files.length) return;
+        var names = [];
+        for (var i = 0; i < files.length; i++) names.push(files[i].name);
+        var prefix = chatInput.value ? chatInput.value + '\n' : '';
+        chatInput.value = prefix + '[Attached: ' + names.join(', ') + ']';
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
+        chatInput.focus();
+        e.target.value = '';
+    });
+
+    /* Templates popup */
+    window.insertAgentTemplate = function() {
+        var templates = [
+            'Run compliance check for all active companies',
+            'Generate board resolution for director change',
+            'Screen new client for KYC due diligence',
+            'Prepare IR8A filing data for current year',
+            'Generate monthly invoice batch',
+            'Calculate CPF contributions for all employees'
+        ];
+        var choice = prompt('Choose a template number:\n' + templates.map(function(t, i) { return (i+1) + '. ' + t; }).join('\n'));
+        if (choice && templates[parseInt(choice) - 1]) {
+            chatInput.value = templates[parseInt(choice) - 1];
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
+            chatInput.focus();
+        }
+    };
+
+    /* Web Search toggle */
+    var agentWebSearchEnabled = true;
+    window.toggleAgentWebSearch = function() {
+        agentWebSearchEnabled = !agentWebSearchEnabled;
+        var badge = document.getElementById('agentWebSearchBadge');
+        badge.textContent = agentWebSearchEnabled ? 'Auto' : 'Off';
+        badge.style.background = agentWebSearchEnabled ? '#eef2ff' : '#f1f5f9';
+        badge.style.color = agentWebSearchEnabled ? 'var(--cf-accent, #4f86c6)' : '#94a3b8';
+    };
+
     /* Close dropdowns on outside click */
     document.addEventListener('click', function() {
         closeDropdown();
         closeAgentModelDropdown();
+        closeAgentPlusMenu();
     });
 
     /* ── Add message to chat ── */
