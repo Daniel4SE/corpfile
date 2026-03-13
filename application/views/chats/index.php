@@ -29,7 +29,7 @@
     display: none;
 }
 .cf-chat-sidebar.collapsed .cf-sidebar-toggle {
-    transform: rotate(180deg);
+    transform: none;
 }
 .cf-chat-sidebar-header {
     padding: 16px;
@@ -69,7 +69,8 @@
     color: var(--cf-text);
 }
 .cf-chat-new-btn {
-    width: 30px; height: 30px;
+    height: 28px;
+    padding: 0 12px;
     border-radius: 6px;
     border: 1px solid var(--cf-border);
     background: var(--cf-white);
@@ -78,8 +79,11 @@
     justify-content: center;
     cursor: pointer;
     color: var(--cf-text-secondary);
-    font-size: 14px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--cf-font) !important;
     transition: var(--cf-transition-fast);
+    white-space: nowrap;
 }
 .cf-chat-new-btn:hover {
     background: var(--cf-primary);
@@ -533,12 +537,12 @@
     <!-- Left: Conversation History Sidebar -->
     <div class="cf-chat-sidebar" id="chatSidebar">
         <div class="cf-chat-sidebar-header">
-            <button class="cf-sidebar-toggle" id="sidebarToggle" onclick="toggleChatSidebar()" title="Collapse sidebar">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            <button class="cf-sidebar-toggle" id="sidebarToggle" onclick="toggleChatSidebar()" title="Toggle conversations">
+                <i class="fa fa-minus" id="sidebarToggleIcon"></i>
             </button>
             <h4>Conversations</h4>
             <button class="cf-chat-new-btn" onclick="newChat()" title="New Chat">
-                <i class="fa fa-plus"></i>
+                New
             </button>
         </div>
         <div class="cf-chat-list" id="chatList">
@@ -1120,6 +1124,12 @@ function formatTime(dateStr) {
 function toggleChatSidebar() {
     var sidebar = document.getElementById('chatSidebar');
     sidebar.classList.toggle('collapsed');
+    var icon = document.getElementById('sidebarToggleIcon');
+    if (sidebar.classList.contains('collapsed')) {
+        icon.className = 'fa fa-plus';
+    } else {
+        icon.className = 'fa fa-minus';
+    }
     // Remember state
     try { localStorage.setItem('cf_chat_sidebar', sidebar.classList.contains('collapsed') ? '1' : '0'); } catch(e){}
 }
@@ -1128,6 +1138,7 @@ function toggleChatSidebar() {
     try {
         if (localStorage.getItem('cf_chat_sidebar') === '1') {
             document.getElementById('chatSidebar').classList.add('collapsed');
+            document.getElementById('sidebarToggleIcon').className = 'fa fa-plus';
         }
     } catch(e){}
 })();
