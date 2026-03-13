@@ -160,7 +160,7 @@
                             </li>
 
                             <!-- 4. Documents -->
-                            <li class="<?= in_array($current_url, ['alldocuments','company_file','esign']) ? 'active' : '' ?>">
+                            <li class="<?= in_array($current_url, ['alldocuments','document_generator','esign']) ? 'active' : '' ?>">
                                 <a>
                                     <span class="cf-nav-icon"><?= cf_icon('documents') ?></span>
                                     <span>Documents</span>
@@ -170,8 +170,8 @@
                                     <li class="<?= ($current_url == 'alldocuments') ? 'active' : '' ?>">
                                         <a href="<?= base_url('alldocuments') ?>">All Documents</a>
                                     </li>
-                                    <li class="<?= ($current_url == 'company_file') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('company_file') ?>">Generate Templates</a>
+                                    <li class="<?= ($current_url == 'document_generator') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('document_generator') ?>">Document Generator</a>
                                     </li>
                                     <li class="<?= ($current_url == 'esign') ? 'active' : '' ?>">
                                         <a href="<?= base_url('esign/manage') ?>">eSign Documents</a>
@@ -232,14 +232,6 @@
                                 <a href="<?= base_url('agents') ?>">
                                     <span class="cf-nav-icon"><?= cf_icon('agents') ?></span>
                                     <span>Agents</span>
-                                </a>
-                            </li>
-
-                            <!-- 11. Reports -->
-                            <li class="<?= ($current_url == 'report_module') ? 'active' : '' ?>">
-                                <a href="<?= base_url('report_module/default_report') ?>">
-                                    <span class="cf-nav-icon"><?= cf_icon('reports') ?></span>
-                                    <span>Reports</span>
                                 </a>
                             </li>
 

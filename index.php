@@ -228,6 +228,9 @@ $controllerMap = [
     'discrepancy_company' => ['file' => 'Shares.php', 'class' => 'Discrepancy_company'],
     'partial_full_paid_discrepancy_company' => ['file' => 'Shares.php', 'class' => 'Partial_full_paid_discrepancy_company'],
 
+    // ─── Document Generator ─────────────────────────────────────
+    'document_generator' => ['file' => 'DocumentGenerator.php', 'class' => 'DocumentGenerator'],
+
     // ─── Reports ─────────────────────────────────────────────────
     'reports'       => ['file' => 'Reports.php', 'class' => 'Reports'],
     'css_reports'   => ['file' => 'Reports.php', 'class' => 'Css_reports'],
