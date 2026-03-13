@@ -95,6 +95,30 @@ CREATE TABLE IF NOT EXISTS `chat_messages` (
   INDEX `idx_conversation` (`conversation_id`)
 ) ENGINE=InnoDB;
 SQL
+
+  # Change requests table (for CorpSec task tracking)
+  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
+CREATE TABLE IF NOT EXISTS `change_requests` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `client_id` INT UNSIGNED NOT NULL,
+  `company_id` INT UNSIGNED NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `change_type` VARCHAR(100) NOT NULL COMMENT 'e.g. change_address, appoint_director, resign_director, change_name, etc.',
+  `title` VARCHAR(255) NOT NULL,
+  `description` TEXT,
+  `form_data` JSON COMMENT 'structured form fields submitted by user',
+  `status` ENUM('draft','pending','in_progress','completed','rejected','cancelled') DEFAULT 'pending',
+  `priority` ENUM('low','normal','high','urgent') DEFAULT 'normal',
+  `assigned_to` INT UNSIGNED DEFAULT NULL,
+  `resolved_at` DATETIME DEFAULT NULL,
+  `notes` TEXT,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_company` (`company_id`),
+  INDEX `idx_client_status` (`client_id`, `status`),
+  INDEX `idx_type` (`change_type`)
+) ENGINE=InnoDB;
+SQL
   echo "DB migrations done."
 
   # Run Teamwork.sg data import (one-time, checks if enough companies have incorp dates)

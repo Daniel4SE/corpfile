@@ -55,63 +55,171 @@ class Registration extends Workspace_section {
     public function index() {
         $this->requireAuth();
 
-        $data = [
-            'page_title' => 'Registration',
-            'cases' => [],
-            'recent_templates' => [],
-            'metrics' => [
-                'pending' => 0,
-                'with_docs' => 0,
-                'unassigned' => 0,
-                'templates' => 0,
-            ],
-        ];
+        $data = ['page_title' => 'Registration', 'companies' => []];
 
         $client = $this->getClient();
-        if ($client) {
-            $data['cases'] = $this->db->fetchAll(
-                "SELECT c.id, c.company_name, c.registration_number, c.acra_registration_number, c.country,
-                        c.created_at, c.updated_at, c.internal_css_status, c.incorporation_date,
-                        COALESCE(
-                            (SELECT GROUP_CONCAT(u.name SEPARATOR ', ')
-                             FROM company_pic cp
-                             JOIN users u ON u.id = cp.user_id
-                             WHERE cp.company_id = c.id),
-                            NULLIF(c.contact_person, ''),
-                            'Unassigned'
-                        ) AS pic_name,
-                        (SELECT COUNT(*) FROM documents d WHERE d.entity_type = 'company' AND d.entity_id = c.id) AS documents_count
-                 FROM companies c
-                 WHERE c.client_id = ?
-                   AND (c.internal_css_status = 'Pre-Incorporation' OR c.incorporation_date IS NULL)
-                 ORDER BY COALESCE(c.updated_at, c.created_at) DESC
-                 LIMIT 40",
+        if ($client && $this->db) {
+            $data['companies'] = $this->db->fetchAll(
+                "SELECT id, company_name, registration_number, acra_registration_number
+                 FROM companies WHERE client_id = ? ORDER BY company_name ASC",
                 [$client->id]
             );
-
-            $data['recent_templates'] = $this->db->fetchAll(
-                "SELECT id, template_name, created_at
-                 FROM form_templates
-                 WHERE client_id = ?
-                 ORDER BY created_at DESC, template_name ASC
-                 LIMIT 8",
-                [$client->id]
-            );
-
-            $data['metrics']['pending'] = count($data['cases']);
-            $data['metrics']['templates'] = (int) $this->db->count('form_templates', 'client_id = ?', [$client->id]);
-
-            foreach ($data['cases'] as $case) {
-                if ((int) ($case->documents_count ?? 0) > 0) {
-                    $data['metrics']['with_docs']++;
-                }
-                if (($case->pic_name ?? '') === 'Unassigned') {
-                    $data['metrics']['unassigned']++;
-                }
-            }
         }
 
         $this->loadLayout('workspace/registration', $data);
+    }
+
+    /**
+     * GET /registration/companyData?id=123 — Load all tab data for a company.
+     */
+    public function companyData() {
+        $this->requireAuth();
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id <= 0 || !$this->db) {
+            $this->json(['ok' => false, 'error' => 'Invalid company ID']);
+            return;
+        }
+
+        $client = $this->getClient();
+        if (!$client) { $this->json(['ok' => false, 'error' => 'No client']); return; }
+
+        // Verify company belongs to client
+        $company = $this->db->fetchOne(
+            "SELECT * FROM companies WHERE id = ? AND client_id = ?", [$id, $client->id]
+        );
+        if (!$company) { $this->json(['ok' => false, 'error' => 'Company not found']); return; }
+
+        // Basic profile
+        $addresses = $this->db->fetchAll(
+            "SELECT * FROM addresses WHERE entity_type = 'company' AND entity_id = ?", [$id]
+        );
+
+        // Capital structure
+        $shares = [];
+        try {
+            $shares = $this->db->fetchAll(
+                "SELECT cs.*, s.name as shareholder_name
+                 FROM company_shares cs
+                 LEFT JOIN shareholders s ON s.id = cs.shareholder_id
+                 WHERE cs.company_id = ?
+                 ORDER BY cs.transaction_date DESC, cs.id DESC", [$id]
+            );
+        } catch (\Exception $e) {}
+
+        // Stakeholders
+        $directors = $this->db->fetchAll("SELECT * FROM directors WHERE company_id = ? ORDER BY status DESC, name ASC", [$id]);
+        $shareholders = $this->db->fetchAll("SELECT * FROM shareholders WHERE company_id = ? ORDER BY status DESC, name ASC", [$id]);
+        $secretaries = [];
+        try { $secretaries = $this->db->fetchAll("SELECT * FROM secretaries WHERE company_id = ? ORDER BY status DESC, name ASC", [$id]); } catch (\Exception $e) {}
+        $auditors = [];
+        try { $auditors = $this->db->fetchAll("SELECT * FROM auditors WHERE company_id = ? ORDER BY status DESC, name ASC", [$id]); } catch (\Exception $e) {}
+
+        // Annual compliance (company_events + due_dates)
+        $events = [];
+        try {
+            $events = $this->db->fetchAll(
+                "SELECT * FROM company_events WHERE company_id = ? ORDER BY fye_year DESC, id DESC LIMIT 20", [$id]
+            );
+        } catch (\Exception $e) {}
+
+        $dueDates = [];
+        try {
+            $dueDates = $this->db->fetchAll(
+                "SELECT * FROM due_dates WHERE company_id = ? ORDER BY due_date DESC LIMIT 20", [$id]
+            );
+        } catch (\Exception $e) {}
+
+        // Change history
+        $changeRequests = [];
+        try {
+            $changeRequests = $this->db->fetchAll(
+                "SELECT cr.*, u.name as requested_by_name
+                 FROM change_requests cr
+                 LEFT JOIN users u ON u.id = cr.user_id
+                 WHERE cr.company_id = ?
+                 ORDER BY cr.created_at DESC LIMIT 50", [$id]
+            );
+        } catch (\Exception $e) {}
+
+        // User logs for this company
+        $logs = [];
+        try {
+            $logs = $this->db->fetchAll(
+                "SELECT ul.*, u.name as user_name
+                 FROM user_logs ul
+                 LEFT JOIN users u ON u.id = ul.user_id
+                 WHERE ul.record_id = ? AND ul.module IN ('companies','directors','shareholders','secretaries','auditors','addresses')
+                 ORDER BY ul.created_at DESC LIMIT 30", [$id]
+            );
+        } catch (\Exception $e) {}
+
+        $this->json([
+            'ok' => true,
+            'company' => $company,
+            'addresses' => $addresses,
+            'shares' => $shares,
+            'directors' => $directors,
+            'shareholders' => $shareholders,
+            'secretaries' => $secretaries,
+            'auditors' => $auditors,
+            'events' => $events,
+            'due_dates' => $dueDates,
+            'change_requests' => $changeRequests,
+            'logs' => $logs,
+        ]);
+    }
+
+    /**
+     * POST /registration/submitChange — Submit a CorpSec change request.
+     */
+    public function submitChange() {
+        $this->requireAuth();
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->json(['ok' => false, 'error' => 'Method not allowed'], 405);
+            return;
+        }
+
+        $payload = json_decode(file_get_contents('php://input'), true) ?: [];
+        $companyId  = (int) ($payload['company_id'] ?? 0);
+        $changeType = trim($payload['change_type'] ?? '');
+        $title      = trim($payload['title'] ?? '');
+        $formData   = $payload['form_data'] ?? [];
+
+        if ($companyId <= 0 || !$changeType || !$title) {
+            $this->json(['ok' => false, 'error' => 'Missing required fields']);
+            return;
+        }
+
+        $client = $this->getClient();
+        if (!$client || !$this->db) {
+            $this->json(['ok' => false, 'error' => 'Unauthorized']);
+            return;
+        }
+
+        // Verify company belongs to client
+        $company = $this->db->fetchOne("SELECT id FROM companies WHERE id = ? AND client_id = ?", [$companyId, $client->id]);
+        if (!$company) {
+            $this->json(['ok' => false, 'error' => 'Company not found']);
+            return;
+        }
+
+        try {
+            $id = $this->db->insert('change_requests', [
+                'client_id'   => $client->id,
+                'company_id'  => $companyId,
+                'user_id'     => $this->getUserId(),
+                'change_type' => $changeType,
+                'title'       => $title,
+                'description' => $payload['description'] ?? null,
+                'form_data'   => json_encode($formData),
+                'status'      => 'pending',
+                'priority'    => $payload['priority'] ?? 'normal',
+            ]);
+
+            $this->json(['ok' => true, 'id' => (int) $id, 'message' => 'Change request submitted successfully']);
+        } catch (\Exception $e) {
+            $this->json(['ok' => false, 'error' => 'Failed to submit: ' . $e->getMessage()]);
+        }
     }
 }
 
