@@ -91,9 +91,12 @@ class AiBridge {
         // System prompt
         $systemPrompt = $options['system_prompt'] ?? $this->systemPrompt;
 
+        // Allow per-request model override
+        $model = $options['model'] ?? $this->model;
+
         // Build API request body
         $body = [
-            'model'      => $this->model,
+            'model'      => $model,
             'max_tokens' => $maxTokens,
             'temperature'=> $temperature,
             'system'     => $systemPrompt,

@@ -67,6 +67,7 @@ class Ai extends BaseController {
         $conversationId = (int) ($payload['conversation_id'] ?? 0);
         $source = $payload['source'] ?? 'chat';
         $agent  = $payload['agent']  ?? null;
+        $model  = $payload['model']  ?? null; // Per-request model override (e.g. claude-opus-4-20250514)
         $userId = (int) ($_SESSION['user_id'] ?? 1);
 
         // Resolve client DB id
@@ -138,6 +139,10 @@ class Ai extends BaseController {
             'temperature' => 0.3,
             'timeout'     => 180,
         ];
+        // Pass per-request model override if provided
+        if ($model) {
+            $opts['model'] = $model;
+        }
         if (count($history) > 1) {
             // Replace the last user message with enriched version (with context)
             $history[count($history) - 1]['content'] = $enrichedMessage;

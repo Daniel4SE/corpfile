@@ -243,44 +243,176 @@
     vertical-align: middle;
 }
 
-/* Input area */
+/* Perplexity-style Input Area */
 .cf-chat-input-area {
-    padding: 16px 20px;
-    border-top: 1px solid var(--cf-border);
-    display: flex;
-    gap: 10px;
+    padding: 12px 20px 16px;
     flex-shrink: 0;
 }
-.cf-chat-input-area input {
-    flex: 1;
-    border: 1px solid var(--cf-border);
-    border-radius: var(--cf-radius-sm);
-    padding: 10px 14px;
-    font-size: 13px;
-    outline: none;
-    font-family: var(--cf-font) !important;
-    color: var(--cf-text);
+.cf-chat-input-box {
+    border: 1.5px solid var(--cf-border, #e5e7eb);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    overflow: hidden;
+    transition: border-color 0.15s;
 }
-.cf-chat-input-area input:focus {
-    border-color: var(--cf-accent);
-    box-shadow: 0 0 0 3px rgba(79,134,198,0.1);
+.cf-chat-input-box:focus-within {
+    border-color: var(--cf-accent, #4f86c6);
+    box-shadow: 0 4px 24px rgba(79,134,198,0.12);
 }
-.cf-chat-input-area input::placeholder { color: var(--cf-text-muted); }
-.cf-chat-send-btn {
-    width: 40px; height: 40px;
-    border-radius: var(--cf-radius-sm);
+.cf-chat-input-box textarea {
+    width: 100%;
     border: none;
-    background: var(--cf-primary);
+    outline: none;
+    resize: none;
+    padding: 14px 18px 6px;
+    font-size: 15px;
+    font-family: var(--cf-font, inherit) !important;
+    color: var(--cf-text, #1e293b);
+    background: transparent;
+    line-height: 1.5;
+    min-height: 24px;
+    max-height: 160px;
+    box-sizing: border-box;
+}
+.cf-chat-input-box textarea::placeholder { color: #94a3b8; }
+.cf-chat-input-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px 8px 10px;
+}
+.cf-chat-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.cf-chat-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.cf-chat-attach-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.cf-chat-attach-btn:hover {
+    background: #f1f5f9;
+    color: var(--cf-text, #1e293b);
+}
+/* Model Selector */
+.cf-model-selector-wrap {
+    position: relative;
+}
+.cf-model-selector-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 20px;
+    background: #f8fafc;
+    color: var(--cf-text-secondary, #64748b);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    font-family: var(--cf-font, inherit) !important;
+}
+.cf-model-selector-btn:hover {
+    border-color: #c7d2fe;
+    background: #f5f3ff;
+    color: var(--cf-text, #1e293b);
+}
+.cf-model-selector-btn .cf-model-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.cf-model-dropdown {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    min-width: 220px;
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    padding: 6px;
+    z-index: 100;
+    animation: cfModelDropIn 0.15s ease;
+}
+.cf-model-dropdown.open { display: block; }
+@keyframes cfModelDropIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.cf-model-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.12s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-size: 13px;
+    color: var(--cf-text, #1e293b);
+}
+.cf-model-dropdown-item:hover { background: #f5f3ff; }
+.cf-model-dropdown-item.active { background: #eef2ff; }
+.cf-model-dropdown-item .cf-model-item-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.cf-model-dropdown-item .cf-model-item-info {
+    flex: 1;
+}
+.cf-model-dropdown-item .cf-model-item-name {
+    font-weight: 600;
+    font-size: 13px;
+}
+.cf-model-dropdown-item .cf-model-item-desc {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 1px;
+}
+.cf-model-dropdown-item .cf-model-check {
+    color: var(--cf-accent, #4f86c6);
+    opacity: 0;
+    flex-shrink: 0;
+}
+.cf-model-dropdown-item.active .cf-model-check { opacity: 1; }
+/* Send button */
+.cf-chat-send-btn {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    border: none;
+    background: var(--cf-primary, #1e3a5f);
     color: #fff;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
     flex-shrink: 0;
-    transition: var(--cf-transition-fast);
+    transition: all 0.15s;
 }
-.cf-chat-send-btn:hover { background: var(--cf-primary-light); }
+.cf-chat-send-btn:hover { background: var(--cf-primary-light, #2a4f7a); }
+.cf-chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Typing indicator */
 .cf-typing { display: flex; gap: 4px; padding: 10px 14px; align-self: flex-start; }
@@ -383,11 +515,29 @@
         </div>
 
         <div class="cf-chat-input-area">
-            <input type="text" id="chatInput" placeholder="Ask CorpFile AI anything..."
-                   onkeydown="if(event.key==='Enter')sendChatMessage()">
-            <button class="cf-chat-send-btn" onclick="sendChatMessage()">
-                <i class="fa fa-paper-plane"></i>
-            </button>
+            <div class="cf-chat-input-box">
+                <textarea id="chatInput" rows="1" placeholder="Ask CorpFile AI anything..." autocomplete="off"></textarea>
+                <div class="cf-chat-input-toolbar">
+                    <div class="cf-chat-toolbar-left">
+                        <button class="cf-chat-attach-btn" title="Attach file" type="button">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                    </div>
+                    <div class="cf-chat-toolbar-right">
+                        <div class="cf-model-selector-wrap" id="chatModelWrap">
+                            <button class="cf-model-selector-btn" id="chatModelBtn" type="button" title="Select model">
+                                <span class="cf-model-dot" id="chatModelDot" style="background:#10b981;"></span>
+                                <span id="chatModelLabel">Sonnet 4</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div class="cf-model-dropdown" id="chatModelDropdown"></div>
+                        </div>
+                        <button class="cf-chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()" title="Send" type="button">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -396,6 +546,67 @@
 var BASE = "<?= base_url() ?>";
 var currentConversationId = 0;
 var isSending = false;
+
+/* ── Model Selector ── */
+var cfModels = [
+    { id: 'claude-sonnet-4-20250514', label: 'Sonnet 4', desc: 'Fast & capable', color: '#10b981' },
+    { id: 'claude-opus-4-20250514', label: 'Opus 4', desc: 'Most intelligent', color: '#8b5cf6' },
+    { id: 'claude-haiku-3-5-20241022', label: 'Haiku 3.5', desc: 'Fastest responses', color: '#f59e0b' }
+];
+var selectedModelIndex = 0;
+
+function buildChatModelDropdown() {
+    var dd = document.getElementById('chatModelDropdown');
+    dd.innerHTML = '';
+    cfModels.forEach(function(m, i) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'cf-model-dropdown-item' + (i === selectedModelIndex ? ' active' : '');
+        item.innerHTML =
+            '<span class="cf-model-item-dot" style="background:' + m.color + '"></span>' +
+            '<span class="cf-model-item-info">' +
+                '<span class="cf-model-item-name">' + m.label + '</span>' +
+                '<span class="cf-model-item-desc">' + m.desc + '</span>' +
+            '</span>' +
+            '<svg class="cf-model-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        item.addEventListener('click', function(e) {
+            e.stopPropagation();
+            selectedModelIndex = i;
+            document.getElementById('chatModelLabel').textContent = m.label;
+            document.getElementById('chatModelDot').style.background = m.color;
+            closeChatModelDropdown();
+        });
+        dd.appendChild(item);
+    });
+}
+function openChatModelDropdown() {
+    buildChatModelDropdown();
+    document.getElementById('chatModelDropdown').classList.add('open');
+}
+function closeChatModelDropdown() {
+    document.getElementById('chatModelDropdown').classList.remove('open');
+}
+document.getElementById('chatModelBtn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    var dd = document.getElementById('chatModelDropdown');
+    if (dd.classList.contains('open')) { closeChatModelDropdown(); } else { openChatModelDropdown(); }
+});
+document.addEventListener('click', function() { closeChatModelDropdown(); });
+
+/* ── Textarea auto-grow ── */
+(function() {
+    var ta = document.getElementById('chatInput');
+    ta.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+    });
+    ta.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendChatMessage();
+        }
+    });
+})();
 
 /* Use shared markdown renderer from main layout (cfRenderMarkdown) */
 function renderMarkdown(text) {
@@ -592,7 +803,9 @@ function newChat() {
 
 /* ── Send chip shortcut ── */
 function sendChatChip(text) {
-    document.getElementById('chatInput').value = text;
+    var ta = document.getElementById('chatInput');
+    ta.value = text;
+    ta.style.height = 'auto';
     sendChatMessage();
 }
 
@@ -603,6 +816,7 @@ function sendChatMessage() {
     var message = input.value.trim();
     if (!message) return;
     input.value = '';
+    input.style.height = 'auto';
     isSending = true;
 
     // Hide chips after first message
@@ -622,14 +836,15 @@ function sendChatMessage() {
     chatBody.appendChild(typingDiv);
     chatBody.scrollTop = chatBody.scrollHeight;
 
-    // Call AI API with conversation_id
+    // Call AI API with conversation_id + model
     var controller = new AbortController();
     var timeoutId = setTimeout(function() { controller.abort(); }, 180000);
 
     var chatPayload = {
         message: message,
         conversation_id: currentConversationId || 0,
-        source: currentConvSource || 'chat'
+        source: currentConvSource || 'chat',
+        model: cfModels[selectedModelIndex].id
     };
     if (currentConvAgent) chatPayload.agent = currentConvAgent;
 
