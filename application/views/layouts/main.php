@@ -156,6 +156,9 @@
                                     <li class="<?= ($current_url == 'shareholders') ? 'active' : '' ?>">
                                         <a href="<?= base_url('shareholders') ?>">Shareholders</a>
                                     </li>
+                                    <li class="<?= ($current_url == 'member') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('member') ?>">Individuals</a>
+                                    </li>
                                 </ul>
                             </li>
 
