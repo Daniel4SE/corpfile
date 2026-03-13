@@ -3,8 +3,29 @@
 
     <!-- Header -->
     <div class="cf-agents-header">
-        <h2 class="cf-agents-title">Choose AI Agent</h2>
-        <p class="cf-agents-subtitle">Start with the right context. Each agent is designed for a specific corporate secretarial workflow, so answers stay accurate and consistent with your records.</p>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+                <h2 class="cf-agents-title">Choose AI Agent</h2>
+                <p class="cf-agents-subtitle">Start with the right context. Each agent is designed for a specific corporate secretarial workflow, so answers stay accurate and consistent with your records.</p>
+            </div>
+            <button class="cf-agents-history-btn" id="agentHistoryBtn" onclick="toggleAgentHistory()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                History
+            </button>
+        </div>
+    </div>
+
+    <!-- History Panel (hidden by default) -->
+    <div class="cf-agents-history" id="agentHistoryPanel" style="display:none;">
+        <div class="cf-agents-history-header">
+            <h4><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Agent Conversations</h4>
+            <button class="cf-agents-history-close" onclick="toggleAgentHistory()" title="Close">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+        <div class="cf-agents-history-list" id="agentHistoryList">
+            <div style="padding:20px;text-align:center;color:var(--cf-text-muted);font-size:12px;">Loading...</div>
+        </div>
     </div>
 
     <!-- Agent Cards -->
@@ -88,9 +109,9 @@
                 <span class="cf-agents-chat-agent-name" id="chatAgentName">Compliance Monitor</span>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
-                <a href="<?= base_url('chats') ?>" style="font-size:12px;color:var(--cf-accent);text-decoration:none;white-space:nowrap;" title="View all chat history">
+                <button onclick="toggleAgentHistory()" style="font-size:12px;color:var(--cf-accent);background:none;border:none;cursor:pointer;white-space:nowrap;padding:0;" title="View agent history">
                     <i class="fa fa-history"></i> History
-                </a>
+                </button>
                 <button class="cf-agents-chat-back" id="chatBackBtn" title="Back to agents">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                     Back
@@ -138,6 +159,151 @@
     padding: 28px 0 4px 0;
     flex-shrink: 0;
     transition: all 0.35s cubic-bezier(.4,0,.2,1);
+}
+
+/* History button */
+.cf-agents-history-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--cf-border);
+    background: var(--cf-white);
+    color: var(--cf-text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 4px;
+}
+.cf-agents-history-btn:hover {
+    background: var(--cf-primary);
+    color: #fff;
+    border-color: var(--cf-primary);
+}
+.cf-agents-page.chatting .cf-agents-history-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+/* History Panel */
+.cf-agents-history {
+    background: var(--cf-bg);
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius);
+    margin-bottom: 12px;
+    flex-shrink: 0;
+    max-height: 320px;
+    display: flex;
+    flex-direction: column;
+    animation: fadeSlideDown 0.2s ease-out;
+}
+@keyframes fadeSlideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.cf-agents-history-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--cf-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+.cf-agents-history-header h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cf-text);
+}
+.cf-agents-history-close {
+    width: 26px; height: 26px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cf-text-muted);
+    font-size: 13px;
+}
+.cf-agents-history-close:hover { background: var(--cf-border); color: var(--cf-text); }
+
+.cf-agents-history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+}
+.cf-hist-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.15s;
+    margin-bottom: 2px;
+}
+.cf-hist-item:hover { background: var(--cf-white); }
+.cf-hist-item-icon {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.cf-hist-item-info { flex: 1; min-width: 0; }
+.cf-hist-item-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cf-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cf-hist-item-meta {
+    font-size: 11px;
+    color: var(--cf-text-muted);
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.cf-hist-item-badge {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 600;
+    color: #fff;
+    flex-shrink: 0;
+}
+.cf-hist-item-del {
+    width: 22px; height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--cf-text-muted);
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    opacity: 0;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+}
+.cf-hist-item:hover .cf-hist-item-del { opacity: 1; }
+.cf-hist-item-del:hover { background: #fee2e2; color: #ef4444; }
+.cf-hist-empty {
+    padding: 24px 20px;
+    text-align: center;
+    color: var(--cf-text-muted);
+    font-size: 12px;
 }
 .cf-agents-page.chatting .cf-agents-header {
     padding: 12px 0 0 0;
@@ -955,6 +1121,176 @@
             sendMessage();
         }
     });
+
+    /* ── Agent History Panel ── */
+    var historyPanel = document.getElementById('agentHistoryPanel');
+    var historyList = document.getElementById('agentHistoryList');
+    var historyOpen = false;
+
+    var agentColorMap = {
+        compliance: { bg: '#ede9fe', fg: '#7c3aed', label: 'Compliance' },
+        docgen:     { bg: '#dbeafe', fg: '#3b82f6', label: 'Doc Gen' },
+        kyc:        { bg: '#d1fae5', fg: '#059669', label: 'KYC' },
+        ir8a:       { bg: '#fef3c7', fg: '#d97706', label: 'IR8A/Tax' },
+        tax:        { bg: '#fef3c7', fg: '#d97706', label: 'IR8A/Tax' },
+        invoice:    { bg: '#fce7f3', fg: '#db2777', label: 'Invoice' },
+        payroll:    { bg: '#ede9fe', fg: '#8b5cf6', label: 'Payroll' }
+    };
+
+    window.toggleAgentHistory = function() {
+        historyOpen = !historyOpen;
+        historyPanel.style.display = historyOpen ? '' : 'none';
+        if (historyOpen) loadAgentHistory();
+    };
+
+    function loadAgentHistory() {
+        historyList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--cf-text-muted);font-size:12px;"><i class="fa fa-spinner fa-spin"></i> Loading...</div>';
+
+        fetch(BASE_URL + 'ai/conversations')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok || !data.conversations || data.conversations.length === 0) {
+                historyList.innerHTML = '<div class="cf-hist-empty">No agent conversations yet.<br>Start chatting with an agent!</div>';
+                return;
+            }
+            historyList.innerHTML = '';
+            /* Filter to agent-source conversations only */
+            var agentConvs = data.conversations.filter(function(c) { return c.source === 'agent'; });
+            if (agentConvs.length === 0) {
+                historyList.innerHTML = '<div class="cf-hist-empty">No agent conversations yet.</div>';
+                return;
+            }
+            agentConvs.forEach(function(conv) {
+                var ac = agentColorMap[conv.agent] || { bg: '#e5e7eb', fg: '#6b7280', label: conv.agent || 'Agent' };
+
+                var item = document.createElement('div');
+                item.className = 'cf-hist-item';
+
+                /* Icon */
+                var icon = document.createElement('div');
+                icon.className = 'cf-hist-item-icon';
+                icon.style.background = ac.bg;
+                icon.style.color = ac.fg;
+                /* Find matching card icon */
+                var matchCard = document.querySelector('.cf-agent-card-v2[data-agent="' + conv.agent + '"]');
+                if (matchCard) {
+                    icon.innerHTML = matchCard.querySelector('.cf-agent-icon-circle').innerHTML
+                        .replace(/width="22"/g, 'width="16"').replace(/height="22"/g, 'height="16"');
+                } else {
+                    icon.innerHTML = '<i class="fa fa-bolt" style="font-size:14px;"></i>';
+                }
+
+                /* Info */
+                var info = document.createElement('div');
+                info.className = 'cf-hist-item-info';
+
+                var titleRow = document.createElement('div');
+                titleRow.className = 'cf-hist-item-title';
+                titleRow.textContent = conv.title || 'New Chat';
+
+                var meta = document.createElement('div');
+                meta.className = 'cf-hist-item-meta';
+
+                var badge = document.createElement('span');
+                badge.className = 'cf-hist-item-badge';
+                badge.style.background = ac.fg;
+                badge.textContent = ac.label;
+
+                var time = document.createElement('span');
+                time.textContent = formatAgentTime(conv.updated_at) + ' \u00B7 ' + conv.msg_count + ' msgs';
+
+                meta.appendChild(badge);
+                meta.appendChild(time);
+                info.appendChild(titleRow);
+                info.appendChild(meta);
+
+                /* Delete button */
+                var del = document.createElement('button');
+                del.className = 'cf-hist-item-del';
+                del.title = 'Delete';
+                del.innerHTML = '<i class="fa fa-trash"></i>';
+                del.onclick = function(e) {
+                    e.stopPropagation();
+                    if (!confirm('Delete this conversation?')) return;
+                    fetch(BASE_URL + 'ai/deleteConversation', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: conv.id })
+                    }).then(function() { loadAgentHistory(); });
+                };
+
+                item.appendChild(icon);
+                item.appendChild(info);
+                item.appendChild(del);
+
+                /* Click to load conversation */
+                item.onclick = function() {
+                    resumeAgentConversation(conv);
+                };
+
+                historyList.appendChild(item);
+            });
+        })
+        .catch(function() {
+            historyList.innerHTML = '<div class="cf-hist-empty">Could not load history.</div>';
+        });
+    }
+
+    function resumeAgentConversation(conv) {
+        /* Select the matching agent card */
+        var matchCard = document.querySelector('.cf-agent-card-v2[data-agent="' + conv.agent + '"]');
+        if (matchCard) selectCard(matchCard);
+
+        /* Set conversation id for multi-turn */
+        agentConversationId = conv.id;
+
+        /* Enter chat mode */
+        if (!isChatting) {
+            isChatting = true;
+            page.classList.add('chatting');
+        }
+        msgArea.innerHTML = '';
+
+        /* Close history panel */
+        historyOpen = false;
+        historyPanel.style.display = 'none';
+
+        /* Load messages */
+        var loadingEl = document.createElement('div');
+        loadingEl.className = 'cf-agent-typing';
+        loadingEl.innerHTML = '<div class="cf-agent-typing-dots"><span></span><span></span><span></span></div>';
+        msgArea.appendChild(loadingEl);
+
+        fetch(BASE_URL + 'ai/conversation?id=' + conv.id)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            msgArea.innerHTML = '';
+            if (data.ok && data.messages && data.messages.length > 0) {
+                data.messages.forEach(function(msg) {
+                    addMessage(msg.role, msg.content);
+                });
+            } else {
+                addMessage('assistant', 'Conversation loaded. Send a message to continue.');
+            }
+            msgArea.scrollTop = msgArea.scrollHeight;
+        })
+        .catch(function() {
+            msgArea.innerHTML = '';
+            addMessage('assistant', '**Error:** Could not load conversation messages.');
+        });
+    }
+
+    function formatAgentTime(dateStr) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr);
+        var now = new Date();
+        var diff = (now - d) / 1000;
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+        return d.toLocaleDateString('en-SG', { day: 'numeric', month: 'short' });
+    }
 
     /* ── Auto-fill from URL param ── */
     var urlParams = new URLSearchParams(window.location.search);

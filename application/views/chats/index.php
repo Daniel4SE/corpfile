@@ -17,6 +17,19 @@
     flex-direction: column;
     flex-shrink: 0;
     background: var(--cf-bg);
+    transition: width 0.25s cubic-bezier(.4,0,.2,1);
+    overflow: hidden;
+}
+.cf-chat-sidebar.collapsed {
+    width: 44px;
+}
+.cf-chat-sidebar.collapsed .cf-chat-sidebar-header h4,
+.cf-chat-sidebar.collapsed .cf-chat-new-btn,
+.cf-chat-sidebar.collapsed .cf-chat-list {
+    display: none;
+}
+.cf-chat-sidebar.collapsed .cf-sidebar-toggle {
+    transform: rotate(180deg);
 }
 .cf-chat-sidebar-header {
     padding: 16px;
@@ -24,11 +37,35 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
+}
+.cf-chat-sidebar.collapsed .cf-chat-sidebar-header {
+    padding: 10px;
+    justify-content: center;
+    border-bottom: none;
 }
 .cf-chat-sidebar-header h4 {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
+    color: var(--cf-text);
+    white-space: nowrap;
+}
+.cf-sidebar-toggle {
+    width: 24px; height: 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cf-text-muted);
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: transform 0.25s, background 0.15s;
+}
+.cf-sidebar-toggle:hover {
+    background: var(--cf-border);
     color: var(--cf-text);
 }
 .cf-chat-new-btn {
@@ -295,14 +332,21 @@
 }
 
 @media (max-width: 768px) {
-    .cf-chat-sidebar { display: none; }
+    .cf-chat-sidebar { width: 44px; }
+    .cf-chat-sidebar:not(.collapsed) .cf-chat-sidebar-header h4,
+    .cf-chat-sidebar:not(.collapsed) .cf-chat-new-btn,
+    .cf-chat-sidebar:not(.collapsed) .cf-chat-list { display: none; }
+    .cf-chat-sidebar.collapsed .cf-sidebar-toggle { transform: rotate(180deg); }
 }
 </style>
 
 <div class="cf-chat-container">
     <!-- Left: Conversation History Sidebar -->
-    <div class="cf-chat-sidebar">
+    <div class="cf-chat-sidebar" id="chatSidebar">
         <div class="cf-chat-sidebar-header">
+            <button class="cf-sidebar-toggle" id="sidebarToggle" onclick="toggleChatSidebar()" title="Collapse sidebar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
             <h4>Conversations</h4>
             <button class="cf-chat-new-btn" onclick="newChat()" title="New Chat">
                 <i class="fa fa-plus"></i>
@@ -656,6 +700,22 @@ function formatTime(dateStr) {
 
     return d.toLocaleDateString('en-SG', { day: 'numeric', month: 'short' });
 }
+
+/* ── Toggle sidebar collapse ── */
+function toggleChatSidebar() {
+    var sidebar = document.getElementById('chatSidebar');
+    sidebar.classList.toggle('collapsed');
+    // Remember state
+    try { localStorage.setItem('cf_chat_sidebar', sidebar.classList.contains('collapsed') ? '1' : '0'); } catch(e){}
+}
+// Restore sidebar state on load
+(function() {
+    try {
+        if (localStorage.getItem('cf_chat_sidebar') === '1') {
+            document.getElementById('chatSidebar').classList.add('collapsed');
+        }
+    } catch(e){}
+})();
 
 /* ── Init: load conversation list on page load ── */
 loadConversations();
