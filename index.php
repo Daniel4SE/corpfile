@@ -208,6 +208,8 @@ $controllerMap = [
     // ─── Officials ───────────────────────────────────────────────
     'company_officials'    => ['file' => 'Officials.php', 'class' => 'Company_officials'],
     'officials_list'       => ['file' => 'Officials.php', 'class' => 'Officials_list'],
+    'directors'            => ['file' => 'Officials.php', 'class' => 'Directors_list'],
+    'shareholders'         => ['file' => 'Officials.php', 'class' => 'Shareholders_list'],
     'add_director'         => ['file' => 'Officials.php', 'class' => 'Add_director'],
     'add_shareholder'      => ['file' => 'Officials.php', 'class' => 'Add_shareholder'],
     'add_secretary'        => ['file' => 'Officials.php', 'class' => 'Add_secretary'],

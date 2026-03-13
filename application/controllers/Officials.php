@@ -47,6 +47,58 @@ class Company_officials extends BaseController {
 }
 
 // =========================================================================
+// Directors List (maps to /directors) — All directors across all companies
+// =========================================================================
+class Directors_list extends BaseController {
+    public function index() {
+        $this->requireAuth();
+        $data = ['page_title' => 'Directors', 'directors' => []];
+
+        if ($this->db) {
+            $clientId = $_SESSION['client_id'] ?? '';
+            $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
+            if ($client) {
+                $data['directors'] = $this->db->fetchAll(
+                    "SELECT d.*, c.company_name, c.registration_number
+                     FROM directors d
+                     JOIN companies c ON c.id = d.company_id
+                     WHERE c.client_id = ?
+                     ORDER BY c.company_name ASC, d.name ASC",
+                    [$client->id]
+                );
+            }
+        }
+        $this->loadLayout('officials/directors', $data);
+    }
+}
+
+// =========================================================================
+// Shareholders List (maps to /shareholders) — All shareholders across all companies
+// =========================================================================
+class Shareholders_list extends BaseController {
+    public function index() {
+        $this->requireAuth();
+        $data = ['page_title' => 'Shareholders', 'shareholders' => []];
+
+        if ($this->db) {
+            $clientId = $_SESSION['client_id'] ?? '';
+            $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
+            if ($client) {
+                $data['shareholders'] = $this->db->fetchAll(
+                    "SELECT s.*, c.company_name, c.registration_number
+                     FROM shareholders s
+                     JOIN companies c ON c.id = s.company_id
+                     WHERE c.client_id = ?
+                     ORDER BY c.company_name ASC, s.name ASC",
+                    [$client->id]
+                );
+            }
+        }
+        $this->loadLayout('officials/shareholders', $data);
+    }
+}
+
+// =========================================================================
 // Per-Company Officials List (maps to /officials_list/{company_id})
 // =========================================================================
 class Officials_list extends BaseController {

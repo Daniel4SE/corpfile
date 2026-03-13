@@ -140,39 +140,21 @@
                             </li>
 
                             <!-- 3. Company Records (expandable) -->
-                            <li class="<?= in_array($current_url, ['member','company_list','pre_company','post_company','Company_officials','corporate_shareholder','settings','Sealings','mainadmin']) ? 'active' : '' ?>">
+                            <li class="<?= in_array($current_url, ['company_list','directors','shareholders','member','pre_company','post_company','Company_officials','corporate_shareholder','Sealings','mainadmin']) ? 'active' : '' ?>">
                                 <a>
                                     <span class="cf-nav-icon"><?= cf_icon('company') ?></span>
-                                    <span>Company Records</span>
+                                    <span>Records</span>
                                     <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
                                 </a>
                                 <ul class="nav child_menu">
-                                    <li class="<?= ($current_url == 'member') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('member') ?>">Individuals</a>
-                                    </li>
                                     <li class="<?= ($current_url == 'company_list') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('company_list') ?>">Companies</a>
+                                        <a href="<?= base_url('company_list') ?>">Company</a>
                                     </li>
-                                    <li class="<?= ($current_url == 'Company_officials' && $current_url2 == 'company_officials_list') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('Company_officials/company_officials_list') ?>">Director Records</a>
+                                    <li class="<?= ($current_url == 'directors') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('directors') ?>">Directors</a>
                                     </li>
-                                    <li class="<?= ($current_url == 'corporate_shareholder') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('corporate_shareholder/corp_share_comp_list') ?>">Shareholder Records</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'pre_company') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('pre_company') ?>">Pre-Incorporation</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'post_company') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('post_company') ?>">Post-Incorporation</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'registers' && $current_url2 == 'register_of_charges') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('registers/register_of_charges') ?>">Charges</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'Sealings') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('Sealings/sealings_list') ?>">Sealings</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'mainadmin' && $current_url2 == 'company_bank') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('mainadmin/company_bank') ?>">Company Bank</a>
+                                    <li class="<?= ($current_url == 'shareholders') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('shareholders') ?>">Shareholders</a>
                                     </li>
                                 </ul>
                             </li>
