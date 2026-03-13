@@ -17,6 +17,7 @@
  *   POST /Ajax/save_officer/{type}/{company_id}
  *   POST /Ajax/save_company
  *   POST /Ajax/save_member
+ *   GET  /Ajax/global_search?q={keyword}
  */
 class Ajax extends BaseController {
 
@@ -565,6 +566,166 @@ class Ajax extends BaseController {
             $this->setFlash('success', 'Individual saved (demo mode)');
             $this->redirect('member');
         }
+    }
+
+    // ─── Global Search ──────────────────────────────────────────────
+
+    /**
+     * Global site search across companies, members, documents, events, etc.
+     * GET /Ajax/global_search?q=keyword
+     */
+    public function global_search() {
+        $this->requireAuth();
+        
+        $keyword = trim($this->input('q', ''));
+        if (strlen($keyword) < 2) {
+            $this->json(['success' => true, 'data' => [], 'total' => 0]);
+        }
+        
+        $results = [];
+        $clientId = $this->getClientDbId();
+        $like = '%' . $keyword . '%';
+        
+        if ($this->db) {
+            // 1. Search Companies
+            $companies = $this->db->fetchAll(
+                "SELECT id, company_name, registration_number, entity_status, country
+                 FROM companies 
+                 WHERE client_id = ? AND (
+                     company_name LIKE ? OR 
+                     registration_number LIKE ? OR 
+                     acra_registration_number LIKE ? OR
+                     former_name LIKE ? OR
+                     trading_name LIKE ? OR
+                     email LIKE ? OR
+                     contact_person LIKE ?
+                 )
+                 ORDER BY company_name ASC
+                 LIMIT 8",
+                [$clientId, $like, $like, $like, $like, $like, $like, $like]
+            );
+            foreach ($companies as $c) {
+                $results[] = [
+                    'type'     => 'company',
+                    'icon'     => 'building',
+                    'title'    => $c->company_name,
+                    'subtitle' => trim(($c->registration_number ?: '') . ($c->country ? ' · ' . $c->country : '')),
+                    'badge'    => $c->entity_status ?: '',
+                    'url'      => base_url('view_company/' . $c->id),
+                ];
+            }
+            
+            // 2. Search Members/Individuals
+            $members = $this->db->fetchAll(
+                "SELECT m.id, m.name, m.email, m.nationality, m.mobile_number
+                 FROM members m
+                 WHERE m.client_id = ? AND (
+                     m.name LIKE ? OR 
+                     m.email LIKE ? OR
+                     m.former_name LIKE ? OR
+                     m.mobile_number LIKE ?
+                 )
+                 ORDER BY m.name ASC
+                 LIMIT 8",
+                [$clientId, $like, $like, $like, $like]
+            );
+            foreach ($members as $m) {
+                $subtitle = [];
+                if ($m->email) $subtitle[] = $m->email;
+                if ($m->nationality) $subtitle[] = $m->nationality;
+                $results[] = [
+                    'type'     => 'member',
+                    'icon'     => 'user',
+                    'title'    => $m->name,
+                    'subtitle' => implode(' · ', $subtitle),
+                    'badge'    => '',
+                    'url'      => base_url('view_member/' . $m->id),
+                ];
+            }
+            
+            // 3. Search Directors
+            $directors = $this->db->fetchAll(
+                "SELECT d.id, d.name, d.id_number, d.company_id, c.company_name
+                 FROM directors d
+                 LEFT JOIN companies c ON c.id = d.company_id
+                 WHERE c.client_id = ? AND (
+                     d.name LIKE ? OR 
+                     d.id_number LIKE ?
+                 )
+                 ORDER BY d.name ASC
+                 LIMIT 5",
+                [$clientId, $like, $like]
+            );
+            foreach ($directors as $d) {
+                $results[] = [
+                    'type'     => 'director',
+                    'icon'     => 'briefcase',
+                    'title'    => $d->name,
+                    'subtitle' => 'Director' . ($d->company_name ? ' · ' . $d->company_name : ''),
+                    'badge'    => '',
+                    'url'      => base_url('view_company/' . $d->company_id),
+                ];
+            }
+            
+            // 4. Search Documents
+            $documents = $this->db->fetchAll(
+                "SELECT d.id, d.document_name, d.entity_type, d.entity_id, d.file_type, d.created_at
+                 FROM documents d
+                 WHERE d.client_id = ? AND d.document_name LIKE ?
+                 ORDER BY d.created_at DESC
+                 LIMIT 5",
+                [$clientId, $like]
+            );
+            foreach ($documents as $doc) {
+                $docUrl = $doc->entity_type === 'company' 
+                    ? base_url('view_company/' . $doc->entity_id) 
+                    : base_url('view_member/' . $doc->entity_id);
+                $results[] = [
+                    'type'     => 'document',
+                    'icon'     => 'file',
+                    'title'    => $doc->document_name,
+                    'subtitle' => ucfirst($doc->entity_type) . ' document' . ($doc->created_at ? ' · ' . date('d M Y', strtotime($doc->created_at)) : ''),
+                    'badge'    => '',
+                    'url'      => $docUrl,
+                ];
+            }
+            
+            // 5. Search Events (AGM/AR etc.)
+            $events = $this->db->fetchAll(
+                "SELECT e.id, e.company_id, e.event_type, e.status, e.due_date, c.company_name
+                 FROM company_events e
+                 LEFT JOIN companies c ON c.id = e.company_id
+                 WHERE c.client_id = ? AND (
+                     e.event_type LIKE ? OR 
+                     c.company_name LIKE ?
+                 )
+                 ORDER BY e.due_date DESC
+                 LIMIT 5",
+                [$clientId, $like, $like]
+            );
+            foreach ($events as $ev) {
+                $results[] = [
+                    'type'     => 'event',
+                    'icon'     => 'calendar',
+                    'title'    => ($ev->event_type ?: 'Event') . ' — ' . ($ev->company_name ?: ''),
+                    'subtitle' => ($ev->status ?: '') . ($ev->due_date ? ' · Due ' . date('d M Y', strtotime($ev->due_date)) : ''),
+                    'badge'    => $ev->status ?: '',
+                    'url'      => base_url('view_company/' . $ev->company_id),
+                ];
+            }
+        }
+        
+        // Sort: companies first, then members, then the rest
+        $typeOrder = ['company' => 0, 'member' => 1, 'director' => 2, 'document' => 3, 'event' => 4];
+        usort($results, function($a, $b) use ($typeOrder) {
+            return ($typeOrder[$a['type']] ?? 9) - ($typeOrder[$b['type']] ?? 9);
+        });
+        
+        // Limit total results
+        $total = count($results);
+        $results = array_slice($results, 0, 20);
+        
+        $this->json(['success' => true, 'data' => $results, 'total' => $total]);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────

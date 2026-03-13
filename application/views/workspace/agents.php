@@ -1238,17 +1238,61 @@
         if (dd.classList.contains('open')) { closeAgentPlusMenu(); } else { openAgentPlusMenu(); }
     });
 
-    /* File upload handler */
+    /* ── File attachment state ── */
+    var agentPendingFiles = []; // { name, type, data (base64 dataURL) }
+
+    function showAgentFileBadges() {
+        var existing = document.getElementById('agentFileBadges');
+        if (existing) existing.remove();
+        if (!agentPendingFiles.length) return;
+        var wrap = document.createElement('div');
+        wrap.id = 'agentFileBadges';
+        wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;padding:6px 18px 2px;';
+        agentPendingFiles.forEach(function(f, idx) {
+            var badge = document.createElement('span');
+            badge.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:8px;background:#f1f5f9;font-size:12px;color:#475569;font-weight:500;';
+            var isImg = /^image\//.test(f.type);
+            var isPdf = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name);
+            var icon = isPdf ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' :
+                       isImg ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' :
+                       '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/></svg>';
+            badge.innerHTML = icon + '<span>' + f.name.substring(0, 25) + (f.name.length > 25 ? '...' : '') + '</span>' +
+                '<button onclick="removeAgentFile(' + idx + ')" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:0 0 0 2px;font-size:14px;line-height:1;">&times;</button>';
+            wrap.appendChild(badge);
+        });
+        // Insert before toolbar
+        var toolbar = document.querySelector('.cf-agents-chatbar-toolbar');
+        toolbar.parentNode.insertBefore(wrap, toolbar);
+    }
+
+    window.removeAgentFile = function(idx) {
+        agentPendingFiles.splice(idx, 1);
+        showAgentFileBadges();
+    };
+
+    /* File upload handler — reads file content as base64 */
     document.getElementById('agentFileInput').addEventListener('change', function(e) {
         var files = e.target.files;
         if (!files || !files.length) return;
-        var names = [];
-        for (var i = 0; i < files.length; i++) names.push(files[i].name);
-        var prefix = chatInput.value ? chatInput.value + '\n' : '';
-        chatInput.value = prefix + '[Attached: ' + names.join(', ') + ']';
-        chatInput.style.height = 'auto';
-        chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
-        chatInput.focus();
+        var remaining = files.length;
+        for (var i = 0; i < files.length; i++) {
+            (function(file) {
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    agentPendingFiles.push({
+                        name: file.name,
+                        type: file.type || 'application/octet-stream',
+                        data: ev.target.result // base64 data URL
+                    });
+                    remaining--;
+                    if (remaining <= 0) {
+                        showAgentFileBadges();
+                        chatInput.focus();
+                    }
+                };
+                reader.readAsDataURL(file);
+            })(files[i]);
+        }
         e.target.value = '';
     });
 
@@ -1359,13 +1403,20 @@
     function sendMessage() {
         if (isSending) return;
         var message = chatInput.value.trim();
-        if (!message) return;
+        if (!message && !agentPendingFiles.length) return;
+        if (!message) message = 'Please analyze the attached file(s).';
         chatInput.value = '';
         chatInput.style.height = 'auto';
 
         if (!isChatting) enterChatMode();
 
-        addMessage('user', message);
+        /* Show user message with file badges */
+        var displayMsg = message;
+        if (agentPendingFiles.length) {
+            var fileNames = agentPendingFiles.map(function(f) { return f.name; });
+            displayMsg = '[Attached: ' + fileNames.join(', ') + ']\n' + message;
+        }
+        addMessage('user', displayMsg);
         addTyping();
 
         isSending = true;
@@ -1375,19 +1426,29 @@
         var hint = agentSystemHints[selectedAgent] || '';
         var enrichedMsg = hint ? '[Agent: ' + (selectedAgent || 'general') + '] ' + message : message;
 
+        /* Collect file attachments */
+        var attachments = agentPendingFiles.map(function(f) {
+            return { name: f.name, type: f.type, data: f.data };
+        });
+        agentPendingFiles = [];
+        showAgentFileBadges(); /* Clear badges */
+
         var controller = new AbortController();
         var timeoutId = setTimeout(function() { controller.abort(); }, 180000);
+
+        var payload = {
+            message: enrichedMsg,
+            source: 'agent',
+            agent: selectedAgent || 'general',
+            conversation_id: agentConversationId || 0,
+            model: cfAgentModels[agentSelectedModelIndex].id
+        };
+        if (attachments.length) payload.attachments = attachments;
 
         fetch(BASE_URL + 'ai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: enrichedMsg,
-                source: 'agent',
-                agent: selectedAgent || 'general',
-                conversation_id: agentConversationId || 0,
-                model: cfAgentModels[agentSelectedModelIndex].id
-            }),
+            body: JSON.stringify(payload),
             signal: controller.signal
         })
         .then(function(r) {

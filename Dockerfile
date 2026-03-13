@@ -9,6 +9,11 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /var/www/html
 
+# Increase PHP limits for file upload via JSON (base64 encoded)
+RUN echo "post_max_size = 50M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "upload_max_filesize = 50M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "memory_limit = 256M" >> /usr/local/etc/php/conf.d/uploads.ini
+
 COPY . .
 
 RUN mkdir -p /var/www/html/uploads \

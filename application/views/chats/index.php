@@ -691,19 +691,62 @@ document.getElementById('chatPlusBtn').addEventListener('click', function(e) {
     if (dd.classList.contains('open')) { closeChatPlusMenu(); } else { openChatPlusMenu(); }
 });
 
-/* File upload handler */
+/* ── File attachment state ── */
+var chatPendingFiles = []; // { name, type, data (base64 dataURL) }
+
+function showChatFileBadges() {
+    var existing = document.getElementById('chatFileBadges');
+    if (existing) existing.remove();
+    if (!chatPendingFiles.length) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'chatFileBadges';
+    wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;padding:6px 18px 2px;';
+    chatPendingFiles.forEach(function(f, idx) {
+        var badge = document.createElement('span');
+        badge.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:8px;background:#f1f5f9;font-size:12px;color:#475569;font-weight:500;';
+        var isImg = /^image\//.test(f.type);
+        var isPdf = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name);
+        var icon = isPdf ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' :
+                   isImg ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' :
+                   '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/></svg>';
+        badge.innerHTML = icon + '<span>' + f.name.substring(0, 25) + (f.name.length > 25 ? '...' : '') + '</span>' +
+            '<button onclick="removeChatFile(' + idx + ')" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:0 0 0 2px;font-size:14px;line-height:1;">&times;</button>';
+        wrap.appendChild(badge);
+    });
+    /* Insert before toolbar in the input box */
+    var toolbar = document.querySelector('.cf-chat-input-toolbar');
+    if (toolbar) toolbar.parentNode.insertBefore(wrap, toolbar);
+}
+
+function removeChatFile(idx) {
+    chatPendingFiles.splice(idx, 1);
+    showChatFileBadges();
+}
+
+/* File upload handler — reads file content as base64 */
 document.getElementById('chatFileInput').addEventListener('change', function(e) {
     var files = e.target.files;
     if (!files || !files.length) return;
-    var names = [];
-    for (var i = 0; i < files.length; i++) names.push(files[i].name);
-    var ta = document.getElementById('chatInput');
-    var prefix = ta.value ? ta.value + '\n' : '';
-    ta.value = prefix + '[Attached: ' + names.join(', ') + ']';
-    ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
-    ta.focus();
-    e.target.value = ''; /* reset for re-upload */
+    var remaining = files.length;
+    for (var i = 0; i < files.length; i++) {
+        (function(file) {
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+                chatPendingFiles.push({
+                    name: file.name,
+                    type: file.type || 'application/octet-stream',
+                    data: ev.target.result
+                });
+                remaining--;
+                if (remaining <= 0) {
+                    showChatFileBadges();
+                    document.getElementById('chatInput').focus();
+                }
+            };
+            reader.readAsDataURL(file);
+        })(files[i]);
+    }
+    e.target.value = '';
 });
 
 /* Templates popup */
@@ -957,7 +1000,8 @@ function sendChatMessage() {
     if (isSending) return;
     var input = document.getElementById('chatInput');
     var message = input.value.trim();
-    if (!message) return;
+    if (!message && !chatPendingFiles.length) return;
+    if (!message) message = 'Please analyze the attached file(s).';
     input.value = '';
     input.style.height = 'auto';
     isSending = true;
@@ -968,8 +1012,20 @@ function sendChatMessage() {
 
     var chatBody = document.getElementById('chatMessages');
 
-    // User message
-    appendMessage('user', message);
+    // User message (show filenames if attached)
+    var displayMsg = message;
+    if (chatPendingFiles.length) {
+        var fileNames = chatPendingFiles.map(function(f) { return f.name; });
+        displayMsg = '[Attached: ' + fileNames.join(', ') + ']\n' + message;
+    }
+    appendMessage('user', displayMsg);
+
+    // Collect file attachments
+    var attachments = chatPendingFiles.map(function(f) {
+        return { name: f.name, type: f.type, data: f.data };
+    });
+    chatPendingFiles = [];
+    showChatFileBadges(); /* Clear badges */
 
     // Typing indicator
     var typingDiv = document.createElement('div');
@@ -979,7 +1035,7 @@ function sendChatMessage() {
     chatBody.appendChild(typingDiv);
     chatBody.scrollTop = chatBody.scrollHeight;
 
-    // Call AI API with conversation_id + model
+    // Call AI API with conversation_id + model + attachments
     var controller = new AbortController();
     var timeoutId = setTimeout(function() { controller.abort(); }, 180000);
 
@@ -990,6 +1046,7 @@ function sendChatMessage() {
         model: cfModels[selectedModelIndex].id
     };
     if (currentConvAgent) chatPayload.agent = currentConvAgent;
+    if (attachments.length) chatPayload.attachments = attachments;
 
     fetch(BASE + 'ai/chat', {
         method: 'POST',

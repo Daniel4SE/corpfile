@@ -340,9 +340,20 @@
                 <!-- Minimal Topbar: Search + Bell + Avatar -->
                 <div class="cf-topbar-actions">
                     <!-- Search -->
-                    <div class="cf-topbar-search">
+                    <div class="cf-topbar-search" id="globalSearchWrapper">
                         <span class="cf-topbar-search-icon"><?= cf_icon('search', 16) ?></span>
-                        <input type="text" id="globalSearch" placeholder="Search..." class="cf-topbar-search-input">
+                        <input type="text" id="globalSearch" placeholder="Search..." class="cf-topbar-search-input" autocomplete="off">
+                        <span class="cf-search-clear" id="globalSearchClear" style="display:none;">&times;</span>
+                        <!-- Search Results Dropdown -->
+                        <div class="cf-search-dropdown" id="globalSearchDropdown" style="display:none;">
+                            <div class="cf-search-loading" id="globalSearchLoading" style="display:none;">
+                                <span class="cf-search-spinner"></span> Searching...
+                            </div>
+                            <div class="cf-search-results" id="globalSearchResults"></div>
+                            <div class="cf-search-empty" id="globalSearchEmpty" style="display:none;">
+                                No results found
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Notification Bell -->
@@ -464,6 +475,207 @@ $(document).ready(function () {
         el.classList.add('animate-in');
         el.style.animationDelay = (i * 0.04) + 's';
     });
+
+    /* ── Global Search ───────────────────────────────────────── */
+    (function() {
+        var $input     = $('#globalSearch');
+        var $dropdown  = $('#globalSearchDropdown');
+        var $results   = $('#globalSearchResults');
+        var $loading   = $('#globalSearchLoading');
+        var $empty     = $('#globalSearchEmpty');
+        var $clear     = $('#globalSearchClear');
+        var $wrapper   = $('#globalSearchWrapper');
+        var searchTimer = null;
+        var currentXhr  = null;
+        var selectedIdx = -1;
+
+        // Icon SVGs for result types
+        var typeIcons = {
+            company:  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
+            member:   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+            director: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+            document: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+            event:    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
+        };
+
+        var typeLabels = {
+            company:  'Companies',
+            member:   'Individuals',
+            director: 'Directors',
+            document: 'Documents',
+            event:    'Events'
+        };
+
+        // Badge colors by status
+        function badgeClass(status) {
+            if (!status) return '';
+            var s = status.toLowerCase();
+            if (s === 'live' || s === 'active' || s === 'completed') return 'cf-search-badge-green';
+            if (s === 'pending' || s === 'upcoming') return 'cf-search-badge-yellow';
+            if (s === 'struck off' || s === 'ceased' || s === 'overdue') return 'cf-search-badge-red';
+            return 'cf-search-badge-gray';
+        }
+
+        function highlightMatch(text, keyword) {
+            if (!text || !keyword) return text || '';
+            var escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return text.replace(new RegExp('(' + escaped + ')', 'gi'), '<mark class="cf-search-highlight">$1</mark>');
+        }
+
+        function renderResults(data, keyword) {
+            $results.empty();
+            selectedIdx = -1;
+
+            if (!data || data.length === 0) {
+                $empty.show();
+                return;
+            }
+            $empty.hide();
+
+            // Group by type
+            var grouped = {};
+            data.forEach(function(item) {
+                if (!grouped[item.type]) grouped[item.type] = [];
+                grouped[item.type].push(item);
+            });
+
+            var groupOrder = ['company', 'member', 'director', 'document', 'event'];
+            groupOrder.forEach(function(type) {
+                if (!grouped[type]) return;
+                // Section header
+                var $header = $('<div class="cf-search-group-header">' + (typeLabels[type] || type) + '</div>');
+                $results.append($header);
+
+                grouped[type].forEach(function(item) {
+                    var $item = $('<a class="cf-search-item" href="' + item.url + '"></a>');
+                    var icon = typeIcons[item.type] || typeIcons.document;
+
+                    var badgeHtml = '';
+                    if (item.badge) {
+                        badgeHtml = '<span class="cf-search-badge ' + badgeClass(item.badge) + '">' + item.badge + '</span>';
+                    }
+
+                    $item.html(
+                        '<span class="cf-search-item-icon">' + icon + '</span>' +
+                        '<span class="cf-search-item-content">' +
+                            '<span class="cf-search-item-title">' + highlightMatch(item.title, keyword) + '</span>' +
+                            (item.subtitle ? '<span class="cf-search-item-subtitle">' + highlightMatch(item.subtitle, keyword) + '</span>' : '') +
+                        '</span>' +
+                        badgeHtml
+                    );
+                    $results.append($item);
+                });
+            });
+        }
+
+        function doSearch(keyword) {
+            if (currentXhr) currentXhr.abort();
+
+            $loading.show();
+            $empty.hide();
+            $results.empty();
+            $dropdown.show();
+
+            currentXhr = $.ajax({
+                url: BASE_URL + 'Ajax/global_search',
+                data: { q: keyword },
+                dataType: 'json',
+                success: function(resp) {
+                    $loading.hide();
+                    if (resp.success) {
+                        renderResults(resp.data, keyword);
+                    } else {
+                        $empty.text('Search failed').show();
+                    }
+                },
+                error: function(xhr, status) {
+                    $loading.hide();
+                    if (status !== 'abort') {
+                        $empty.text('Search error').show();
+                    }
+                }
+            });
+        }
+
+        // Input handler with debounce
+        $input.on('input', function() {
+            var val = $.trim($(this).val());
+            clearTimeout(searchTimer);
+
+            $clear.toggle(val.length > 0);
+
+            if (val.length < 2) {
+                $dropdown.hide();
+                if (currentXhr) currentXhr.abort();
+                return;
+            }
+
+            searchTimer = setTimeout(function() {
+                doSearch(val);
+            }, 300);
+        });
+
+        // Clear button
+        $clear.on('click', function() {
+            $input.val('').focus();
+            $dropdown.hide();
+            $clear.hide();
+            if (currentXhr) currentXhr.abort();
+        });
+
+        // Keyboard navigation
+        $input.on('keydown', function(e) {
+            var $items = $results.find('.cf-search-item');
+            if (!$items.length || !$dropdown.is(':visible')) return;
+
+            if (e.keyCode === 40) { // Down
+                e.preventDefault();
+                selectedIdx = Math.min(selectedIdx + 1, $items.length - 1);
+                $items.removeClass('cf-search-item-active');
+                $items.eq(selectedIdx).addClass('cf-search-item-active');
+                // Scroll into view
+                var itemEl = $items.eq(selectedIdx)[0];
+                if (itemEl) itemEl.scrollIntoView({ block: 'nearest' });
+            } else if (e.keyCode === 38) { // Up
+                e.preventDefault();
+                selectedIdx = Math.max(selectedIdx - 1, 0);
+                $items.removeClass('cf-search-item-active');
+                $items.eq(selectedIdx).addClass('cf-search-item-active');
+                var itemEl = $items.eq(selectedIdx)[0];
+                if (itemEl) itemEl.scrollIntoView({ block: 'nearest' });
+            } else if (e.keyCode === 13) { // Enter
+                e.preventDefault();
+                if (selectedIdx >= 0 && $items.eq(selectedIdx).length) {
+                    window.location.href = $items.eq(selectedIdx).attr('href');
+                }
+            } else if (e.keyCode === 27) { // Escape
+                $dropdown.hide();
+                $input.blur();
+            }
+        });
+
+        // Close dropdown on click outside
+        $(document).on('mousedown', function(e) {
+            if (!$(e.target).closest('#globalSearchWrapper').length) {
+                $dropdown.hide();
+            }
+        });
+
+        // Re-show dropdown on focus if there is content
+        $input.on('focus', function() {
+            if ($.trim($(this).val()).length >= 2 && $results.children().length) {
+                $dropdown.show();
+            }
+        });
+
+        // Keyboard shortcut: Ctrl+K or Cmd+K to focus search
+        $(document).on('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.keyCode === 75) {
+                e.preventDefault();
+                $input.focus().select();
+            }
+        });
+    })();
 });
 
 /* ── AI Response Action Buttons ── */

@@ -67,7 +67,8 @@ class Ai extends BaseController {
         $conversationId = (int) ($payload['conversation_id'] ?? 0);
         $source = $payload['source'] ?? 'chat';
         $agent  = $payload['agent']  ?? null;
-        $model  = $payload['model']  ?? null; // Per-request model override (e.g. claude-opus-4-20250514)
+        $model  = $payload['model']  ?? null;
+        $attachments = $payload['attachments'] ?? []; // Array of { name, type, data }
         $userId = (int) ($_SESSION['user_id'] ?? 1);
 
         // Resolve client DB id
@@ -122,6 +123,76 @@ class Ai extends BaseController {
             } catch (\Exception $e) { /* non-fatal */ }
         }
 
+        // ── Process file attachments ──
+        $imageBlocks = [];  // For Claude vision (image content blocks)
+        $textAttachments = ''; // Text content from files (prepended to message)
+
+        if (!empty($attachments) && is_array($attachments)) {
+            foreach ($attachments as $att) {
+                $name = $att['name'] ?? 'file';
+                $type = $att['type'] ?? '';
+                $data = $att['data'] ?? '';
+                if (empty($data)) continue;
+
+                // Image files: send as Claude vision image blocks
+                if (preg_match('/^image\/(jpeg|png|gif|webp)$/i', $type)) {
+                    // data is base64 (may have data:image/...;base64, prefix)
+                    $base64 = $data;
+                    if (strpos($data, 'base64,') !== false) {
+                        $base64 = substr($data, strpos($data, 'base64,') + 7);
+                    }
+                    // Limit image size (~5MB base64)
+                    if (strlen($base64) < 7000000) {
+                        $mediaType = strtolower($type);
+                        $imageBlocks[] = [
+                            'type' => 'image',
+                            'source' => [
+                                'type' => 'base64',
+                                'media_type' => $mediaType,
+                                'data' => $base64,
+                            ],
+                        ];
+                    }
+                }
+                // PDF files: extract text from base64 PDF using Claude's built-in PDF support
+                elseif ($type === 'application/pdf' || strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'pdf') {
+                    $base64 = $data;
+                    if (strpos($data, 'base64,') !== false) {
+                        $base64 = substr($data, strpos($data, 'base64,') + 7);
+                    }
+                    // Claude supports PDF as document type (up to ~30MB)
+                    if (strlen($base64) < 40000000) {
+                        $imageBlocks[] = [
+                            'type' => 'document',
+                            'source' => [
+                                'type' => 'base64',
+                                'media_type' => 'application/pdf',
+                                'data' => $base64,
+                            ],
+                        ];
+                    }
+                }
+                // Text-like files: include content directly in message
+                else {
+                    $content = $data;
+                    // If it looks like base64 data URL, decode it
+                    if (strpos($data, 'base64,') !== false) {
+                        $content = base64_decode(substr($data, strpos($data, 'base64,') + 7));
+                    }
+                    // Limit text content to 50KB
+                    if (strlen($content) > 50000) {
+                        $content = substr($content, 0, 50000) . "\n... [truncated]";
+                    }
+                    $textAttachments .= "\n\n---\n[File: {$name}]\n{$content}\n";
+                }
+            }
+        }
+
+        // Append text file content to message
+        if ($textAttachments) {
+            $message .= $textAttachments;
+        }
+
         // Build context: enrich the user message with workspace data when relevant
         $contextInfo = $this->buildContextSnippet($message);
         $enrichedMessage = $message;
@@ -143,13 +214,26 @@ class Ai extends BaseController {
         if ($model) {
             $opts['model'] = $model;
         }
+
+        // Build the final user content (may include image/document blocks for Claude vision)
+        $userContent = $enrichedMessage;
+        if (!empty($imageBlocks)) {
+            // Multi-modal: content is an array of blocks
+            $contentBlocks = [];
+            foreach ($imageBlocks as $block) {
+                $contentBlocks[] = $block;
+            }
+            $contentBlocks[] = ['type' => 'text', 'text' => $enrichedMessage];
+            $userContent = $contentBlocks;
+        }
+
         if (count($history) > 1) {
-            // Replace the last user message with enriched version (with context)
-            $history[count($history) - 1]['content'] = $enrichedMessage;
+            // Replace the last user message with enriched version (with context + files)
+            $history[count($history) - 1]['content'] = $userContent;
             $opts['messages'] = $history;
             $result = $bridge->runTurn(null, $opts);
         } else {
-            $result = $bridge->runTurn($enrichedMessage, $opts);
+            $result = $bridge->runTurn($userContent, $opts);
         }
 
         if (empty($result['ok'])) {

@@ -62,6 +62,7 @@ class AiBridge {
         $messages = [];
         if (!empty($options['messages']) && is_array($options['messages'])) {
             // Full message history provided (multi-turn)
+            // Content can be a string or an array of content blocks (for images)
             foreach ($options['messages'] as $msg) {
                 $messages[] = [
                     'role'    => $msg['role'] ?? 'user',
@@ -79,9 +80,15 @@ class AiBridge {
         }
 
         // If a message string is provided, append as latest user turn
-        $message = trim((string) ($message ?? ''));
-        if ($message !== '') {
+        // Content can also be an array of content blocks (for multi-modal: text + images)
+        if (is_array($message)) {
+            // Already structured content blocks
             $messages[] = ['role' => 'user', 'content' => $message];
+        } else {
+            $message = trim((string) ($message ?? ''));
+            if ($message !== '') {
+                $messages[] = ['role' => 'user', 'content' => $message];
+            }
         }
 
         if (empty($messages)) {
