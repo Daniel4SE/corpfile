@@ -314,8 +314,8 @@
                 <a href="<?= base_url('member') ?>" class="btn btn-default btn-block" style="text-align:left; padding:10px 16px;">
                     <i class="fa fa-user-plus" style="margin-right:8px;"></i> Add Individual
                 </a>
-                <a href="<?= base_url('company_file') ?>" class="btn btn-default btn-block" style="text-align:left; padding:10px 16px;">
-                    <i class="fa fa-file-text" style="margin-right:8px;"></i> Generate Template
+                <a href="<?= base_url('document_generator') ?>" class="btn btn-default btn-block" style="text-align:left; padding:10px 16px;">
+                    <i class="fa fa-file-text" style="margin-right:8px;"></i> Document Generator
                 </a>
                 <a href="<?= base_url('duedatetracker') ?>" class="btn btn-default btn-block" style="text-align:left; padding:10px 16px;">
                     <i class="fa fa-clock-o" style="margin-right:8px;"></i> Due Date Tracker
