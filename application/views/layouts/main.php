@@ -245,23 +245,6 @@
                                 </ul>
                             </li>
 
-                            <!-- Reports -->
-                            <li class="<?= in_array($current_url, ['reports','css_reports','crm_reports','report_view']) ? 'active' : '' ?>">
-                                <a>
-                                    <span class="cf-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
-                                    <span>Reports</span>
-                                    <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
-                                </a>
-                                <ul class="nav child_menu">
-                                    <li class="<?= ($current_url == 'css_reports') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('css_reports') ?>">CSS Reports</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'crm_reports') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('crm_reports') ?>">CRM Reports</a>
-                                    </li>
-                                </ul>
-                            </li>
-
                             <!-- 13. Sales -->
                             <li class="<?= in_array($current_url, ['leads','quotations','followups','sales_orders','sales_company']) ? 'active' : '' ?>">
                                 <a>
