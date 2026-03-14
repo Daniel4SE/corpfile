@@ -124,47 +124,8 @@
                         <th style="min-width:120px;">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <?php if (!empty($documents)): ?>
-                        <?php foreach ($documents as $doc): ?>
-                        <tr data-company-id="<?= $doc->entity_id ?? '' ?>" data-entity-type="<?= $doc->entity_type ?? '' ?>" data-doc-id="<?= $doc->id ?? '' ?>">
-                            <td><input type="checkbox" class="doc-check" value="<?= $doc->id ?? '' ?>"></td>
-                            <td>
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <span class="doc-file-icon doc-ext-<?= strtolower(pathinfo($doc->name ?? '', PATHINFO_EXTENSION)) ?>">
-                                        <i class="fa fa-file-<?= $doc->icon ?? 'o' ?>"></i>
-                                    </span>
-                                    <div>
-                                        <span style="font-weight:500; font-size:13px;"><?= htmlspecialchars($doc->name ?? '') ?></span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td style="font-size:12px;"><?= htmlspecialchars($doc->company ?? '') ?: '<em style="color:var(--cf-text-muted)">General</em>' ?></td>
-                            <td><span class="status-badge draft" style="font-size:10px;"><?= htmlspecialchars($doc->type ?? '') ?></span></td>
-                            <td style="font-size:12px; color:var(--cf-text-secondary);"><?= htmlspecialchars($doc->size ?? '') ?></td>
-                            <td style="font-size:12px;"><?= htmlspecialchars($doc->uploaded_by ?? '') ?></td>
-                            <td style="font-size:12px;"><?= isset($doc->created_at) ? date('d/m/Y', strtotime($doc->created_at)) : '' ?></td>
-                            <td>
-                                <div style="display:flex; gap:4px;">
-                                    <a href="<?= base_url('documents/download/' . ($doc->id ?? '')) ?>" class="btn btn-default btn-xs" title="Download" style="border-radius:6px;"><i class="fa fa-download"></i></a>
-                                    <a href="<?= base_url('file_preview/' . ($doc->id ?? '')) ?>" class="btn btn-default btn-xs" title="Preview" style="border-radius:6px;"><i class="fa fa-eye"></i></a>
-                                    <a href="<?= base_url('edit_document/' . ($doc->id ?? '')) ?>" class="btn btn-default btn-xs" title="Edit" style="border-radius:6px;"><i class="fa fa-pencil"></i></a>
-                                    <button class="btn btn-default btn-xs btn-doc-delete" data-id="<?= $doc->id ?? '' ?>" title="Delete" style="border-radius:6px; color:var(--cf-danger);"><i class="fa fa-trash-o"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr class="doc-empty-row">
-                            <td colspan="8" class="text-center" style="padding:50px 20px !important;">
-                                <div>
-                                    <div style="width:56px; height:56px; border-radius:14px; background:var(--cf-card-bg); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; color:var(--cf-text-muted); font-size:24px;"><i class="fa fa-folder-open-o"></i></div>
-                                    <p style="color:var(--cf-text-secondary); font-size:14px; margin:0;">No documents found.</p>
-                                    <p style="color:var(--cf-text-muted); font-size:12px; margin-top:4px;">Click "Upload" to add documents.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
+                <tbody id="docTableBody">
+                    <!-- Populated via AJAX when a folder is clicked -->
                 </tbody>
             </table>
         </div>
@@ -172,32 +133,7 @@
         <!-- ── GRID VIEW ── -->
         <div class="doc-grid-wrap" id="docGridView" style="display:none;">
             <div class="doc-grid" id="docGrid">
-                <?php if (!empty($documents)): ?>
-                    <?php foreach ($documents as $doc):
-                        $ext = strtolower(pathinfo($doc->name ?? '', PATHINFO_EXTENSION));
-                        $colorMap = ['pdf'=>'#e74c3c','doc'=>'#2b579a','docx'=>'#2b579a','xls'=>'#217346','xlsx'=>'#217346','jpg'=>'#f59e0b','jpeg'=>'#f59e0b','png'=>'#f59e0b','gif'=>'#f59e0b','txt'=>'#6b7280','csv'=>'#217346','zip'=>'#8b5cf6','rar'=>'#8b5cf6'];
-                        $extColor = $colorMap[$ext] ?? 'var(--cf-accent)';
-                    ?>
-                    <div class="doc-grid-card" data-company-id="<?= $doc->entity_id ?? '' ?>" data-entity-type="<?= $doc->entity_type ?? '' ?>" data-doc-id="<?= $doc->id ?? '' ?>">
-                        <div class="doc-grid-card-check">
-                            <input type="checkbox" class="doc-grid-check" value="<?= $doc->id ?? '' ?>">
-                        </div>
-                        <div class="doc-grid-card-icon" style="color:<?= $extColor ?>;">
-                            <i class="fa fa-file-<?= $doc->icon ?? 'o' ?> fa-2x"></i>
-                        </div>
-                        <div class="doc-grid-card-name" title="<?= htmlspecialchars($doc->name ?? '') ?>"><?= htmlspecialchars($doc->name ?? '') ?></div>
-                        <div class="doc-grid-card-meta">
-                            <?= htmlspecialchars($doc->size ?? '') ?> &middot; <?= strtoupper($ext ?: '?') ?>
-                        </div>
-                        <div class="doc-grid-card-company"><?= htmlspecialchars($doc->company ?? 'General') ?></div>
-                        <div class="doc-grid-card-actions">
-                            <a href="<?= base_url('documents/download/' . ($doc->id ?? '')) ?>" class="btn btn-default btn-xs" title="Download"><i class="fa fa-download"></i></a>
-                            <a href="<?= base_url('file_preview/' . ($doc->id ?? '')) ?>" class="btn btn-default btn-xs" title="Preview"><i class="fa fa-eye"></i></a>
-                            <button class="btn btn-default btn-xs btn-doc-delete" data-id="<?= $doc->id ?? '' ?>" title="Delete" style="color:var(--cf-danger);"><i class="fa fa-trash-o"></i></button>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                <!-- Populated via AJAX when a folder is clicked -->
             </div>
         </div>
     </div>
@@ -636,41 +572,9 @@ $(document).ready(function() {
     var currentView = localStorage.getItem('docView') || 'list';
     var deleteTargetIds = [];
 
-    /* ── DataTable init ── */
+    /* ── DataTable (initialized empty, populated via AJAX) ── */
     var dt = null;
-    if ($.fn.DataTable) {
-        /* Register custom filter BEFORE creating the DataTable */
-        $.fn.dataTable.ext.search.push(function(settings, searchData, dataIndex) {
-            if (settings.nTable.id !== 'datatable-documents') return true;
-            var row = dt ? dt.row(dataIndex).node() : null;
-            if (!row) return true;
-            var companyId = String($(row).data('company-id') || '');
-            var entityType = String($(row).data('entity-type') || '');
-
-            if (currentFilter === 'all') return true;
-            if (currentFilter === 'general') return !companyId || companyId === '' || entityType !== 'company';
-            if (currentFilter === 'recent') return true; /* show all — recent is pre-sorted */
-            if (currentFilter.indexOf('company-') === 0) {
-                var fid = currentFilter.replace('company-', '');
-                return companyId === fid;
-            }
-            return true;
-        });
-
-        dt = $('#datatable-documents').DataTable({
-            pageLength: -1,
-            lengthChange: false,
-            order: [[6, 'desc']],
-            dom: 'rtip',
-            language: {
-                info: '_TOTAL_ files',
-                infoFiltered: '(filtered from _MAX_)',
-                infoEmpty: '0 files',
-                emptyTable: 'No documents in this folder',
-                paginate: { previous: '<i class="fa fa-chevron-left"></i>', next: '<i class="fa fa-chevron-right"></i>' }
-            }
-        });
-    }
+    var BASE = '<?= base_url() ?>';
     if ($.fn.select2) { $('.select2_single').select2(); }
 
     /* ══════════════════════════════════════════════
@@ -880,7 +784,6 @@ $(document).ready(function() {
         currentFilter = filter;
 
         /* Show the right panel and shrink sidebar */
-        var wasHidden = $('#docMain').is(':hidden');
         $('#docMain').show();
         $('#docFolders').removeClass('full-width');
 
@@ -894,46 +797,90 @@ $(document).ready(function() {
         var iconClass = $(el).find('.doc-folder-icon i').attr('class');
         $('.doc-breadcrumb-icon i').attr('class', iconClass);
 
-        /* Redraw DataTable — adjust columns if panel was just shown */
-        if (dt) {
-            if (wasHidden) {
-                dt.columns.adjust();
-            }
-            dt.draw();
-            var info = dt.page.info();
-            $('#breadcrumbCount').text(info.recordsDisplay + ' files');
-        }
-
-        /* Filter grid cards too */
-        filterGridCards();
-
         /* Pre-select company in upload modal */
         if (filter.indexOf('company-') === 0) {
             var cid = filter.replace('company-', '');
             $('#uploadCompanySelect').val(cid).trigger('change');
         }
 
-        /* Clear selection when changing folder */
+        /* Clear selection */
         clearSelection();
-    };
 
-    function filterGridCards() {
-        $('.doc-grid-card').each(function() {
-            var companyId = String($(this).data('company-id') || '');
-            var entityType = String($(this).data('entity-type') || '');
-            var show = true;
+        /* Fetch docs via AJAX */
+        $('#breadcrumbCount').text('loading...');
+        $('#docTableBody').html('<tr><td colspan="8" class="text-center" style="padding:40px;color:var(--cf-text-muted)"><i class="fa fa-spinner fa-spin"></i> Loading documents...</td></tr>');
+        $('#docGrid').html('');
 
-            if (currentFilter === 'all') show = true;
-            else if (currentFilter === 'general') show = !companyId || companyId === '' || entityType !== 'company';
-            else if (currentFilter === 'recent') show = true;
-            else if (currentFilter.indexOf('company-') === 0) {
-                var fid = currentFilter.replace('company-', '');
-                show = companyId === fid;
+        $.getJSON(BASE + 'documents/folderDocs?filter=' + encodeURIComponent(filter), function(data) {
+            if (!data.ok) { $('#docTableBody').html('<tr><td colspan="8" class="text-center" style="padding:40px">Error loading documents</td></tr>'); return; }
+            var docs = data.docs || [];
+            $('#breadcrumbCount').text(docs.length + ' files');
+
+            /* Populate list view */
+            if (docs.length === 0) {
+                $('#docTableBody').html('<tr><td colspan="8" class="text-center" style="padding:50px"><div style="width:56px;height:56px;border-radius:14px;background:var(--cf-card-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--cf-text-muted);font-size:24px"><i class="fa fa-folder-open-o"></i></div><p style="color:var(--cf-text-secondary);font-size:14px;margin:0">No documents in this folder.</p></td></tr>');
+                return;
             }
 
-            $(this).toggle(show);
+            var tbodyHtml = '';
+            var gridHtml = '';
+            var colorMap = {pdf:'#e74c3c',doc:'#2b579a',docx:'#2b579a',xls:'#217346',xlsx:'#217346',jpg:'#f59e0b',jpeg:'#f59e0b',png:'#f59e0b',gif:'#f59e0b',txt:'#6b7280',csv:'#217346',zip:'#8b5cf6',rar:'#8b5cf6'};
+
+            docs.forEach(function(d) {
+                var extColor = colorMap[d.ext] || 'var(--cf-accent)';
+                tbodyHtml += '<tr data-company-id="' + (d.company_id||'') + '" data-doc-id="' + d.id + '">' +
+                    '<td><input type="checkbox" class="doc-check" value="' + d.id + '"></td>' +
+                    '<td><div style="display:flex;align-items:center;gap:8px"><span class="doc-file-icon doc-ext-' + d.ext + '"><i class="fa fa-file-' + d.icon + '"></i></span><span style="font-weight:500;font-size:13px">' + escHtml(d.name) + '</span></div></td>' +
+                    '<td style="font-size:12px">' + (d.company || '<em style="color:var(--cf-text-muted)">Unidentified</em>') + '</td>' +
+                    '<td><span class="status-badge draft" style="font-size:10px">' + escHtml(d.type) + '</span></td>' +
+                    '<td style="font-size:12px;color:var(--cf-text-secondary)">' + escHtml(d.size) + '</td>' +
+                    '<td style="font-size:12px">' + escHtml(d.uploaded_by) + '</td>' +
+                    '<td style="font-size:12px">' + escHtml(d.date) + '</td>' +
+                    '<td><div style="display:flex;gap:4px">' +
+                    '<a href="' + BASE + 'documents/download/' + d.id + '" class="btn btn-default btn-xs" title="Download" style="border-radius:6px"><i class="fa fa-download"></i></a>' +
+                    '<a href="' + BASE + 'file_preview/' + d.id + '" class="btn btn-default btn-xs" title="Preview" style="border-radius:6px"><i class="fa fa-eye"></i></a>' +
+                    '<button class="btn btn-default btn-xs btn-doc-delete" data-id="' + d.id + '" title="Delete" style="border-radius:6px;color:var(--cf-danger)"><i class="fa fa-trash-o"></i></button>' +
+                    '</div></td></tr>';
+
+                gridHtml += '<div class="doc-grid-card" data-doc-id="' + d.id + '">' +
+                    '<div class="doc-grid-card-check"><input type="checkbox" class="doc-grid-check" value="' + d.id + '"></div>' +
+                    '<div class="doc-grid-card-icon" style="color:' + extColor + '"><i class="fa fa-file-' + d.icon + ' fa-2x"></i></div>' +
+                    '<div class="doc-grid-card-name" title="' + escHtml(d.name) + '">' + escHtml(d.name) + '</div>' +
+                    '<div class="doc-grid-card-meta">' + escHtml(d.size) + ' &middot; ' + (d.ext||'?').toUpperCase() + '</div>' +
+                    '<div class="doc-grid-card-company">' + escHtml(d.company || 'Unidentified') + '</div>' +
+                    '<div class="doc-grid-card-actions">' +
+                    '<a href="' + BASE + 'documents/download/' + d.id + '" class="btn btn-default btn-xs" title="Download"><i class="fa fa-download"></i></a>' +
+                    '<a href="' + BASE + 'file_preview/' + d.id + '" class="btn btn-default btn-xs" title="Preview"><i class="fa fa-eye"></i></a>' +
+                    '<button class="btn btn-default btn-xs btn-doc-delete" data-id="' + d.id + '" title="Delete" style="color:var(--cf-danger)"><i class="fa fa-trash-o"></i></button>' +
+                    '</div></div>';
+            });
+
+            $('#docTableBody').html(tbodyHtml);
+            $('#docGrid').html(gridHtml);
+
+            /* Re-init DataTable on the fresh rows */
+            if (dt) { dt.destroy(); dt = null; }
+            if ($.fn.DataTable) {
+                dt = $('#datatable-documents').DataTable({
+                    pageLength: -1,
+                    lengthChange: false,
+                    order: [[6, 'desc']],
+                    dom: 'rtip',
+                    language: {
+                        info: '_TOTAL_ files',
+                        infoEmpty: '0 files',
+                        emptyTable: 'No documents in this folder',
+                        paginate: { previous: '<i class="fa fa-chevron-left"></i>', next: '<i class="fa fa-chevron-right"></i>' }
+                    }
+                });
+            }
+        }).fail(function() {
+            $('#docTableBody').html('<tr><td colspan="8" class="text-center" style="padding:40px;color:var(--cf-danger)">Failed to load documents.</td></tr>');
+            $('#breadcrumbCount').text('error');
         });
-    }
+    };
+
+    function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
     /* ── Folder search (fuzzy / multi-word) ── */
     window.filterFolders = function() {
@@ -965,8 +912,6 @@ $(document).ready(function() {
             $('#docGridView').show();
             $('#btnGridView').addClass('active');
             $('#btnListView').removeClass('active');
-            /* Apply current filter to grid */
-            filterGridCards();
         } else {
             $('#docGridView').hide();
             $('#docListView').show();

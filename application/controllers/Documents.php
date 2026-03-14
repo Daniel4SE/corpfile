@@ -198,6 +198,70 @@ class Documents extends BaseController {
         exit;
     }
 
+    /**
+     * GET /documents/folderDocs?filter=all|recent|general|company-{id}
+     * Returns JSON array of documents for the selected folder.
+     */
+    public function folderDocs() {
+        $this->requireAuth();
+        if (!$this->db) { $this->json(['ok' => false]); return; }
+
+        $clientId = $_SESSION['client_id'] ?? '';
+        $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
+        if (!$client) { $this->json(['ok' => false]); return; }
+
+        $filter = $_GET['filter'] ?? 'all';
+        $where = "d.client_id = ?";
+        $params = [$client->id];
+
+        if ($filter === 'general') {
+            $where .= " AND (d.entity_id IS NULL OR d.entity_type != 'company')";
+        } elseif ($filter === 'recent') {
+            // last 10 most recent
+        } elseif (strpos($filter, 'company-') === 0) {
+            $companyId = (int) str_replace('company-', '', $filter);
+            $where .= " AND d.entity_type = 'company' AND d.entity_id = ?";
+            $params[] = $companyId;
+        }
+        // 'all' = no extra filter
+
+        $limit = ($filter === 'recent') ? 10 : 200;
+        $docs = $this->db->fetchAll(
+            "SELECT d.id, d.document_name, d.file_path, d.file_size, d.file_type, d.entity_id, d.entity_type, d.created_at,
+                    c.company_name as company, u.name as uploaded_by
+             FROM documents d
+             LEFT JOIN companies c ON c.id = d.entity_id AND d.entity_type='company'
+             LEFT JOIN users u ON u.id = d.uploaded_by
+             WHERE {$where}
+             ORDER BY d.created_at DESC
+             LIMIT {$limit}",
+            $params
+        );
+
+        $rows = [];
+        foreach ($docs as $doc) {
+            $name = $doc->document_name ?? '';
+            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+            $iconMap = ['pdf'=>'pdf-o','doc'=>'word-o','docx'=>'word-o','xls'=>'excel-o','xlsx'=>'excel-o',
+                        'jpg'=>'image-o','jpeg'=>'image-o','png'=>'image-o','gif'=>'image-o',
+                        'txt'=>'text-o','csv'=>'excel-o','zip'=>'archive-o','rar'=>'archive-o'];
+            $rows[] = [
+                'id'          => (int) $doc->id,
+                'name'        => $name,
+                'ext'         => $ext,
+                'icon'        => $iconMap[$ext] ?? 'o',
+                'company'     => $doc->company ?? '',
+                'company_id'  => $doc->entity_id ?? '',
+                'type'        => $doc->file_type ?? 'General',
+                'size'        => $doc->file_size ? $this->formatBytes($doc->file_size) : '',
+                'uploaded_by' => $doc->uploaded_by ?? '',
+                'date'        => $doc->created_at ? date('d/m/Y', strtotime($doc->created_at)) : '',
+            ];
+        }
+
+        $this->json(['ok' => true, 'docs' => $rows, 'total' => count($rows)]);
+    }
+
     private function formatBytes($bytes, $precision = 1) {
         $units = ['B', 'KB', 'MB', 'GB'];
         $bytes = max($bytes, 0);
