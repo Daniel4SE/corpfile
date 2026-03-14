@@ -100,31 +100,87 @@ class Documents extends BaseController {
         $uploadDir = BASEPATH . 'uploads/documents/';
         if (!is_dir($uploadDir)) { mkdir($uploadDir, 0755, true); }
 
-        $companyId = $this->input('company_id', '') ?: null;
+        $userCompanyId = $this->input('company_id', '') ?: null;
         $docType   = $this->input('document_type', 'General');
         $desc      = $this->input('description', '');
         $userId    = $_SESSION['user_id'] ?? null;
+
+        // Pre-load all company names for auto-matching
+        $allCompanies = $this->db->fetchAll(
+            "SELECT id, company_name FROM companies WHERE client_id = ? ORDER BY CHAR_LENGTH(company_name) DESC",
+            [$client->id]
+        );
+
         $count = 0;
+        $matched = 0;
+        $unmatched = 0;
 
         foreach ($_FILES['documents']['name'] as $i => $name) {
             if ($_FILES['documents']['error'][$i] !== UPLOAD_ERR_OK) continue;
             $tmpName = $_FILES['documents']['tmp_name'][$i];
             $size    = $_FILES['documents']['size'][$i];
-            $ext     = pathinfo($name, PATHINFO_EXTENSION);
             $safeName = time() . '_' . $i . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $name);
             $dest     = $uploadDir . $safeName;
 
+            // Determine company_id: user-selected > auto-match from filename > null (unidentified)
+            $companyId = $userCompanyId;
+            if (!$companyId) {
+                $companyId = $this->matchCompanyFromFilename($name, $allCompanies);
+            }
+
+            $entityType = $companyId ? 'company' : 'general';
+
             if (move_uploaded_file($tmpName, $dest)) {
-                $this->db->execute(
-                    "INSERT INTO documents (client_id, entity_type, entity_id, document_name, file_name, file_path, file_size, document_type, description, uploaded_by, created_at) 
-                     VALUES (?, 'company', ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
-                    [$client->id, $companyId, $name, $safeName, 'uploads/documents/' . $safeName, $size, $docType, $desc, $userId]
-                );
+                $this->db->insert('documents', [
+                    'client_id'     => $client->id,
+                    'entity_type'   => $entityType,
+                    'entity_id'     => $companyId,
+                    'document_name' => $name,
+                    'file_path'     => 'uploads/documents/' . $safeName,
+                    'file_size'     => $size,
+                    'file_type'     => strtolower(pathinfo($name, PATHINFO_EXTENSION)),
+                    'uploaded_by'   => $userId,
+                ]);
                 $count++;
+                if ($companyId) { $matched++; } else { $unmatched++; }
             }
         }
-        $this->setFlash('success', "{$count} document(s) uploaded successfully.");
+
+        $msg = "{$count} document(s) uploaded.";
+        if ($matched > 0) $msg .= " {$matched} auto-matched to companies.";
+        if ($unmatched > 0) $msg .= " {$unmatched} placed in Unidentified folder.";
+        $this->setFlash('success', $msg);
         $this->redirect('documents');
+    }
+
+    /**
+     * Try to match a filename to a company by checking if the company name appears in the filename.
+     * Uses longest-match-first to avoid false positives (e.g. "ARK" matching before "ARK SOLAR ENERGY").
+     */
+    private function matchCompanyFromFilename($filename, $allCompanies) {
+        // Remove extension, replace separators with spaces, normalize
+        $clean = pathinfo($filename, PATHINFO_FILENAME);
+        $clean = str_replace(['_', '-', '.'], ' ', $clean);
+        $cleanLower = strtolower($clean);
+
+        foreach ($allCompanies as $co) {
+            $coName = strtolower(trim($co->company_name));
+            if ($coName === '') continue;
+
+            // Try full company name match
+            if (strpos($cleanLower, $coName) !== false) {
+                return (int) $co->id;
+            }
+
+            // Try without common suffixes (PTE. LTD., LTD., LLP, etc.)
+            $short = preg_replace('/\s*(pte\.?\s*ltd\.?|ltd\.?|llp|inc\.?|corp\.?|sdn\.?\s*bhd\.?|pac)\s*$/i', '', $coName);
+            $short = trim($short);
+            if ($short !== '' && strlen($short) >= 4 && strpos($cleanLower, $short) !== false) {
+                return (int) $co->id;
+            }
+        }
+
+        return null;
     }
 
     public function download($id = null) {
@@ -201,7 +257,7 @@ class Edit_document extends BaseController {
             }
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $this->validateCsrf() && $this->db && $data['document']) {
-            $this->db->execute("UPDATE documents SET document_name=?, category_id=?, entity_type=?, entity_id=? WHERE id=?", [
+            $this->db->query("UPDATE documents SET document_name=?, category_id=?, entity_type=?, entity_id=? WHERE id=?", [
                 $this->input('document_name',''), $this->input('category_id',''),
                 $this->input('entity_type','company'), $this->input('entity_id',''), $id
             ]);
@@ -279,14 +335,14 @@ class Edit_form extends BaseController {
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $this->validateCsrf() && $this->db) {
             if ($id) {
-                $this->db->execute("UPDATE form_templates SET template_name=?, category_id=?, description=?, status=? WHERE id=?", [
+                $this->db->query("UPDATE form_templates SET template_name=?, category_id=?, description=?, status=? WHERE id=?", [
                     $this->input('template_name',''), $this->input('category_id',''), $this->input('description',''), $this->input('status','Active'), $id
                 ]);
             } else {
                 $clientId = $_SESSION['client_id'] ?? '';
                 $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
                 if ($client) {
-                    $this->db->execute("INSERT INTO form_templates (client_id,template_name,category_id,description,status) VALUES (?,?,?,?,?)", [
+                    $this->db->query("INSERT INTO form_templates (client_id,template_name,category_id,description,status) VALUES (?,?,?,?,?)", [
                         $client->id, $this->input('template_name',''), $this->input('category_id',''), $this->input('description',''), $this->input('status','Active')
                     ]);
                 }

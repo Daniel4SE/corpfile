@@ -67,7 +67,7 @@
             <?php if ($general_count > 0): ?>
             <div class="doc-folder-item" data-filter="general" onclick="filterByFolder('general', this)">
                 <span class="doc-folder-icon" style="color:#6b7280;"><i class="fa fa-folder-o"></i></span>
-                <span class="doc-folder-name">Unlinked / General</span>
+                <span class="doc-folder-name">Unidentified</span>
                 <span class="doc-folder-count"><?= $general_count ?></span>
             </div>
             <?php endif; ?>
