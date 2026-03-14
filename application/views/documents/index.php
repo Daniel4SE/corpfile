@@ -566,7 +566,10 @@
 
 <!-- ══════ JAVASCRIPT ══════ -->
 <script>
-$(document).ready(function() {
+/* Wait for jQuery to be available (it loads after this view) */
+function _docPageInit() {
+    if (typeof jQuery === 'undefined') { setTimeout(_docPageInit, 50); return; }
+    var $ = jQuery;
     /* ── State ── */
     var currentFilter = 'all';
     var currentView = localStorage.getItem('docView') || 'list';
@@ -575,7 +578,7 @@ $(document).ready(function() {
     /* ── DataTable (initialized empty, populated via AJAX) ── */
     var dt = null;
     var BASE = '<?= base_url() ?>';
-    if ($.fn.select2) { $('.select2_single').select2(); }
+    if ($.fn && $.fn.select2) { $('.select2_single').select2(); }
 
     /* ══════════════════════════════════════════════
        SELECT ALL + BULK ACTIONS
@@ -1007,5 +1010,6 @@ $(document).ready(function() {
         fileInput.files = selectedFiles.files;
         renderFileList();
     });
-});
+}
+_docPageInit();
 </script>
