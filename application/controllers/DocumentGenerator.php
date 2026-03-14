@@ -38,7 +38,7 @@ class DocumentGenerator extends BaseController {
      */
     public function generate() {
         $this->requireAuth();
-        set_time_limit(120);
+        set_time_limit(300);
         header('Content-Type: application/json');
 
         $templateId = $this->input('template_id', '');
@@ -98,10 +98,9 @@ class DocumentGenerator extends BaseController {
 
         $result = $aiBridge->runTurn($context['prompt'], [
             'system_prompt' => $context['system'],
-            'max_tokens' => 4096,
-            'temperature' => 0.3,
-            'timeout' => 55,
-            'model' => 'claude-sonnet-4-6',
+            'max_tokens' => 8192,
+            'temperature' => 0.2,
+            'timeout' => 180,
         ]);
 
         if (!empty($result['ok']) && !empty($result['response_text'])) {
@@ -116,14 +115,157 @@ class DocumentGenerator extends BaseController {
     }
 
     /**
-     * Build the prompt context for a given template
+     * Build the prompt context for a given template.
+     * Uses specialized system prompts from DocumentPrompts where available,
+     * and structured JSON data injection for the user turn.
      */
     private function buildTemplateContext($templateId, $company, $directors, $shareholders, $secretary) {
+        require_once APPPATH . 'libraries/DocumentPrompts.php';
+
+        $templates = $this->getTemplateDefinitions();
+        $tpl = $templates[$templateId] ?? null;
+        $tplName = $tpl ? $tpl['name'] : 'Corporate Document';
+
+        // Try to get specialized system prompt
+        $specializedPrompt = DocumentPrompts::getSystemPrompt($templateId);
+        $genericSystem = "You are a Singapore corporate secretary document generator. Generate professional, legally-formatted documents. Use proper Singapore corporate law formatting and terminology. Include all standard legal clauses. Use today's date where needed. Format with clear sections and proper spacing.";
+        $system = $specializedPrompt ?: $genericSystem;
+
+        // Build structured JSON data payload for the user turn
+        $jsonPayload = $this->buildDataPayload($company, $directors, $shareholders, $secretary);
+
+        if ($specializedPrompt) {
+            // For specialized prompts: send structured JSON as the user message
+            $prompt = "Generate the following document: **{$tplName}**\n\nHere is the company data from CorpFile database:\n\n```json\n" . json_encode($jsonPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n```\n\nToday's date: " . date('Y-m-d') . "\n\nPlease generate the complete document with all required sections.";
+        } else {
+            // For generic templates: use the template instruction + flat text
+            $companyInfo = $this->buildFlatCompanyInfo($company, $directors, $shareholders, $secretary);
+            $instruction = $tpl ? $tpl['instruction'] : 'Generate a corporate document.';
+            $prompt = "Generate the following document: **{$tplName}**\n\n{$instruction}\n\nCompany Information:\n{$companyInfo}";
+        }
+
+        return ['name' => $tplName, 'system' => $system, 'prompt' => $prompt];
+    }
+
+    /**
+     * Build the structured JSON data payload matching the SYSTEM DATA INJECTION spec.
+     */
+    private function buildDataPayload($company, $directors, $shareholders, $secretary) {
+        if (!$company) {
+            return ['company' => null, 'directors' => [], 'shareholders' => [], 'secretary' => null];
+        }
+
+        // Get registered address
+        $address = null;
+        if ($this->db) {
+            try {
+                $addr = $this->db->fetchOne(
+                    "SELECT * FROM addresses WHERE entity_type = 'company' AND entity_id = ? AND (is_default = 1 OR address_type = 'Registered Office') LIMIT 1",
+                    [$company->id]
+                );
+                if ($addr) {
+                    $address = trim(implode(', ', array_filter([
+                        $addr->block ?? '', $addr->address_text ?? '', $addr->building ?? '',
+                        $addr->level ? '#' . $addr->level : '', $addr->unit ? '-' . $addr->unit : '',
+                        $addr->postal_code ?? '', $addr->country ?? ''
+                    ])));
+                }
+            } catch (\Exception $e) {}
+        }
+
+        // Get auditor
+        $auditor = null;
+        if ($this->db) {
+            try {
+                $aud = $this->db->fetchOne("SELECT * FROM auditors WHERE company_id = ? AND status = 'Active' LIMIT 1", [$company->id]);
+                if ($aud) {
+                    $auditor = [
+                        'firm' => $aud->firm_name ?? $aud->name ?? null,
+                        'partner' => $aud->name ?? null,
+                        'appointed_date' => $aud->date_of_appointment ?? null,
+                    ];
+                }
+            } catch (\Exception $e) {}
+        }
+
+        // Determine company type
+        $totalShareholders = count($shareholders);
+        $hasCorporateShareholder = false;
+        foreach ($shareholders as $s) {
+            if (($s->shareholder_type ?? '') === 'Corporate') {
+                $hasCorporateShareholder = true;
+                break;
+            }
+        }
+        $isEPC = ($totalShareholders <= 20 && !$hasCorporateShareholder);
+        $companyType = 'private';
+        if ($isEPC) $companyType = 'exempt_private';
+
+        return [
+            'company' => [
+                'uen' => $company->acra_registration_number ?? $company->registration_number ?? null,
+                'name' => $company->company_name ?? null,
+                'type' => $companyType,
+                'incorporation_date' => $company->incorporation_date ?? null,
+                'registered_address' => $address ?: null,
+                'principal_activity' => $company->activity_1 ?? null,
+                'principal_activity_description' => $company->activity_1_desc_default ?? null,
+                'fye_date' => $company->fye_date ?? null,
+                'is_small_company' => null,
+                'is_dormant' => (($company->internal_css_status ?? '') === 'Dormant'),
+                'entity_status' => $company->entity_status ?? 'Active',
+                'last_ar_filed_date' => $company->last_ar_filing ?? null,
+                'is_epc' => $isEPC,
+                'total_shareholders' => $totalShareholders,
+                'ord_issued_share_capital' => $company->ord_issued_share_capital ?? 0,
+                'ord_currency' => $company->ord_currency ?? 'SGD',
+                'no_ord_shares' => $company->no_ord_shares ?? 0,
+                'paid_up_capital' => $company->paid_up_capital ?? 0,
+            ],
+            'directors' => array_map(function($d) {
+                return [
+                    'name' => $d->name ?? $d->member_name ?? null,
+                    'nric' => $d->id_number ?? null,
+                    'nationality' => $d->nationality ?? null,
+                    'designation' => $d->role ?? 'director',
+                    'appointed' => $d->date_of_appointment ?? $d->appointment_date ?? null,
+                    'ceased' => $d->date_of_cessation ?? $d->cessation_date ?? null,
+                    'email' => $d->email ?? null,
+                    'status' => $d->status ?? 'Active',
+                ];
+            }, $directors),
+            'shareholders' => array_map(function($s) use ($company) {
+                $totalShares = (int)($company->no_ord_shares ?? 1);
+                $shares = 0; // shares per shareholder not stored in shareholders table directly
+                return [
+                    'name' => $s->name ?? $s->member_name ?? null,
+                    'id' => $s->id_number ?? null,
+                    'type' => ($s->shareholder_type ?? 'Individual') === 'Corporate' ? 'corporation' : 'natural_person',
+                    'nationality' => $s->nationality ?? null,
+                    'appointed' => $s->date_of_appointment ?? null,
+                    'ceased' => $s->date_of_cessation ?? null,
+                    'status' => $s->status ?? 'Active',
+                ];
+            }, $shareholders),
+            'secretary' => $secretary ? [
+                'name' => $secretary->name ?? null,
+                'appointed' => $secretary->date_of_appointment ?? null,
+                'status' => $secretary->status ?? 'Active',
+            ] : null,
+            'auditor' => $auditor,
+            'today' => date('Y-m-d'),
+        ];
+    }
+
+    /**
+     * Build flat text company info for generic templates (fallback).
+     */
+    private function buildFlatCompanyInfo($company, $directors, $shareholders, $secretary) {
         $companyName = $company->company_name ?? '[Company Name]';
         $regNo = $company->registration_number ?? $company->acra_registration_number ?? '[Registration No.]';
-        $regAddress = $company->registered_address ?? '[Registered Address]';
         $fyeDate = $company->fye_date ?? '[FYE Date]';
-        
+        $secretaryName = $secretary->name ?? '[Secretary Name]';
+
         $directorList = '';
         foreach ($directors as $d) {
             $name = $d->member_name ?? $d->name ?? 'Unknown';
@@ -132,24 +274,10 @@ class DocumentGenerator extends BaseController {
         $shareholderList = '';
         foreach ($shareholders as $s) {
             $name = $s->member_name ?? $s->name ?? 'Unknown';
-            $shareholderList .= "- {$name} (ID: " . ($s->id_number ?? 'N/A') . ", Shares: " . ($s->shares_held ?? 'N/A') . ")\n";
-        }
-        $secretaryName = $secretary->name ?? '[Secretary Name]';
-
-        $companyInfo = "Company: {$companyName}\nRegistration No: {$regNo}\nRegistered Address: {$regAddress}\nFYE: {$fyeDate}\nSecretary: {$secretaryName}\n\nDirectors:\n{$directorList}\nShareholders:\n{$shareholderList}";
-
-        $system = "You are a Singapore corporate secretary document generator. Generate professional, legally-formatted documents based on the template requested. Use proper Singapore corporate law formatting and terminology. Output the document in clean, professional format ready for use. Include all standard legal clauses. Use today's date where needed. Format with clear sections and proper spacing.";
-
-        $templates = $this->getTemplateDefinitions();
-        $tpl = $templates[$templateId] ?? null;
-        
-        if (!$tpl) {
-            return ['name' => 'Unknown Template', 'system' => $system, 'prompt' => "Generate a corporate document for:\n\n{$companyInfo}"];
+            $shareholderList .= "- {$name} (Type: " . ($s->shareholder_type ?? 'Individual') . ")\n";
         }
 
-        $prompt = "Generate the following document: **{$tpl['name']}**\n\n{$tpl['instruction']}\n\nCompany Information:\n{$companyInfo}";
-
-        return ['name' => $tpl['name'], 'system' => $system, 'prompt' => $prompt];
+        return "Company: {$companyName}\nUEN: {$regNo}\nFYE: {$fyeDate}\nSecretary: {$secretaryName}\n\nDirectors:\n{$directorList}\nShareholders:\n{$shareholderList}";
     }
 
     /**
