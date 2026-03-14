@@ -207,11 +207,11 @@
                                 </ul>
                             </li>
 
-                            <!-- 8. Workflow (SOP) -->
+                            <!-- 8. Tasks -->
                             <li class="<?= ($current_url == 'workflow') ? 'active' : '' ?>">
                                 <a href="<?= base_url('workflow') ?>">
                                     <span class="cf-nav-icon"><?= cf_icon('projects') ?></span>
-                                    <span>Workflow (SOP)</span>
+                                    <span>Tasks</span>
                                 </a>
                             </li>
 

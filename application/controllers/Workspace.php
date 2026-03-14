@@ -321,10 +321,10 @@ class Workflow extends Workspace_section {
         $this->requireAuth();
 
         $data = [
-            'page_title' => 'Workflow (SOP)',
+            'page_title' => 'Tasks',
             'lanes' => [
                 'intake' => ['label' => 'Intake', 'items' => []],
-                'in_progress' => ['label' => 'In Progress', 'items' => []],
+                'in_progress' => ['label' => 'Due This Week', 'items' => []],
                 'pending_review' => ['label' => 'Pending Review', 'items' => []],
                 'done' => ['label' => 'Done', 'items' => []],
             ],
