@@ -41,6 +41,7 @@
                 </div>
                 <h4 class="cf-agent-card-name">Company Registration</h4>
                 <p class="cf-agent-card-desc">Handles company incorporation, ACRA registration, compliance checks, and post-incorporation setup.</p>
+                <button class="cf-agent-edit-btn" onclick="event.stopPropagation();openAgentEditor('compliance')" title="View / Edit Agent"><i class="fa fa-cog"></i></button>
             </div>
 
             <!-- Document Generator -->
@@ -52,6 +53,7 @@
                 </div>
                 <h4 class="cf-agent-card-name">Document Generator</h4>
                 <p class="cf-agent-card-desc">Auto-generates resolutions, forms, certificates, and corporate documents from templates.</p>
+                <button class="cf-agent-edit-btn" onclick="event.stopPropagation();openAgentEditor('docgen')" title="View / Edit Agent"><i class="fa fa-cog"></i></button>
             </div>
 
             <!-- KYC Screening -->
@@ -63,6 +65,7 @@
                 </div>
                 <h4 class="cf-agent-card-name">KYC Screening</h4>
                 <p class="cf-agent-card-desc">Performs customer due diligence, PEP/sanctions screening, and AML risk assessment for new clients.</p>
+                <button class="cf-agent-edit-btn" onclick="event.stopPropagation();openAgentEditor('kyc')" title="View / Edit Agent"><i class="fa fa-cog"></i></button>
             </div>
 
             <!-- IR8A / Tax Filing -->
@@ -74,6 +77,7 @@
                 </div>
                 <h4 class="cf-agent-card-name">IR8A / Tax Filing</h4>
                 <p class="cf-agent-card-desc">Prepares IR8A forms, validates tax computations, and handles IRAS e-filing workflows.</p>
+                <button class="cf-agent-edit-btn" onclick="event.stopPropagation();openAgentEditor('ir8a')" title="View / Edit Agent"><i class="fa fa-cog"></i></button>
             </div>
 
             <!-- Invoice Manager -->
@@ -85,6 +89,7 @@
                 </div>
                 <h4 class="cf-agent-card-name">Invoice Manager</h4>
                 <p class="cf-agent-card-desc">Generates annual fee invoices, tracks payments, and sends billing reminders to clients.</p>
+                <button class="cf-agent-edit-btn" onclick="event.stopPropagation();openAgentEditor('invoice')" title="View / Edit Agent"><i class="fa fa-cog"></i></button>
             </div>
 
             <!-- SG Payroll -->
@@ -96,6 +101,7 @@
                 </div>
                 <h4 class="cf-agent-card-name">SG Payroll</h4>
                 <p class="cf-agent-card-desc">Singapore payroll processing, CPF calculations, SDL/FWL computation, and payslip generation.</p>
+                <button class="cf-agent-edit-btn" onclick="event.stopPropagation();openAgentEditor('payroll')" title="View / Edit Agent"><i class="fa fa-cog"></i></button>
             </div>
 
         </div>
@@ -402,6 +408,62 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+    position: relative;
+}
+/* Edit button on card */
+.cf-agent-edit-btn {
+    position: absolute; top: 12px; right: 12px;
+    width: 28px; height: 28px; border-radius: 7px;
+    border: none; background: transparent; color: #9ca3af;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; opacity: 0; transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.cf-agent-card-v2:hover .cf-agent-edit-btn { opacity: 1; }
+.cf-agent-edit-btn:hover { background: #f3f4f6; color: #374151; }
+.cf-agents-page.chatting .cf-agent-edit-btn { display: none; }
+
+/* Agent Editor Modal */
+.cf-agent-editor-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:9999;
+    align-items:center; justify-content:center;
+}
+.cf-agent-editor-overlay.open { display:flex; }
+.cf-agent-editor {
+    background:#fff; border-radius:14px; width:580px; max-width:95vw;
+    max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.2);
+}
+.cf-agent-editor-header {
+    padding:20px 24px; border-bottom:1px solid #e5e7eb;
+    display:flex; align-items:center; justify-content:space-between;
+}
+.cf-agent-editor-header h3 { margin:0; font-size:16px; font-weight:700; }
+.cf-agent-editor-close { background:none; border:none; font-size:20px; color:#9ca3af; cursor:pointer; }
+.cf-agent-editor-body { padding:20px 24px; }
+.cf-agent-editor-body label {
+    display:block; font-size:12px; font-weight:600; color:#6b7280;
+    margin-bottom:5px; margin-top:16px; text-transform:uppercase; letter-spacing:0.4px;
+}
+.cf-agent-editor-body label:first-child { margin-top:0; }
+.cf-agent-editor-body input,
+.cf-agent-editor-body textarea {
+    width:100%; padding:9px 12px; border:1px solid #e5e7eb; border-radius:8px;
+    font-size:13px; font-family:inherit; color:#1f2937; outline:none;
+}
+.cf-agent-editor-body input:focus,
+.cf-agent-editor-body textarea:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,0.1); }
+.cf-agent-editor-body textarea { min-height:120px; resize:vertical; font-family:monospace; font-size:12px; line-height:1.5; }
+.cf-agent-editor-footer {
+    padding:16px 24px; border-top:1px solid #e5e7eb;
+    display:flex; justify-content:flex-end; gap:10px;
+}
+.cf-agent-editor-footer .btn-save {
+    padding:9px 22px; border-radius:8px; border:none; background:#6366f1;
+    color:#fff; font-size:13px; font-weight:600; cursor:pointer;
+}
+.cf-agent-editor-footer .btn-save:hover { background:#4f46e5; }
+.cf-agent-editor-footer .btn-cancel {
+    padding:9px 22px; border-radius:8px; border:1px solid #e5e7eb; background:#fff;
+    color:#374151; font-size:13px; font-weight:500; cursor:pointer;
 }
 .cf-agent-card-v2:hover {
     border-color: #c7d2fe;
@@ -1684,5 +1746,92 @@
         /* Small delay so the page renders first */
         setTimeout(function() { sendMessage(); }, 300);
     }
+
+    /* ── Agent Editor ── */
+    var editingAgent = null;
+
+    window.openAgentEditor = function(agentKey) {
+        editingAgent = agentKey;
+        var card = document.querySelector('.cf-agent-card-v2[data-agent="' + agentKey + '"]');
+        if (!card) return;
+
+        var name = card.getAttribute('data-label') || '';
+        var desc = card.querySelector('.cf-agent-card-desc').textContent || '';
+        var prompt = card.getAttribute('data-prompt') || '';
+        var systemHint = agentSystemHints[agentKey] || '';
+
+        document.getElementById('agentEditorTitle').textContent = 'Edit Agent: ' + name;
+        document.getElementById('agentEditName').value = name;
+        document.getElementById('agentEditDesc').value = desc;
+        document.getElementById('agentEditPrompt').value = prompt;
+        document.getElementById('agentEditSystem').value = systemHint;
+        document.getElementById('agentEditorOverlay').classList.add('open');
+    };
+
+    window.closeAgentEditor = function() {
+        document.getElementById('agentEditorOverlay').classList.remove('open');
+        editingAgent = null;
+    };
+
+    window.saveAgentEditor = function() {
+        if (!editingAgent) return;
+        var card = document.querySelector('.cf-agent-card-v2[data-agent="' + editingAgent + '"]');
+        if (!card) return;
+
+        var newName = document.getElementById('agentEditName').value.trim();
+        var newDesc = document.getElementById('agentEditDesc').value.trim();
+        var newPrompt = document.getElementById('agentEditPrompt').value.trim();
+        var newSystem = document.getElementById('agentEditSystem').value.trim();
+
+        /* Update card */
+        if (newName) {
+            card.setAttribute('data-label', newName);
+            card.querySelector('.cf-agent-card-name').textContent = newName;
+        }
+        if (newDesc) {
+            card.querySelector('.cf-agent-card-desc').textContent = newDesc;
+        }
+        if (newPrompt) {
+            card.setAttribute('data-prompt', newPrompt);
+        }
+        if (newSystem) {
+            agentSystemHints[editingAgent] = newSystem;
+        }
+
+        /* Update chat header if this agent is currently selected */
+        if (selectedAgent === editingAgent && newName) {
+            document.getElementById('chatAgentName').textContent = newName;
+            document.getElementById('agentSelectorLabel').textContent = newName;
+        }
+
+        closeAgentEditor();
+    };
 })();
 </script>
+
+<!-- Agent Editor Modal -->
+<div class="cf-agent-editor-overlay" id="agentEditorOverlay" onclick="if(event.target===this)closeAgentEditor()">
+    <div class="cf-agent-editor">
+        <div class="cf-agent-editor-header">
+            <h3 id="agentEditorTitle">Edit Agent</h3>
+            <button class="cf-agent-editor-close" onclick="closeAgentEditor()">&times;</button>
+        </div>
+        <div class="cf-agent-editor-body">
+            <label>Agent Name</label>
+            <input type="text" id="agentEditName" placeholder="e.g. Company Registration">
+
+            <label>Description</label>
+            <input type="text" id="agentEditDesc" placeholder="Short description of what this agent does">
+
+            <label>Default Prompt</label>
+            <input type="text" id="agentEditPrompt" placeholder="Default message when this agent is selected">
+
+            <label>System Prompt (Instructions to AI)</label>
+            <textarea id="agentEditSystem" placeholder="Define the agent's behavior, expertise, and response style..."></textarea>
+        </div>
+        <div class="cf-agent-editor-footer">
+            <button class="btn-cancel" onclick="closeAgentEditor()">Cancel</button>
+            <button class="btn-save" onclick="saveAgentEditor()">Save Changes</button>
+        </div>
+    </div>
+</div>
