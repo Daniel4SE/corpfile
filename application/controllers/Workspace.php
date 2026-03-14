@@ -426,6 +426,28 @@ class Workflow extends Workspace_section {
             }
         }
 
+        // ── Team members with task counts ──
+        $data['team_members'] = [];
+        if ($client) {
+            try {
+                $data['team_members'] = $this->db->fetchAll(
+                    "SELECT u.id, u.name, u.role, u.email,
+                            COUNT(t.id) AS total_tasks,
+                            SUM(CASE WHEN t.completed_date IS NOT NULL THEN 1 ELSE 0 END) AS done_count,
+                            SUM(CASE WHEN t.completed_date IS NULL AND t.actual_hours > 0 THEN 1 ELSE 0 END) AS review_count,
+                            SUM(CASE WHEN t.completed_date IS NULL AND (t.actual_hours IS NULL OR t.actual_hours = 0) THEN 1 ELSE 0 END) AS open_count
+                     FROM users u
+                     LEFT JOIN tasks t ON t.assigned_to = u.id AND t.client_id = ?
+                     WHERE u.client_id = ? AND u.status = 1
+                     GROUP BY u.id
+                     ORDER BY u.name ASC",
+                    [$client->id, $client->id]
+                );
+            } catch (Exception $e) {
+                $data['team_members'] = [];
+            }
+        }
+
         $this->loadLayout('workspace/workflow', $data);
     }
 }

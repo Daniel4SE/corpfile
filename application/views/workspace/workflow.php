@@ -81,8 +81,172 @@
     </div>
 </section>
 
+<!-- ══════ Team Members ══════ -->
+<section style="margin-top:22px;">
+    <div class="cf-page-header" style="margin-bottom:14px;">
+        <div>
+            <h2 style="font-size:16px; margin:0;">Team</h2>
+            <p style="margin:2px 0 0; font-size:13px; color:var(--cf-text-muted);">Task assignments by team member.</p>
+        </div>
+    </div>
+
+    <div class="cf-team-table-wrap">
+        <table class="cf-team-table">
+            <thead>
+                <tr>
+                    <th style="width:30%;">Name</th>
+                    <th style="width:15%;">Role</th>
+                    <th style="width:55%;">Tasks</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (!empty($team_members)): ?>
+                    <?php foreach ($team_members as $m):
+                        $open = (int)($m->open_count ?? 0);
+                        $review = (int)($m->review_count ?? 0);
+                        $done = (int)($m->done_count ?? 0);
+                        $total = $open + $review + $done;
+                    ?>
+                    <tr>
+                        <td>
+                            <div class="cf-team-name">
+                                <span class="cf-team-avatar"><?= strtoupper(mb_substr($m->name ?? '?', 0, 1)) ?></span>
+                                <span><?= htmlspecialchars($m->name ?? '') ?></span>
+                            </div>
+                        </td>
+                        <td><span class="cf-team-role-badge"><?= htmlspecialchars(ucfirst($m->role ?? 'user')) ?></span></td>
+                        <td>
+                            <div class="cf-team-tasks">
+                                <?php if ($total === 0): ?>
+                                    <span class="cf-team-no-tasks">No tasks assigned</span>
+                                <?php else: ?>
+                                    <?php if ($open > 0): ?>
+                                    <span class="cf-task-pill open" title="Open tasks"><?= $open ?> Open</span>
+                                    <?php endif; ?>
+                                    <?php if ($review > 0): ?>
+                                    <span class="cf-task-pill review" title="Pending Review"><?= $review ?> Review</span>
+                                    <?php endif; ?>
+                                    <?php if ($done > 0): ?>
+                                    <span class="cf-task-pill done" title="Done"><?= $done ?> Done</span>
+                                    <?php endif; ?>
+                                    <?php if ($total > 0): ?>
+                                    <div class="cf-task-bar" title="<?= $open ?> Open / <?= $review ?> Review / <?= $done ?> Done">
+                                        <?php if ($open > 0): ?><div class="cf-task-bar-seg open" style="width:<?= round($open/$total*100) ?>%"></div><?php endif; ?>
+                                        <?php if ($review > 0): ?><div class="cf-task-bar-seg review" style="width:<?= round($review/$total*100) ?>%"></div><?php endif; ?>
+                                        <?php if ($done > 0): ?><div class="cf-task-bar-seg done" style="width:<?= round($done/$total*100) ?>%"></div><?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr><td colspan="3" style="text-align:center; padding:30px; color:var(--cf-text-muted);">No team members found.</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</section>
+
 <!-- Task Detail Modal -->
 <style>
+/* Team Table */
+.cf-team-table-wrap {
+    background: var(--cf-white);
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius);
+    overflow: hidden;
+}
+.cf-team-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.cf-team-table thead th {
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--cf-text-muted);
+    background: var(--cf-bg);
+    border-bottom: 1px solid var(--cf-border);
+    text-align: left;
+}
+.cf-team-table tbody tr {
+    border-bottom: 1px solid var(--cf-border);
+    transition: background 0.12s;
+}
+.cf-team-table tbody tr:last-child { border-bottom: none; }
+.cf-team-table tbody tr:hover { background: rgba(79,134,198,0.03); }
+.cf-team-table tbody td {
+    padding: 12px 16px;
+    font-size: 13px;
+    vertical-align: middle;
+}
+.cf-team-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    color: var(--cf-text);
+}
+.cf-team-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--cf-accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.cf-team-role-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(107,114,128,0.08);
+    color: var(--cf-text-secondary);
+}
+.cf-team-tasks {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.cf-team-no-tasks {
+    font-size: 12px;
+    color: var(--cf-text-muted);
+}
+.cf-task-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.cf-task-pill.open { background: rgba(59,130,246,0.1); color: #3b82f6; }
+.cf-task-pill.review { background: rgba(245,158,11,0.1); color: #f59e0b; }
+.cf-task-pill.done { background: rgba(16,185,129,0.1); color: #10b981; }
+.cf-task-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--cf-border);
+    min-width: 80px;
+    max-width: 120px;
+}
+.cf-task-bar-seg { height: 100%; }
+.cf-task-bar-seg.open { background: #3b82f6; }
+.cf-task-bar-seg.review { background: #f59e0b; }
+.cf-task-bar-seg.done { background: #10b981; }
+
 /* Clickable KPI cards */
 .cf-kpi-grid .cf-metric-card[onclick] {
     transition: transform 0.15s, box-shadow 0.15s;
