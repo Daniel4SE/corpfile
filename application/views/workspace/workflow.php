@@ -1,30 +1,5 @@
 <section>
-    <div class="cf-kpi-grid">
-        <article class="cf-card cf-metric-card neutral">
-            <span class="cf-card-kicker">Open tasks</span>
-            <div class="cf-metric-value"><?= number_format((int) ($metrics['open'] ?? 0)) ?></div>
-            <div class="cf-metric-meta"><span class="cf-metric-trend quiet">All active tasks</span></div>
-        </article>
-        <article class="cf-card cf-metric-card warning">
-            <span class="cf-card-kicker">Due this week</span>
-            <div class="cf-metric-value"><?= number_format((int) ($metrics['due_this_week'] ?? 0)) ?></div>
-            <div class="cf-metric-meta"><span class="cf-metric-trend quiet">Needs immediate follow-up</span></div>
-        </article>
-        <article class="cf-card cf-metric-card blue">
-            <span class="cf-card-kicker">Pending review</span>
-            <div class="cf-metric-value"><?= number_format((int) ($metrics['pending_review'] ?? 0)) ?></div>
-            <div class="cf-metric-meta"><span class="cf-metric-trend quiet">Waiting for approval or sign-off</span></div>
-        </article>
-        <article class="cf-card cf-metric-card green">
-            <span class="cf-card-kicker">Done</span>
-            <div class="cf-metric-value"><?= number_format((int) ($metrics['done'] ?? 0)) ?></div>
-            <div class="cf-metric-meta"><span class="cf-metric-trend quiet">Completed tasks</span></div>
-        </article>
-    </div>
-</section>
-
-<section style="margin-top:22px;">
-    <div class="cf-page-header">
+    <div class="cf-page-header" style="margin-bottom:14px;">
         <div>
             <h2>Task Board</h2>
             <p>Tasks from projects, due dates, and compliance items.</p>
@@ -33,7 +8,7 @@
 
     <div class="cf-task-board">
         <?php foreach (($lanes ?? []) as $laneKey => $lane): ?>
-            <section class="cf-task-column">
+            <section class="cf-task-column" id="lane-<?= htmlspecialchars($laneKey) ?>">
                 <header>
                     <div><h3><?= esc($lane['label'] ?? '') ?></h3></div>
                     <span class="cf-badge neutral"><?= count($lane['items'] ?? []) ?></span>
@@ -81,8 +56,44 @@
     </div>
 </section>
 
+<section style="margin-top:22px;">
+    <div class="cf-kpi-grid">
+        <article class="cf-card cf-metric-card neutral" style="cursor:pointer;" onclick="scrollToLane('intake')">
+            <span class="cf-card-kicker">Open tasks</span>
+            <div class="cf-metric-value"><?= number_format((int) ($metrics['open'] ?? 0)) ?></div>
+            <div class="cf-metric-meta"><span class="cf-metric-trend quiet">All active tasks</span></div>
+        </article>
+        <article class="cf-card cf-metric-card warning" style="cursor:pointer;" onclick="scrollToLane('due_this_week')">
+            <span class="cf-card-kicker">Due this week</span>
+            <div class="cf-metric-value"><?= number_format((int) ($metrics['due_this_week'] ?? 0)) ?></div>
+            <div class="cf-metric-meta"><span class="cf-metric-trend quiet">Needs immediate follow-up</span></div>
+        </article>
+        <article class="cf-card cf-metric-card blue" style="cursor:pointer;" onclick="scrollToLane('pending_review')">
+            <span class="cf-card-kicker">Pending review</span>
+            <div class="cf-metric-value"><?= number_format((int) ($metrics['pending_review'] ?? 0)) ?></div>
+            <div class="cf-metric-meta"><span class="cf-metric-trend quiet">Waiting for approval or sign-off</span></div>
+        </article>
+        <article class="cf-card cf-metric-card green" style="cursor:pointer;" onclick="scrollToLane('done')">
+            <span class="cf-card-kicker">Done</span>
+            <div class="cf-metric-value"><?= number_format((int) ($metrics['done'] ?? 0)) ?></div>
+            <div class="cf-metric-meta"><span class="cf-metric-trend quiet">Completed tasks</span></div>
+        </article>
+    </div>
+</section>
+
 <!-- Task Detail Modal -->
 <style>
+/* Clickable KPI cards */
+.cf-kpi-grid .cf-metric-card[onclick] {
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.cf-kpi-grid .cf-metric-card[onclick]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+.cf-kpi-grid .cf-metric-card[onclick]:active {
+    transform: translateY(0);
+}
 .cf-task-modal-overlay {
     display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:9999;
     align-items:center; justify-content:center;
@@ -201,5 +212,16 @@ function openTaskDetail(cardId) {
 
 function closeTaskDetail() {
     document.getElementById('taskDetailOverlay').classList.remove('open');
+}
+
+function scrollToLane(laneKey) {
+    var el = document.getElementById('lane-' + laneKey);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        /* Flash highlight */
+        el.style.transition = 'box-shadow 0.3s';
+        el.style.boxShadow = '0 0 0 3px rgba(79,134,198,0.3)';
+        setTimeout(function() { el.style.boxShadow = ''; }, 1500);
+    }
 }
 </script>
