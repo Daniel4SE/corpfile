@@ -323,7 +323,7 @@ class Workflow extends Workspace_section {
         $data = [
             'page_title' => 'Tasks',
             'lanes' => [
-                'intake' => ['label' => 'Intake', 'items' => []],
+                'intake' => ['label' => 'Open Items', 'items' => []],
                 'in_progress' => ['label' => 'Due This Week', 'items' => []],
                 'pending_review' => ['label' => 'Pending Review', 'items' => []],
                 'done' => ['label' => 'Done', 'items' => []],
