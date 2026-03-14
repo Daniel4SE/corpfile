@@ -142,10 +142,7 @@
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                                 <span>Files & Images</span>
                             </button>
-                            <button class="cf-plus-dropdown-item" type="button" onclick="insertAgentTemplate(); closeAgentPlusMenu();">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                                <span>Templates</span>
-                            </button>
+
                             <button class="cf-plus-dropdown-item" type="button" onclick="toggleAgentWebSearch(); closeAgentPlusMenu();">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                                 <span>Web Search</span>
@@ -171,6 +168,14 @@
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
                         <div class="cf-model-dropdown" id="agentModelDropdown"></div>
+                    </div>
+                    <div class="cf-agent-quick-wrap" id="agentQuickWrap">
+                        <button class="cf-model-selector-btn" id="agentQuickBtn" type="button" title="Switch Agent">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            <span id="agentQuickLabel">Agents</span>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="cf-agent-quick-dropdown" id="agentQuickDropdown"></div>
                     </div>
                     <button class="cf-agents-sendbtn" id="agentSendBtn" title="Send" type="button">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -910,6 +915,38 @@
 }
 .cf-model-dropdown-item.active .cf-model-check { opacity: 1; }
 
+/* Agent Quick Selector */
+.cf-agent-quick-wrap { position: relative; }
+.cf-agent-quick-dropdown {
+    display: none;
+    position: fixed;
+    min-width: 240px;
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    padding: 6px;
+    z-index: 9999;
+    animation: cfModelDropIn 0.15s ease;
+}
+.cf-agent-quick-dropdown.open { display: block; }
+.cf-agent-quick-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px; cursor: pointer;
+    border: none; background: none; width: 100%; text-align: left;
+    font-size: 13px; color: #1e293b; transition: background 0.12s;
+}
+.cf-agent-quick-item:hover { background: #f5f3ff; }
+.cf-agent-quick-item.active { background: #eef2ff; }
+.cf-agent-quick-item .cf-aq-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.cf-agent-quick-item .cf-aq-name { font-weight: 600; font-size: 13px; }
+.cf-agent-quick-item .cf-aq-check {
+    color: #4f86c6; opacity: 0; flex-shrink: 0; margin-left: auto;
+}
+.cf-agent-quick-item.active .cf-aq-check { opacity: 1; }
+
 /* Agent Selector Pill */
 .cf-agent-selector-btn {
     display: flex;
@@ -1144,6 +1181,52 @@
         var dd = document.getElementById('agentModelDropdown');
         if (dd.classList.contains('open')) { closeAgentModelDropdown(); } else { openAgentModelDropdown(); }
     });
+
+    /* ── Agents Quick Selector ── */
+    function buildAgentQuickDropdown() {
+        var dd = document.getElementById('agentQuickDropdown');
+        dd.innerHTML = '';
+        cards.forEach(function(card) {
+            var key = card.getAttribute('data-agent');
+            var label = card.getAttribute('data-label');
+            var color = card.getAttribute('data-color') || 'purple';
+            var dotColors = { purple:'#7c3aed', blue:'#3b82f6', green:'#059669', amber:'#d97706', pink:'#db2777', violet:'#8b5cf6' };
+            var item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'cf-agent-quick-item' + (selectedAgent === key ? ' active' : '');
+            item.innerHTML =
+                '<span class="cf-aq-dot" style="background:' + (dotColors[color] || '#6b7280') + '"></span>' +
+                '<span class="cf-aq-name">' + label + '</span>' +
+                '<svg class="cf-aq-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selectCard(card);
+                document.getElementById('agentQuickLabel').textContent = label;
+                closeAgentQuickDropdown();
+            });
+            dd.appendChild(item);
+        });
+    }
+    function openAgentQuickDropdown() {
+        buildAgentQuickDropdown();
+        var dd = document.getElementById('agentQuickDropdown');
+        var btn = document.getElementById('agentQuickBtn');
+        var rect = btn.getBoundingClientRect();
+        dd.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+        dd.style.right = (window.innerWidth - rect.right) + 'px';
+        dd.classList.add('open');
+    }
+    function closeAgentQuickDropdown() {
+        document.getElementById('agentQuickDropdown').classList.remove('open');
+    }
+    document.getElementById('agentQuickBtn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dd = document.getElementById('agentQuickDropdown');
+        closeAgentModelDropdown();
+        if (dd.classList.contains('open')) { closeAgentQuickDropdown(); } else { openAgentQuickDropdown(); }
+    });
+    /* Close on outside click */
+    document.addEventListener('click', function() { closeAgentQuickDropdown(); });
 
     /* ── Color map ── */
     var colorMap = {
