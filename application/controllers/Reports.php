@@ -459,51 +459,210 @@ class Report_view extends BaseController {
 
     /**
      * Fetch report data from database based on report type and filters.
-     * Returns an array of row arrays matching the column order.
+     * Returns an array of row arrays matching the column order in reportConfigs.
      */
     private function fetchReportData($report_type) {
-        $data = [];
-
-        if (!$this->db) {
-            return $data;
-        }
+        if (!$this->db) return [];
 
         $clientId = $_SESSION['client_id'] ?? '';
         $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
-        if (!$client) {
-            return $data;
-        }
+        if (!$client) return [];
 
-        // Build filter conditions
-        $conditions = ['client_id = ?'];
-        $params     = [$client->id];
-
+        $cid = $client->id;
         $company  = $this->input('filter_company', '');
-        $dateFrom = $this->input('date_from', '');
-        $dateTo   = $this->input('date_to', '');
         $status   = $this->input('filter_status', '');
+        $companyWhere = $company ? " AND c.id = " . intval($company) : "";
+        $n = 0;
 
-        if (!empty($company)) {
-            $conditions[] = 'company_id = ?';
-            $params[]     = $company;
-        }
-        if (!empty($dateFrom)) {
-            $conditions[] = 'created_at >= ?';
-            $params[]     = $dateFrom;
-        }
-        if (!empty($dateTo)) {
-            $conditions[] = 'created_at <= ?';
-            $params[]     = $dateTo . ' 23:59:59';
-        }
-        if (!empty($status)) {
-            $conditions[] = 'status = ?';
-            $params[]     = $status;
-        }
+        try {
+            switch ($report_type) {
 
-        // Report-type-specific queries can be added here.
-        // For now, return empty array; data is loaded via AJAX or model layer.
+                // ─── CSS-01: Company List / Official Contact ───
+                case 'official_contact_address':
+                case 'acra_companies_search':
+                    $rows = $this->db->fetchAll("SELECT c.id, c.company_name, c.acra_registration_number, c.registration_number, c.contact_person, c.phone1_number, c.email, c.entity_status,
+                        (SELECT CONCAT(a.address_text,' ',COALESCE(a.postal_code,'')) FROM addresses a WHERE a.entity_type='company' AND a.entity_id=c.id LIMIT 1) as addr
+                        FROM companies c WHERE c.client_id = ? {$companyWhere} ORDER BY c.company_name LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->company_name, $r->acra_registration_number ?? $r->registration_number ?? '', $r->contact_person ?? '', $r->addr ?? '', $r->phone1_number ?? '', $r->email ?? '', $r->entity_status ?? 'Active'];
+                    }, $rows);
 
-        return $data;
+                // ─── CSS-02: Director Report ───
+                case 'comp_director_report':
+                case 'register_of_director':
+                    $statusW = $status ? " AND d.status = '" . addslashes($status) . "'" : "";
+                    $rows = $this->db->fetchAll("SELECT d.*, c.company_name, c.acra_registration_number FROM directors d JOIN companies c ON c.id = d.company_id WHERE c.client_id = ? {$companyWhere} {$statusW} ORDER BY c.company_name, d.name LIMIT 1000", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->company_name, $r->acra_registration_number ?? '', $r->name, $r->id_type ?? '', $r->id_number ?? '', $r->nationality ?? '', $r->local_address ?? '', $r->date_of_appointment ?? $r->appointment_date ?? '', $r->date_of_cessation ?? $r->cessation_date ?? '', $r->status ?? 'Active'];
+                    }, $rows);
+
+                // ─── CSS-03: Shareholder Report ───
+                case 'default_shareholder':
+                case 'register_of_member':
+                    $rows = $this->db->fetchAll("SELECT s.*, c.company_name, c.acra_registration_number FROM shareholders s JOIN companies c ON c.id = s.company_id WHERE c.client_id = ? {$companyWhere} ORDER BY c.company_name, s.name LIMIT 1000", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->company_name, $r->acra_registration_number ?? '', $r->name, $r->shareholder_type ?? 'Individual', '', '', $r->status ?? 'Active'];
+                    }, $rows);
+
+                // ─── CSS-04: Secretary Report ───
+                case 'comp_secretary_default':
+                case 'register_of_secretaries':
+                    $rows = $this->db->fetchAll("SELECT s.*, c.company_name, c.acra_registration_number FROM secretaries s JOIN companies c ON c.id = s.company_id WHERE c.client_id = ? {$companyWhere} ORDER BY c.company_name LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->company_name, $r->acra_registration_number ?? '', $r->name, $r->date_of_appointment ?? '', $r->status ?? 'Active'];
+                    }, $rows);
+
+                // ─── CSS-05: AGM Report ───
+                case 'agm_overdue':
+                    $rows = $this->db->fetchAll("SELECT c.company_name, c.acra_registration_number, c.date_of_agm, c.next_agm_due, c.fye_date FROM companies c WHERE c.client_id = ? {$companyWhere} AND c.entity_status = 'Active' ORDER BY c.next_agm_due ASC, c.company_name LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        $daysOverdue = null; $st = 'N/A';
+                        if ($r->next_agm_due) {
+                            $diff = (strtotime($r->next_agm_due) - time()) / 86400;
+                            if ($diff < 0) { $daysOverdue = abs(round($diff)); $st = 'OVERDUE'; }
+                            elseif ($diff <= 30) { $daysOverdue = 0; $st = 'DUE SOON'; }
+                            else { $st = 'On Track'; }
+                        }
+                        return [$n, $r->company_name, $r->acra_registration_number ?? '', $r->date_of_agm ?? '-', $r->next_agm_due ?? '-', $daysOverdue !== null ? $daysOverdue . ' days' : '-', $st];
+                    }, $rows);
+
+                // ─── CSS-06: Annual Return / Key Dates Report ───
+                case 'key_dates':
+                    $rows = $this->db->fetchAll("SELECT c.company_name, c.incorporation_date, c.fye_date, c.date_of_agm, c.next_agm_due, c.last_ar_filing, c.date_of_ar FROM companies c WHERE c.client_id = ? {$companyWhere} AND c.entity_status = 'Active' ORDER BY c.company_name LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        // Compute next AR due: 7 months after FYE for private
+                        $arDue = '-';
+                        if ($r->fye_date) {
+                            $arDue = date('Y-m-d', strtotime($r->fye_date . ' +7 months'));
+                        }
+                        return [$n, $r->company_name, $r->incorporation_date ?? '-', $r->fye_date ?? '-', $r->date_of_agm ?? '-', $r->next_agm_due ?? '-', $r->last_ar_filing ?? $r->date_of_ar ?? '-', $arDue];
+                    }, $rows);
+
+                // ─── CSS-07: FYE / Upcoming Events Report ───
+                case 'remainder_upcoming_event':
+                    $rows = $this->db->fetchAll("SELECT d.*, c.company_name FROM due_dates d LEFT JOIN companies c ON c.id = d.company_id WHERE d.client_id = ? AND d.due_date >= CURDATE() ORDER BY d.due_date ASC LIMIT 200", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        $days = round((strtotime($r->due_date) - time()) / 86400);
+                        return [$n, $r->company_name ?? $r->company_name ?? '', $r->event_name ?? '', $r->event_name ?? '', $r->due_date, $days . ' days', $r->pic ?? '', $r->status ?? 'Pending'];
+                    }, $rows);
+
+                // ─── CSS-08: Share Capital / Allotments ───
+                case 'register_of_shares_allotment':
+                    $rows = $this->db->fetchAll("SELECT cs.*, c.company_name, s.name as shareholder_name FROM company_shares cs JOIN companies c ON c.id = cs.company_id LEFT JOIN shareholders s ON s.id = cs.shareholder_id WHERE c.client_id = ? {$companyWhere} ORDER BY cs.transaction_date DESC LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->company_name, $r->shareholder_name ?? '', $r->share_type ?? 'Ordinary', $r->number_of_shares ?? 0, number_format($r->issued_share_capital ?? 0, 2), $r->transaction_date ?? '', ''];
+                    }, $rows);
+
+                // ─── CSS-09: Registered Address ───
+                case 'registered_office_default':
+                    $rows = $this->db->fetchAll("SELECT c.company_name, c.acra_registration_number, c.entity_status,
+                        (SELECT CONCAT(COALESCE(a.address_text,''),' ',COALESCE(a.postal_code,'')) FROM addresses a WHERE a.entity_type='company' AND a.entity_id=c.id AND (a.is_default=1 OR a.address_type='Registered Office') LIMIT 1) as addr
+                        FROM companies c WHERE c.client_id = ? {$companyWhere} ORDER BY c.company_name LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->company_name, $r->acra_registration_number ?? '', $r->addr ?? '-', '', $r->entity_status ?? 'Active'];
+                    }, $rows);
+
+                // ─── CSS-10: Auditor Report ───
+                case 'register_of_auditors':
+                case 'comp_auditor_default':
+                    $rows = $this->db->fetchAll("SELECT au.*, c.company_name, c.acra_registration_number FROM auditors au JOIN companies c ON c.id = au.company_id WHERE c.client_id = ? {$companyWhere} ORDER BY c.company_name LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->company_name, $r->acra_registration_number ?? '', $r->name ?? '', $r->firm_name ?? '', $r->date_of_appointment ?? '', $r->status ?? 'Active'];
+                    }, $rows);
+
+                // ─── CSS: Controllers ───
+                case 'register_of_controllers':
+                case 'default_company_controllers':
+                case 'register_of_controllers_report':
+                    try {
+                        $rows = $this->db->fetchAll("SELECT ct.*, c.company_name, c.acra_registration_number FROM controllers ct JOIN companies c ON c.id = ct.company_id WHERE c.client_id = ? {$companyWhere} ORDER BY c.company_name LIMIT 500", [$cid]);
+                    } catch (\Exception $e) { $rows = []; }
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->company_name ?? '', $r->name ?? '', $r->controller_type ?? '', $r->id_number ?? '', $r->nationality ?? '', $r->date_registered ?? '', $r->date_ceased ?? '', $r->status ?? 'Active'];
+                    }, $rows);
+
+                // ─── CSS: Sealings ───
+                case 'register_of_sealings':
+                    try {
+                        $rows = $this->db->fetchAll("SELECT sl.*, c.company_name FROM sealings sl JOIN companies c ON c.id = sl.company_id WHERE c.client_id = ? {$companyWhere} ORDER BY sl.sealing_date DESC LIMIT 500", [$cid]);
+                    } catch (\Exception $e) { $rows = []; }
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->company_name ?? '', $r->document_description ?? '', $r->seal_type ?? 'Common Seal', $r->authorised_by ?? '', $r->sealing_date ?? '', $r->remarks ?? ''];
+                    }, $rows);
+
+                // ─── CRM: Invoices ───
+                case 'crm_invoice':
+                case 'invoice_new':
+                    $rows = $this->db->fetchAll("SELECT i.*, c.company_name as client_name FROM invoices i LEFT JOIN companies c ON c.id = i.company_id WHERE i.client_id = ? ORDER BY i.created_at DESC LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        $amt = number_format($r->total_amount ?? $r->amount ?? 0, 2);
+                        $paid = number_format($r->paid_amount ?? 0, 2);
+                        $bal = number_format(($r->total_amount ?? 0) - ($r->paid_amount ?? 0), 2);
+                        return [$n, $r->invoice_number ?? 'INV-'.$r->id, $r->client_name ?? '', $r->invoice_date ?? $r->created_at ?? '', $r->due_date ?? '', $amt, $paid, $bal, $r->status ?? 'Draft'];
+                    }, $rows);
+
+                // ─── CRM: Tasks ───
+                case 'crm_task':
+                case 'tasks':
+                    $rows = $this->db->fetchAll("SELECT t.*, p.project_name, u.name as assignee FROM tasks t LEFT JOIN projects p ON p.id = t.project_id LEFT JOIN users u ON u.id = t.assigned_to WHERE t.client_id = ? ORDER BY t.due_date ASC LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->task_name ?? '', $r->project_name ?? '', $r->assignee ?? '', $r->start_date ?? '', $r->due_date ?? '', '', $r->status ?? ''];
+                    }, $rows);
+
+                // ─── CRM: Projects ───
+                case 'crm_projects':
+                case 'project_summary':
+                    $rows = $this->db->fetchAll("SELECT p.*, c.company_name, u.name as manager,
+                        (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) as task_count
+                        FROM projects p LEFT JOIN companies c ON c.id = p.company_id LEFT JOIN users u ON u.id = p.created_by WHERE p.client_id = ? ORDER BY p.created_at DESC LIMIT 200", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->project_name ?? '', $r->company_name ?? '', $r->start_date ?? '', $r->end_date ?? '', '', $r->task_count ?? 0, $r->status ?? ''];
+                    }, $rows);
+
+                // ─── CRM: Leads ───
+                case 'crm_lead':
+                case 'lead_report':
+                    $rows = $this->db->fetchAll("SELECT l.*, u.name as assignee FROM leads l LEFT JOIN users u ON u.id = l.assigned_to WHERE l.client_id = ? ORDER BY l.created_at DESC LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->name ?? $r->lead_name ?? '', $r->company_name ?? '', $r->email ?? '', $r->phone ?? '', $r->source ?? '', $r->rating ?? '', $r->assignee ?? '', $r->status ?? ''];
+                    }, $rows);
+
+                // ─── CRM: Quotations ───
+                case 'quotations':
+                    $rows = $this->db->fetchAll("SELECT q.*, c.company_name FROM quotations q LEFT JOIN companies c ON c.id = q.company_id WHERE q.client_id = ? ORDER BY q.created_at DESC LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->quotation_number ?? 'Q-'.$r->id, $r->company_name ?? '', $r->quotation_date ?? $r->created_at ?? '', $r->valid_until ?? '', number_format($r->total_amount ?? 0, 2), $r->status ?? ''];
+                    }, $rows);
+
+                // ─── Company Events ───
+                case 'company_event':
+                case 'event_specific':
+                    $rows = $this->db->fetchAll("SELECT e.*, c.company_name FROM company_events e JOIN companies c ON c.id = e.company_id WHERE c.client_id = ? ORDER BY e.event_date DESC, e.id DESC LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->company_name ?? '', $r->event_type ?? '', $r->event_description ?? '', $r->event_date ?? '', '', $r->status ?? ''];
+                    }, $rows);
+
+                // ─── Documents ───
+                case 'all_document':
+                    $rows = $this->db->fetchAll("SELECT d.*, c.company_name, u.name as uploader FROM documents d LEFT JOIN companies c ON c.id = d.entity_id AND d.entity_type='company' LEFT JOIN users u ON u.id = d.uploaded_by WHERE d.client_id = ? ORDER BY d.created_at DESC LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        $size = $r->file_size ? round($r->file_size / 1024, 1) . ' KB' : '';
+                        return [$n, $r->company_name ?? 'General', $r->document_name ?? '', $r->file_type ?? '', $r->uploader ?? '', $r->created_at ? date('d/m/Y', strtotime($r->created_at)) : '', $size];
+                    }, $rows);
+
+                // ─── User Logs ───
+                case 'user_log_report':
+                    $rows = $this->db->fetchAll("SELECT ul.*, u.name as user_name FROM user_logs ul LEFT JOIN users u ON u.id = ul.user_id WHERE ul.client_id = ? ORDER BY ul.created_at DESC LIMIT 500", [$cid]);
+                    return array_map(function($r) use (&$n) { $n++;
+                        return [$n, $r->user_name ?? '', $r->action ?? '', $r->module ?? '', $r->remarks ?? '', $r->ip_address ?? '', $r->created_at ?? ''];
+                    }, $rows);
+
+                default:
+                    return [];
+            }
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     /**
