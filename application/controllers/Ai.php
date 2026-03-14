@@ -299,7 +299,7 @@ BASE;
 
         return [
             'compliance' => $base . "\n\n" . <<<'AGENT'
-You are the **Compliance Monitor** agent — a specialist in Singapore corporate compliance.
+You are the **Company Registration** agent — a specialist in Singapore company incorporation and corporate compliance.
 
 Your focus areas:
 - AGM (Annual General Meeting) deadlines and extensions under Section 175 of the Companies Act

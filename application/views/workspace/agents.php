@@ -32,15 +32,15 @@
     <div class="cf-agents-scroll" id="agentsScroll">
         <div class="cf-agents-grid-v2" id="agentsGrid">
 
-            <!-- Compliance Monitor -->
+            <!-- Company Registration -->
             <div class="cf-agent-card-v2" data-agent="compliance"
                  data-prompt="Show me upcoming compliance deadlines and overdue items"
-                 data-color="purple" data-label="Compliance Monitor">
+                 data-color="purple" data-label="Company Registration">
                 <div class="cf-agent-icon-circle purple">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </div>
-                <h4 class="cf-agent-card-name">Compliance Monitor</h4>
-                <p class="cf-agent-card-desc">Tracks AGM, AR, FYE deadlines, and regulatory filing requirements. Sends alerts before due dates.</p>
+                <h4 class="cf-agent-card-name">Company Registration</h4>
+                <p class="cf-agent-card-desc">Handles company incorporation, ACRA registration, compliance checks, and post-incorporation setup.</p>
             </div>
 
             <!-- Document Generator -->
@@ -106,7 +106,7 @@
         <div class="cf-agents-chat-header" id="agentsChatHeader">
             <div class="cf-agents-chat-agent">
                 <span class="cf-agents-chat-agent-icon" id="chatAgentIcon"></span>
-                <span class="cf-agents-chat-agent-name" id="chatAgentName">Compliance Monitor</span>
+                <span class="cf-agents-chat-agent-name" id="chatAgentName">Company Registration</span>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
                 <button onclick="toggleAgentHistory()" style="font-size:12px;color:var(--cf-accent);background:none;border:none;cursor:pointer;white-space:nowrap;padding:0;" title="View agent history">
@@ -153,7 +153,7 @@
                     <div class="cf-agent-selector-wrap" id="agentSelectorWrap">
                         <button class="cf-agent-selector-btn" id="agentSelectorBtn" title="Switch agent" type="button">
                             <span class="cf-agent-selector-icon" id="agentSelectorIcon"></span>
-                            <span id="agentSelectorLabel">Compliance Monitor</span>
+                            <span id="agentSelectorLabel">Company Registration</span>
                             <svg class="cf-selector-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
                         <div class="cf-agent-dropdown" id="agentDropdown"></div>
@@ -1095,7 +1095,7 @@
 
     /* ── Agent system prompts for context ── */
     var agentSystemHints = {
-        compliance: 'You are the Compliance Monitor agent. Focus on AGM, AR, FYE deadlines, regulatory filings, and compliance alerts.',
+        compliance: 'You are the Company Registration agent. Focus on AGM, AR, FYE deadlines, regulatory filings, and compliance alerts.',
         docgen: 'You are the Document Generator agent. Help generate corporate resolutions, forms, certificates, and legal documents.',
         kyc: 'You are the KYC Screening agent. Focus on customer due diligence, PEP checks, sanctions screening, and AML risk.',
         ir8a: 'You are the IR8A / Tax Filing agent. Help with IR8A form preparation, tax computations, and IRAS e-filing.',
