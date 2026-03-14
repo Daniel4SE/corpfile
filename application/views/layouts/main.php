@@ -207,24 +207,12 @@
                                 </ul>
                             </li>
 
-                            <!-- 8. Projects (expandable, includes Workflow) -->
-                            <li class="<?= in_array($current_url, ['projects','tasks','timesheet','workflow']) ? 'active' : '' ?>">
-                                <a>
+                            <!-- 8. Workflow (SOP) -->
+                            <li class="<?= ($current_url == 'workflow') ? 'active' : '' ?>">
+                                <a href="<?= base_url('workflow') ?>">
                                     <span class="cf-nav-icon"><?= cf_icon('projects') ?></span>
-                                    <span>Projects</span>
-                                    <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
+                                    <span>Workflow (SOP)</span>
                                 </a>
-                                <ul class="nav child_menu">
-                                    <li class="<?= ($current_url == 'workflow') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('workflow') ?>">Workflow (SOP)</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'tasks') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('tasks') ?>">Tasks</a>
-                                    </li>
-                                    <li class="<?= ($current_url == 'timesheet') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('timesheet') ?>">Timesheet</a>
-                                    </li>
-                                </ul>
                             </li>
 
                             <!-- Divider -->
