@@ -880,6 +880,7 @@ $(document).ready(function() {
         currentFilter = filter;
 
         /* Show the right panel and shrink sidebar */
+        var wasHidden = $('#docMain').is(':hidden');
         $('#docMain').show();
         $('#docFolders').removeClass('full-width');
 
@@ -893,8 +894,11 @@ $(document).ready(function() {
         var iconClass = $(el).find('.doc-folder-icon i').attr('class');
         $('.doc-breadcrumb-icon i').attr('class', iconClass);
 
-        /* Redraw DataTable — the custom filter function uses currentFilter */
+        /* Redraw DataTable — adjust columns if panel was just shown */
         if (dt) {
+            if (wasHidden) {
+                dt.columns.adjust();
+            }
             dt.draw();
             var info = dt.page.info();
             $('#breadcrumbCount').text(info.recordsDisplay + ' files');
