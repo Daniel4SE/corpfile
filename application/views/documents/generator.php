@@ -221,44 +221,78 @@
     </div>
 </div>
 
-<!-- ═══════ Generation Panel (slides in) ═══════ -->
-<div class="dg-gen-overlay" id="dgGenOverlay" style="display:none;" onclick="closeGenPanel()"></div>
-<div class="dg-gen-panel" id="dgGenPanel">
-    <div class="dg-gen-header">
-        <button class="btn btn-default btn-sm" onclick="closeGenPanel()" style="border:none; padding:4px 8px;"><i class="fa fa-arrow-left"></i></button>
-        <h4 id="dgGenTitle" style="margin:0; font-size:15px; font-weight:600; flex:1;">Generate Document</h4>
-        <button class="btn btn-default btn-sm" onclick="closeGenPanel()" style="border:none; padding:4px 8px;"><i class="fa fa-times"></i></button>
+<!-- ═══════ Inline Wizard (replaces template grid when active) ═══════ -->
+<div class="dg-wizard" id="dgWizard" style="display:none;">
+    <!-- Wizard Header -->
+    <div class="dg-wiz-header">
+        <button class="dg-wiz-back" onclick="closeWizard()"><i class="fa fa-arrow-left"></i> Back to Templates</button>
+        <div class="dg-wiz-title" id="dgWizTitle">Register of Directors</div>
     </div>
-    <div class="dg-gen-body">
-        <div class="form-group">
-            <label style="font-size:12px; font-weight:600; color:var(--cf-text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Select Company</label>
-            <select class="form-control" id="dgCompanySelect">
+
+    <!-- Steps Indicator -->
+    <div class="dg-steps" id="dgSteps">
+        <div class="dg-step active" data-step="1"><span class="dg-step-num">1</span> Select Company</div>
+        <div class="dg-step-line"></div>
+        <div class="dg-step" data-step="2"><span class="dg-step-num">2</span> Details</div>
+        <div class="dg-step-line"></div>
+        <div class="dg-step" data-step="3"><span class="dg-step-num">3</span> Generate</div>
+    </div>
+
+    <!-- Step 1: Select Company -->
+    <div class="dg-wiz-step" id="wizStep1">
+        <div class="dg-wiz-card">
+            <label class="dg-wiz-label">Select Company</label>
+            <p class="dg-wiz-hint">Choose the company for which to generate this document.</p>
+            <select class="form-control" id="dgCompanySelect" style="font-size:14px;">
                 <option value="">-- Select a company --</option>
                 <?php foreach ($companies as $c): ?>
                 <option value="<?= $c->id ?>"><?= htmlspecialchars($c->company_name) ?> (<?= htmlspecialchars($c->registration_number ?? '') ?>)</option>
                 <?php endforeach; ?>
             </select>
         </div>
-        <button class="btn btn-primary btn-block" id="dgGenerateBtn" onclick="generateDocument()" style="border-radius:var(--cf-radius-sm); padding:10px; font-weight:600;">
-            <i class="fa fa-magic" style="margin-right:6px;"></i> Generate Document
-        </button>
-
-        <!-- Output -->
-        <div id="dgOutput" style="display:none; margin-top:16px;">
-            <div class="dg-output-toolbar">
-                <span style="font-size:12px; font-weight:600; color:var(--cf-text-secondary); text-transform:uppercase;">Generated Document</span>
-                <div style="display:flex; gap:6px;">
-                    <button class="btn btn-default btn-xs" onclick="copyOutput()" title="Copy to clipboard"><i class="fa fa-copy"></i> Copy</button>
-                    <button class="btn btn-default btn-xs" onclick="printOutput()" title="Print"><i class="fa fa-print"></i> Print</button>
-                </div>
-            </div>
-            <div id="dgOutputContent" class="dg-output-content"></div>
+        <div class="dg-wiz-actions">
+            <button class="btn btn-default" onclick="closeWizard()">Cancel</button>
+            <button class="btn btn-primary" onclick="wizNext(2)">Next <i class="fa fa-arrow-right" style="margin-left:6px;"></i></button>
         </div>
+    </div>
 
-        <!-- Loading state -->
-        <div id="dgLoading" style="display:none; text-align:center; padding:40px 0;">
+    <!-- Step 2: Template-specific Details -->
+    <div class="dg-wiz-step" id="wizStep2" style="display:none;">
+        <div class="dg-wiz-card">
+            <label class="dg-wiz-label" id="wizStep2Label">Additional Details</label>
+            <p class="dg-wiz-hint" id="wizStep2Hint">Provide any additional information for this document.</p>
+            <div id="wizFields"></div>
+        </div>
+        <div class="dg-wiz-actions">
+            <button class="btn btn-default" onclick="wizBack(1)"><i class="fa fa-arrow-left" style="margin-right:6px;"></i> Back</button>
+            <button class="btn btn-primary" onclick="wizNext(3)">Generate <i class="fa fa-magic" style="margin-left:6px;"></i></button>
+        </div>
+    </div>
+
+    <!-- Step 3: Output -->
+    <div class="dg-wiz-step" id="wizStep3" style="display:none;">
+        <!-- Loading -->
+        <div id="wizLoading" style="text-align:center; padding:50px 0;">
             <div class="dg-spinner"></div>
-            <p style="margin-top:12px; color:var(--cf-text-secondary); font-size:13px;">Generating document with AI...</p>
+            <p style="margin-top:14px; color:var(--cf-text-secondary); font-size:14px;">Generating document with AI...</p>
+            <p style="color:var(--cf-text-muted); font-size:12px;">This may take 10-30 seconds</p>
+        </div>
+        <!-- Result -->
+        <div id="wizResult" style="display:none;">
+            <div class="dg-wiz-card" style="padding:0; overflow:hidden;">
+                <div class="dg-result-toolbar">
+                    <span class="dg-result-title"><i class="fa fa-check-circle" style="color:#10b981; margin-right:6px;"></i> Document Generated</span>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-default btn-sm" onclick="copyOutput()"><i class="fa fa-copy"></i> Copy</button>
+                        <button class="btn btn-default btn-sm" onclick="printOutput()"><i class="fa fa-print"></i> Print</button>
+                    </div>
+                </div>
+                <div class="dg-result-content" id="dgOutputContent"></div>
+            </div>
+            <div class="dg-wiz-actions">
+                <button class="btn btn-default" onclick="wizBack(2)"><i class="fa fa-arrow-left" style="margin-right:6px;"></i> Edit & Re-generate</button>
+                <button class="btn btn-primary" onclick="closeWizard()"><i class="fa fa-check" style="margin-right:6px;"></i> Done</button>
+            </div>
         </div>
     </div>
 </div>
@@ -447,59 +481,178 @@
     margin-bottom: 10px;
 }
 
-/* Generation Panel */
-.dg-gen-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.25);
-    z-index: 1040;
+/* ═══ Inline Wizard ═══ */
+.dg-wizard {
+    max-width: 720px;
+    margin: 0 auto;
 }
-.dg-gen-panel {
-    position: fixed;
-    top: 0;
-    right: -500px;
-    width: 500px;
-    max-width: 90vw;
-    height: 100vh;
-    background: var(--cf-white);
-    box-shadow: -4px 0 24px rgba(0,0,0,0.12);
-    z-index: 1050;
-    display: flex;
-    flex-direction: column;
-    transition: right 0.3s ease;
-}
-.dg-gen-panel.open { right: 0; }
-.dg-gen-header {
+.dg-wiz-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--cf-border);
-    flex-shrink: 0;
+    gap: 16px;
+    margin-bottom: 20px;
 }
-.dg-gen-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
+.dg-wiz-back {
+    border: none;
+    background: none;
+    color: var(--cf-text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 6px 0;
+    font-family: var(--cf-font) !important;
+    transition: color 0.15s;
+}
+.dg-wiz-back:hover { color: var(--cf-accent); }
+.dg-wiz-back i { margin-right: 6px; }
+.dg-wiz-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--cf-text);
 }
 
-/* Output */
-.dg-output-toolbar {
+/* Steps indicator */
+.dg-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 24px;
+    background: var(--cf-bg);
+    border-radius: var(--cf-radius);
+    padding: 12px 20px;
+}
+.dg-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--cf-text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+}
+.dg-step.active {
+    color: var(--cf-accent);
+    font-weight: 600;
+}
+.dg-step.done {
+    color: #10b981;
+}
+.dg-step-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--cf-border);
+    color: var(--cf-text-muted);
+    flex-shrink: 0;
+}
+.dg-step.active .dg-step-num {
+    background: var(--cf-accent);
+    color: #fff;
+}
+.dg-step.done .dg-step-num {
+    background: #10b981;
+    color: #fff;
+}
+.dg-step-line {
+    flex: 1;
+    height: 2px;
+    background: var(--cf-border);
+    margin: 0 12px;
+    min-width: 20px;
+}
+
+/* Wizard cards */
+.dg-wiz-card {
+    background: var(--cf-white);
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius);
+    padding: 24px;
+    margin-bottom: 16px;
+}
+.dg-wiz-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cf-text);
+    margin-bottom: 4px;
+    display: block;
+}
+.dg-wiz-hint {
+    font-size: 12px;
+    color: var(--cf-text-muted);
+    margin-bottom: 16px;
+}
+.dg-wiz-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 8px;
+}
+.dg-wiz-actions .btn {
+    border-radius: var(--cf-radius-sm);
+    padding: 9px 20px;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+/* Wizard form fields */
+.dg-wiz-field {
+    margin-bottom: 14px;
+}
+.dg-wiz-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cf-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 4px;
+    display: block;
+}
+.dg-wiz-field input,
+.dg-wiz-field select,
+.dg-wiz-field textarea {
+    width: 100%;
+    border: 1px solid var(--cf-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: var(--cf-font) !important;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.dg-wiz-field input:focus,
+.dg-wiz-field select:focus,
+.dg-wiz-field textarea:focus {
+    border-color: var(--cf-accent);
+    box-shadow: 0 0 0 2px rgba(79,134,198,0.1);
+    outline: none !important;
+}
+
+/* Result area */
+.dg-result-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
-}
-.dg-output-content {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--cf-border);
     background: var(--cf-bg);
-    border: 1px solid var(--cf-border);
-    border-radius: var(--cf-radius-sm);
-    padding: 16px;
+}
+.dg-result-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cf-text);
+}
+.dg-result-content {
+    padding: 20px;
     font-size: 13px;
-    line-height: 1.7;
+    line-height: 1.8;
     white-space: pre-wrap;
-    max-height: calc(100vh - 320px);
+    max-height: 500px;
     overflow-y: auto;
+    color: var(--cf-text);
 }
 
 /* Spinner */
@@ -579,76 +732,206 @@ function filterTemplates() {
     $('#dgCount').text(visible + ' of ' + total + ' templates');
 }
 
+/* ═══════ Template-specific fields ═══════ */
+var templateFields = {
+    /* ACRA Registers — mostly auto-generated from company data */
+    'acra_register_directors':       { label: 'Register of Directors', hint: 'Will auto-populate from company data. Add notes if needed.', fields: [{ id:'notes', label:'Additional Notes', type:'textarea', placeholder:'e.g. Include resigned directors from last 2 years' }] },
+    'acra_register_secretaries':     { label: 'Register of Secretaries', hint: 'Auto-populated from company records.', fields: [{ id:'notes', label:'Additional Notes', type:'textarea', placeholder:'Any specific instructions' }] },
+    'acra_register_shareholders':    { label: 'Register of Members', hint: 'Auto-populated from shareholder records.', fields: [{ id:'notes', label:'Additional Notes', type:'textarea', placeholder:'e.g. Include share class details' }] },
+    'acra_register_charges':         { label: 'Register of Charges', hint: 'Enter charge details below.', fields: [{ id:'charge_desc', label:'Charge Description', type:'text', placeholder:'e.g. First fixed charge over property' }, { id:'amount', label:'Amount Secured', type:'text', placeholder:'e.g. SGD 500,000' }, { id:'chargee', label:'Chargee Name', type:'text', placeholder:'e.g. DBS Bank Ltd' }] },
+    'acra_register_transfers':       { label: 'Share Transfers', hint: 'Auto-populated. Add notes if needed.', fields: [{ id:'notes', label:'Additional Notes', type:'textarea', placeholder:'Any specific transfer details to include' }] },
+    'acra_register_allotments':      { label: 'Share Allotments', hint: 'Auto-populated. Add notes if needed.', fields: [{ id:'notes', label:'Additional Notes', type:'textarea', placeholder:'Any specific allotment details' }] },
+    'acra_register_beneficial_owners': { label: 'Registrable Controllers', hint: 'Enter controller details.', fields: [{ id:'controller_name', label:'Controller Name', type:'text', placeholder:'Full legal name' }, { id:'nature_of_control', label:'Nature of Control', type:'text', placeholder:'e.g. Holds >25% shares directly' }] },
+    'acra_register_nominee_directors': { label: 'Nominee Directors', hint: 'Enter nominator details.', fields: [{ id:'nominator_name', label:'Nominator Name', type:'text', placeholder:'Full name of nominator' }, { id:'nominator_address', label:'Nominator Address', type:'text', placeholder:'Residential address' }] },
+    'acra_register_auditors':        { label: 'Register of Auditors', hint: 'Auto-populated from company records.', fields: [{ id:'notes', label:'Additional Notes', type:'textarea', placeholder:'Any specific instructions' }] },
+    'acra_register_seals':           { label: 'Register of Seals', hint: 'Enter sealing record details.', fields: [{ id:'document_sealed', label:'Document Sealed', type:'text', placeholder:'e.g. Share Certificate No. 001' }, { id:'purpose', label:'Purpose', type:'text', placeholder:'e.g. Issuance of shares' }] },
+
+    /* Company Resolutions */
+    'res_director_appointment':   { label: 'Director Appointment', hint: 'Enter the new director details.', fields: [{ id:'dir_name', label:'Director Full Name', type:'text', placeholder:'Full legal name' }, { id:'dir_id', label:'ID/Passport No.', type:'text', placeholder:'e.g. S1234567A' }, { id:'dir_nationality', label:'Nationality', type:'text', placeholder:'e.g. Singaporean' }, { id:'dir_address', label:'Residential Address', type:'text', placeholder:'Full address' }, { id:'effective_date', label:'Effective Date', type:'date' }] },
+    'res_director_cessation':     { label: 'Director Cessation', hint: 'Enter the outgoing director details.', fields: [{ id:'dir_name', label:'Director Full Name', type:'text', placeholder:'Name of resigning director' }, { id:'effective_date', label:'Effective Date', type:'date' }, { id:'reason', label:'Reason', type:'select', options:['Resignation','Removal','Disqualification','Death'] }] },
+    'res_secretary_appointment':  { label: 'Secretary Appointment', hint: 'Enter the new secretary details.', fields: [{ id:'sec_name', label:'Secretary Full Name', type:'text', placeholder:'Full legal name' }, { id:'sec_id', label:'ID No.', type:'text', placeholder:'e.g. S1234567A' }, { id:'effective_date', label:'Effective Date', type:'date' }] },
+    'res_secretary_cessation':    { label: 'Secretary Cessation', hint: 'Enter cessation details.', fields: [{ id:'sec_name', label:'Secretary Name', type:'text', placeholder:'Name of outgoing secretary' }, { id:'effective_date', label:'Effective Date', type:'date' }] },
+    'res_change_address':         { label: 'Change of Address', hint: 'Enter the address change details.', fields: [{ id:'old_address', label:'Current Registered Address', type:'text', placeholder:'Current address' }, { id:'new_address', label:'New Registered Address', type:'text', placeholder:'New address' }, { id:'effective_date', label:'Effective Date', type:'date' }] },
+    'res_change_name':            { label: 'Change of Company Name', hint: 'Enter the name change details.', fields: [{ id:'new_name', label:'Proposed New Company Name', type:'text', placeholder:'New company name' }, { id:'reason', label:'Reason for Change', type:'textarea', placeholder:'Brief reason for the name change' }] },
+    'res_change_fye':             { label: 'Change of FYE', hint: 'Enter financial year end change details.', fields: [{ id:'current_fye', label:'Current FYE Date', type:'text', placeholder:'e.g. 31 December' }, { id:'new_fye', label:'New FYE Date', type:'text', placeholder:'e.g. 31 March' }, { id:'reason', label:'Reason', type:'textarea', placeholder:'Reason for FYE change' }] },
+    'res_share_allotment':        { label: 'Share Allotment', hint: 'Enter allotment details.', fields: [{ id:'allottee', label:'Allottee Name', type:'text', placeholder:'Full name' }, { id:'num_shares', label:'Number of Shares', type:'text', placeholder:'e.g. 10,000' }, { id:'share_class', label:'Class of Shares', type:'text', placeholder:'e.g. Ordinary' }, { id:'consideration', label:'Consideration per Share', type:'text', placeholder:'e.g. SGD 1.00' }] },
+    'res_share_transfer':         { label: 'Share Transfer Approval', hint: 'Enter transfer details.', fields: [{ id:'transferor', label:'Transferor Name', type:'text', placeholder:'Selling party' }, { id:'transferee', label:'Transferee Name', type:'text', placeholder:'Buying party' }, { id:'num_shares', label:'Number of Shares', type:'text', placeholder:'e.g. 5,000' }, { id:'consideration', label:'Total Consideration', type:'text', placeholder:'e.g. SGD 50,000' }] },
+    'res_dividend_declaration':   { label: 'Dividend Declaration', hint: 'Enter dividend details.', fields: [{ id:'div_type', label:'Dividend Type', type:'select', options:['Interim Dividend','Final Dividend','Special Dividend'] }, { id:'amount_per_share', label:'Amount per Share', type:'text', placeholder:'e.g. SGD 0.05' }, { id:'record_date', label:'Record Date', type:'date' }, { id:'payment_date', label:'Payment Date', type:'date' }] },
+    'res_open_bank_account':      { label: 'Open Bank Account', hint: 'Enter bank account details.', fields: [{ id:'bank_name', label:'Bank Name', type:'text', placeholder:'e.g. DBS Bank' }, { id:'account_type', label:'Account Type', type:'text', placeholder:'e.g. Corporate Current Account' }, { id:'signatories', label:'Authorized Signatories', type:'textarea', placeholder:'List the authorized signatories' }] },
+    'res_close_bank_account':     { label: 'Close Bank Account', hint: 'Enter account closure details.', fields: [{ id:'bank_name', label:'Bank Name', type:'text', placeholder:'e.g. OCBC Bank' }, { id:'account_no', label:'Account Number', type:'text', placeholder:'Account number to close' }, { id:'reason', label:'Reason', type:'text', placeholder:'Reason for closure' }] },
+    'res_authorize_signatory':    { label: 'Change Signatories', hint: 'Enter signatory change details.', fields: [{ id:'outgoing', label:'Outgoing Signatory', type:'text', placeholder:'Name of outgoing signatory' }, { id:'incoming', label:'Incoming Signatory', type:'text', placeholder:'Name of new signatory' }, { id:'bank_name', label:'Bank Name', type:'text', placeholder:'Bank name' }] },
+    'res_auditor_appointment':    { label: 'Auditor Appointment', hint: 'Enter auditor details.', fields: [{ id:'auditor_firm', label:'Audit Firm Name', type:'text', placeholder:'e.g. KPMG LLP' }, { id:'partner', label:'Partner-in-Charge', type:'text', placeholder:'Name of partner' }, { id:'fy', label:'Financial Year', type:'text', placeholder:'e.g. FY2025' }] },
+    'res_annual_general_meeting': { label: 'AGM Resolution', hint: 'Enter AGM details.', fields: [{ id:'agm_type', label:'Type', type:'select', options:['Convene AGM','Dispense with AGM (S.175A)'] }, { id:'agm_date', label:'AGM Date', type:'date' }, { id:'venue', label:'Venue', type:'text', placeholder:'e.g. 1 Raffles Place #10-01' }] },
+    'res_striking_off':           { label: 'Striking Off', hint: 'Confirm company is eligible.', fields: [{ id:'confirm_no_assets', label:'Confirm No Assets/Liabilities', type:'select', options:['Yes — Company has no assets or liabilities','No'] }, { id:'confirm_no_charges', label:'Confirm No Outstanding Charges', type:'select', options:['Yes — No outstanding charges','No'] }] },
+
+    /* Annual Filings */
+    'af_annual_return':           { label: 'Annual Return', hint: 'All data auto-populated from company records.', fields: [{ id:'ar_year', label:'AR Year', type:'text', placeholder:'e.g. 2025' }] },
+    'af_agm_notice':              { label: 'AGM Notice', hint: 'Enter meeting details.', fields: [{ id:'meeting_date', label:'Meeting Date & Time', type:'text', placeholder:'e.g. 15 June 2025 at 10:00 AM' }, { id:'venue', label:'Venue', type:'text', placeholder:'Meeting venue address' }, { id:'special_business', label:'Special Business (if any)', type:'textarea', placeholder:'Any special resolutions to be tabled' }] },
+    'af_agm_minutes':             { label: 'AGM Minutes', hint: 'Enter AGM details.', fields: [{ id:'meeting_date', label:'Date of AGM', type:'date' }, { id:'chairman', label:'Chairman', type:'text', placeholder:'Name of chairman' }, { id:'attendees', label:'Attendees', type:'textarea', placeholder:'List of attendees (one per line)' }] },
+    'af_directors_report':        { label: 'Directors Report', hint: 'Enter financial year details.', fields: [{ id:'fy_period', label:'Financial Year Period', type:'text', placeholder:'e.g. 1 Jan 2024 to 31 Dec 2024' }, { id:'principal_activities', label:'Principal Activities', type:'text', placeholder:'e.g. Investment holding' }] },
+    'af_directors_statement':     { label: 'Directors Statement', hint: 'Enter financial year details.', fields: [{ id:'fy_period', label:'Financial Year Period', type:'text', placeholder:'e.g. 1 Jan 2024 to 31 Dec 2024' }] },
+    'af_exempt_private_company':  { label: 'EPC Declaration', hint: 'Auto-generated based on company data.', fields: [{ id:'notes', label:'Additional Notes', type:'textarea', placeholder:'Any clarifications' }] },
+    'af_dormant_company_resolution': { label: 'Dormant Company', hint: 'Confirm dormancy.', fields: [{ id:'dormant_since', label:'Dormant Since', type:'date' }, { id:'reason', label:'Reason for Dormancy', type:'text', placeholder:'e.g. No business operations' }] },
+    'af_solvency_statement':      { label: 'Solvency Declaration', hint: 'Enter declaration details.', fields: [{ id:'period', label:'Review Period', type:'text', placeholder:'e.g. Next 12 months from date of declaration' }] },
+
+    /* Forms */
+    'form_consent_director':       { label: 'Director Consent', hint: 'Enter incoming director details.', fields: [{ id:'dir_name', label:'Full Name', type:'text', placeholder:'Full legal name' }, { id:'dir_id', label:'ID/Passport No.', type:'text', placeholder:'e.g. S1234567A' }, { id:'dir_nationality', label:'Nationality', type:'text', placeholder:'e.g. Singaporean' }, { id:'dir_address', label:'Residential Address', type:'text', placeholder:'Full address' }] },
+    'form_consent_secretary':      { label: 'Secretary Consent', hint: 'Enter incoming secretary details.', fields: [{ id:'sec_name', label:'Full Name', type:'text', placeholder:'Full legal name' }, { id:'sec_id', label:'ID No.', type:'text', placeholder:'e.g. S1234567A' }] },
+    'form_resignation_director':   { label: 'Director Resignation', hint: 'Enter resignation details.', fields: [{ id:'dir_name', label:'Director Name', type:'text', placeholder:'Name of resigning director' }, { id:'effective_date', label:'Effective Date', type:'date' }] },
+    'form_resignation_secretary':  { label: 'Secretary Resignation', hint: 'Enter resignation details.', fields: [{ id:'sec_name', label:'Secretary Name', type:'text', placeholder:'Name of resigning secretary' }, { id:'effective_date', label:'Effective Date', type:'date' }] },
+    'form_share_transfer':         { label: 'Transfer Instrument', hint: 'Enter transfer details.', fields: [{ id:'transferor', label:'Transferor', type:'text', placeholder:'Selling party name' }, { id:'transferee', label:'Transferee', type:'text', placeholder:'Buying party name' }, { id:'num_shares', label:'No. of Shares', type:'text', placeholder:'e.g. 1,000' }, { id:'consideration', label:'Consideration', type:'text', placeholder:'e.g. SGD 10,000' }] },
+    'form_proxy':                  { label: 'Proxy Form', hint: 'Enter meeting details.', fields: [{ id:'meeting_date', label:'Meeting Date', type:'date' }, { id:'member_name', label:'Member Name', type:'text', placeholder:'Name of appointing member' }, { id:'proxy_name', label:'Proxy Name', type:'text', placeholder:'Name of proxy' }] },
+    'form_statutory_declaration':  { label: 'Statutory Declaration', hint: 'Auto-generated for incorporation.', fields: [{ id:'notes', label:'Additional Notes', type:'textarea', placeholder:'Any clarifications' }] },
+    'form_nominee_declaration':    { label: 'Nominee Declaration', hint: 'Enter nominee & nominator details.', fields: [{ id:'nominee_name', label:'Nominee Director Name', type:'text', placeholder:'Full name' }, { id:'nominator_name', label:'Nominator Name', type:'text', placeholder:'Full name of nominator' }] },
+    'form_register_controller_notice': { label: 'Controller Notice', hint: 'Enter controller details.', fields: [{ id:'controller_name', label:'Controller Name', type:'text', placeholder:'Full name' }, { id:'controller_address', label:'Controller Address', type:'text', placeholder:'Address' }] },
+    'form_change_particulars':     { label: 'Change of Particulars', hint: 'Enter old and new details.', fields: [{ id:'person_name', label:'Person Name', type:'text', placeholder:'Director/Secretary name' }, { id:'field_changed', label:'Field Changed', type:'select', options:['Residential Address','Name','ID Number','Nationality'] }, { id:'old_value', label:'Old Value', type:'text', placeholder:'Previous value' }, { id:'new_value', label:'New Value', type:'text', placeholder:'New value' }] },
+    'form_waiver_preemptive':      { label: 'Waiver of Pre-emptive Rights', hint: 'Enter allotment details.', fields: [{ id:'num_shares', label:'Shares to be Allotted', type:'text', placeholder:'e.g. 10,000' }, { id:'allottee', label:'Allottee Name', type:'text', placeholder:'Name of allottee' }] },
+    'form_indemnity_lost_cert':    { label: 'Lost Certificate Indemnity', hint: 'Enter certificate details.', fields: [{ id:'cert_no', label:'Certificate Number', type:'text', placeholder:'e.g. CERT-001' }, { id:'holder_name', label:'Certificate Holder', type:'text', placeholder:'Name of holder' }, { id:'num_shares', label:'No. of Shares', type:'text', placeholder:'Shares on lost certificate' }] },
+};
+
+var selectedTemplateName = '';
+
 function selectTemplate(id, el) {
     selectedTemplateId = id;
-    /* Highlight card */
-    $('.dg-card').removeClass('selected');
-    $(el).addClass('selected');
-    /* Set title */
-    var name = $(el).find('.dg-card-name').text();
-    $('#dgGenTitle').text('Generate: ' + name);
-    /* Reset output */
-    $('#dgOutput').hide();
-    $('#dgLoading').hide();
-    /* Open panel */
-    openGenPanel();
+    selectedTemplateName = $(el).find('.dg-card-name').text();
+    
+    /* Hide template grid, show wizard */
+    $('#dgTabs, .dg-search-row, .dg-category').hide();
+    $('#dgWizard').show();
+    $('#dgWizTitle').text(selectedTemplateName);
+    
+    /* Build step 2 fields */
+    buildWizFields(id);
+    
+    /* Start at step 1 */
+    showWizStep(1);
+    
+    /* Scroll to top */
+    window.scrollTo(0, 0);
 }
 
 function openReport(id) {
     var url = reportUrls[id];
-    if (url) {
-        window.location.href = url;
+    if (url) window.location.href = url;
+}
+
+function closeWizard() {
+    $('#dgWizard').hide();
+    $('#dgTabs, .dg-search-row').show();
+    $('#cat-' + currentCategory).show();
+    $('.dg-card').removeClass('selected');
+    selectedTemplateId = null;
+}
+
+function showWizStep(step) {
+    $('.dg-wiz-step').hide();
+    $('#wizStep' + step).show();
+    /* Update step indicators */
+    $('.dg-step').each(function() {
+        var s = parseInt($(this).data('step'));
+        $(this).removeClass('active done');
+        if (s < step) $(this).addClass('done');
+        else if (s === step) $(this).addClass('active');
+    });
+}
+
+function wizNext(step) {
+    if (step === 2) {
+        /* Validate step 1 */
+        showWizStep(2);
+    } else if (step === 3) {
+        showWizStep(3);
+        doGenerate();
     }
 }
 
-function openGenPanel() {
-    $('#dgGenOverlay').show();
-    setTimeout(function() {
-        $('#dgGenPanel').addClass('open');
-    }, 10);
+function wizBack(step) {
+    showWizStep(step);
 }
 
-function closeGenPanel() {
-    $('#dgGenPanel').removeClass('open');
-    setTimeout(function() {
-        $('#dgGenOverlay').hide();
-    }, 300);
-}
-
-function generateDocument() {
-    if (!selectedTemplateId) return;
-    var companyId = $('#dgCompanySelect').val();
+function buildWizFields(templateId) {
+    var config = templateFields[templateId];
+    var container = $('#wizFields');
+    container.empty();
     
-    var btn = $('#dgGenerateBtn');
-    btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Generating...');
-    $('#dgOutput').hide();
-    $('#dgLoading').show();
+    if (!config) {
+        $('#wizStep2Label').text('Additional Details');
+        $('#wizStep2Hint').text('No additional input needed for this template.');
+        container.html('<p style="color:var(--cf-text-muted); font-size:13px;">This document will be generated using your company data. Click Generate to proceed.</p>');
+        return;
+    }
+    
+    $('#wizStep2Label').text(config.label);
+    $('#wizStep2Hint').text(config.hint);
+    
+    config.fields.forEach(function(f) {
+        var html = '<div class="dg-wiz-field"><label for="wiz_' + f.id + '">' + f.label + '</label>';
+        if (f.type === 'textarea') {
+            html += '<textarea id="wiz_' + f.id + '" rows="3" placeholder="' + (f.placeholder || '') + '"></textarea>';
+        } else if (f.type === 'select') {
+            html += '<select id="wiz_' + f.id + '">';
+            (f.options || []).forEach(function(opt) {
+                html += '<option value="' + opt + '">' + opt + '</option>';
+            });
+            html += '</select>';
+        } else if (f.type === 'date') {
+            html += '<input type="date" id="wiz_' + f.id + '">';
+        } else {
+            html += '<input type="text" id="wiz_' + f.id + '" placeholder="' + (f.placeholder || '') + '">';
+        }
+        html += '</div>';
+        container.append(html);
+    });
+}
+
+function collectWizFields() {
+    var data = {};
+    var config = templateFields[selectedTemplateId];
+    if (!config) return data;
+    config.fields.forEach(function(f) {
+        data[f.id] = $('#wiz_' + f.id).val() || '';
+    });
+    return data;
+}
+
+function doGenerate() {
+    var companyId = $('#dgCompanySelect').val();
+    var extraFields = collectWizFields();
+    
+    $('#wizLoading').show();
+    $('#wizResult').hide();
+    
+    /* Build extra context string */
+    var extra = '';
+    for (var key in extraFields) {
+        if (extraFields[key]) {
+            extra += key.replace(/_/g, ' ') + ': ' + extraFields[key] + '\n';
+        }
+    }
     
     $.ajax({
         url: '<?= base_url('document_generator/generate') ?>',
         method: 'POST',
         data: {
             template_id: selectedTemplateId,
-            company_id: companyId
+            company_id: companyId,
+            extra_context: extra
         },
         dataType: 'json',
+        timeout: 65000,
         success: function(res) {
-            $('#dgLoading').hide();
+            $('#wizLoading').hide();
             if (res.success) {
                 $('#dgOutputContent').text(res.content);
-                $('#dgOutput').show();
             } else {
                 $('#dgOutputContent').text('Error: ' + (res.message || 'Generation failed'));
-                $('#dgOutput').show();
             }
+            $('#wizResult').show();
         },
         error: function() {
-            $('#dgLoading').hide();
+            $('#wizLoading').hide();
             $('#dgOutputContent').text('Error: Could not reach the server. Please try again.');
-            $('#dgOutput').show();
-        },
-        complete: function() {
-            btn.prop('disabled', false).html('<i class="fa fa-magic" style="margin-right:6px;"></i> Generate Document');
+            $('#wizResult').show();
         }
     });
 }
@@ -656,11 +939,8 @@ function generateDocument() {
 function copyOutput() {
     var text = $('#dgOutputContent').text();
     if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(function() {
-            showToast('Copied to clipboard');
-        });
+        navigator.clipboard.writeText(text).then(function() { showToast('Copied to clipboard'); });
     } else {
-        /* Fallback */
         var ta = document.createElement('textarea');
         ta.value = text;
         document.body.appendChild(ta);
@@ -673,10 +953,9 @@ function copyOutput() {
 
 function printOutput() {
     var content = $('#dgOutputContent').text();
-    var title = $('#dgGenTitle').text();
     var w = window.open('', '_blank');
-    w.document.write('<html><head><title>' + title + '</title><style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.8;white-space:pre-wrap;font-size:13px;}h1{font-size:18px;margin-bottom:20px;}</style></head><body>');
-    w.document.write('<h1>' + title + '</h1>');
+    w.document.write('<html><head><title>' + selectedTemplateName + '</title><style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.8;white-space:pre-wrap;font-size:13px;}h1{font-size:18px;margin-bottom:20px;}</style></head><body>');
+    w.document.write('<h1>' + selectedTemplateName + '</h1>');
     w.document.write(content.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
     w.document.write('</body></html>');
     w.document.close();
@@ -696,9 +975,8 @@ function showToast(msg) {
 /* Init */
 $(document).ready(function() {
     filterTemplates();
-    /* Close panel on Escape */
     $(document).on('keydown', function(e) {
-        if (e.key === 'Escape') closeGenPanel();
+        if (e.key === 'Escape' && $('#dgWizard').is(':visible')) closeWizard();
     });
 });
 </script>

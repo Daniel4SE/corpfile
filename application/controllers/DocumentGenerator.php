@@ -41,8 +41,9 @@ class DocumentGenerator extends BaseController {
         set_time_limit(300);
         header('Content-Type: application/json');
 
-        $templateId = $this->input('template_id', '');
-        $companyId  = $this->input('company_id', '');
+        $templateId    = $this->input('template_id', '');
+        $companyId     = $this->input('company_id', '');
+        $extraContext  = $this->input('extra_context', '');
         
         if (empty($templateId)) {
             echo json_encode(['success' => false, 'message' => 'Template ID required']);
@@ -86,7 +87,7 @@ class DocumentGenerator extends BaseController {
         }
 
         // Build context for AI generation
-        $context = $this->buildTemplateContext($templateId, $company, $directors, $shareholders, $secretary);
+        $context = $this->buildTemplateContext($templateId, $company, $directors, $shareholders, $secretary, $extraContext);
         
         // Use AI to generate the document
         try {
@@ -119,7 +120,7 @@ class DocumentGenerator extends BaseController {
      * Uses specialized system prompts from DocumentPrompts where available,
      * and structured JSON data injection for the user turn.
      */
-    private function buildTemplateContext($templateId, $company, $directors, $shareholders, $secretary) {
+    private function buildTemplateContext($templateId, $company, $directors, $shareholders, $secretary, $extraContext = '') {
         require_once APPPATH . 'libraries/DocumentPrompts.php';
 
         $templates = $this->getTemplateDefinitions();
@@ -142,6 +143,11 @@ class DocumentGenerator extends BaseController {
             $companyInfo = $this->buildFlatCompanyInfo($company, $directors, $shareholders, $secretary);
             $instruction = $tpl ? $tpl['instruction'] : 'Generate a corporate document.';
             $prompt = "Generate the following document: **{$tplName}**\n\n{$instruction}\n\nCompany Information:\n{$companyInfo}";
+        }
+
+        // Append user-provided extra context from wizard fields
+        if (!empty($extraContext)) {
+            $prompt .= "\n\nAdditional details provided by user:\n" . $extraContext;
         }
 
         return ['name' => $tplName, 'system' => $system, 'prompt' => $prompt];
