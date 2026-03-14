@@ -45,13 +45,13 @@
 <div class="doc-layout" id="docLayout">
 
     <!-- Left: Company Folder Tree -->
-    <div class="doc-folders" id="docFolders">
+    <div class="doc-folders full-width" id="docFolders">
         <div class="doc-folders-header">
             <input type="text" class="doc-folder-search" id="folderSearch" placeholder="Search companies..." oninput="filterFolders()">
         </div>
         <div class="doc-folder-list" id="folderList">
             <!-- All Documents -->
-            <div class="doc-folder-item active" data-filter="all" onclick="filterByFolder('all', this)">
+            <div class="doc-folder-item" data-filter="all" onclick="filterByFolder('all', this)">
                 <span class="doc-folder-icon"><i class="fa fa-files-o"></i></span>
                 <span class="doc-folder-name">All Documents</span>
                 <span class="doc-folder-count"><?= $total_docs ?></span>
@@ -100,8 +100,8 @@
         </div>
     </div>
 
-    <!-- Right: Documents Panel -->
-    <div class="doc-main" id="docMain">
+    <!-- Right: Documents Panel (hidden by default, shown on folder click) -->
+    <div class="doc-main" id="docMain" style="display:none;">
         <!-- Breadcrumb -->
         <div class="doc-breadcrumb" id="docBreadcrumb">
             <span class="doc-breadcrumb-icon"><i class="fa fa-files-o"></i></span>
@@ -331,6 +331,23 @@
     flex-shrink: 0;
     background: var(--cf-bg);
     transition: width 0.25s;
+}
+/* When no folder is selected, sidebar fills full width */
+.doc-folders.full-width {
+    width: 100%;
+    border-right: none;
+}
+.doc-folders.full-width .doc-folder-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 4px;
+    padding: 12px;
+}
+.doc-folders.full-width .doc-folder-divider {
+    grid-column: 1 / -1;
+}
+.doc-folders.full-width .doc-folder-label {
+    grid-column: 1 / -1;
 }
 .doc-folders.collapsed {
     width: 0;
@@ -861,6 +878,10 @@ $(document).ready(function() {
        ══════════════════════════════════════════════ */
     window.filterByFolder = function(filter, el) {
         currentFilter = filter;
+
+        /* Show the right panel and shrink sidebar */
+        $('#docMain').show();
+        $('#docFolders').removeClass('full-width');
 
         /* Highlight active folder */
         $('.doc-folder-item').removeClass('active');
