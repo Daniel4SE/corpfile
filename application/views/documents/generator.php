@@ -918,7 +918,7 @@ function doGenerate() {
             extra_context: extra
         },
         dataType: 'json',
-        timeout: 65000,
+        timeout: 120000,
         success: function(res) {
             $('#wizLoading').hide();
             if (res.success) {
@@ -928,9 +928,13 @@ function doGenerate() {
             }
             $('#wizResult').show();
         },
-        error: function() {
+        error: function(xhr, status, err) {
             $('#wizLoading').hide();
-            $('#dgOutputContent').text('Error: Could not reach the server. Please try again.');
+            if (status === 'timeout') {
+                $('#dgOutputContent').text('Request timed out. The AI is processing a complex document — please try again. If the issue persists, try a simpler template first.');
+            } else {
+                $('#dgOutputContent').text('Error: Could not reach the server (HTTP ' + (xhr.status || '?') + '). Please try again.');
+            }
             $('#wizResult').show();
         }
     });

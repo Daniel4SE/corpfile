@@ -39,7 +39,12 @@ class DocumentGenerator extends BaseController {
     public function generate() {
         $this->requireAuth();
         set_time_limit(300);
+        ini_set('max_execution_time', 300);
+        // Flush headers early so proxy knows connection is alive
         header('Content-Type: application/json');
+        header('X-Accel-Buffering: no');
+        if (function_exists('ob_implicit_flush')) { ob_implicit_flush(true); }
+        if (ob_get_level()) { ob_end_flush(); }
 
         $templateId    = $this->input('template_id', '');
         $companyId     = $this->input('company_id', '');

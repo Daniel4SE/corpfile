@@ -620,15 +620,64 @@ CREATE TABLE `form_templates` (
 CREATE TABLE `esign_documents` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `client_id` INT UNSIGNED NOT NULL,
+  `company_id` INT UNSIGNED DEFAULT NULL,
   `document_id` INT UNSIGNED DEFAULT NULL,
   `title` VARCHAR(500) NOT NULL,
+  `subject` VARCHAR(500) DEFAULT NULL,
+  `message` TEXT DEFAULT NULL,
   `signers` JSON DEFAULT NULL,
   `status` VARCHAR(50) DEFAULT 'Draft',
+  `signing_order` TINYINT(1) DEFAULT 0,
+  `provider` VARCHAR(50) DEFAULT NULL,
+  `external_id` VARCHAR(255) DEFAULT NULL,
   `unique_key` VARCHAR(100) DEFAULT NULL,
+  `completed_doc_path` VARCHAR(1000) DEFAULT NULL,
+  `expires_at` DATETIME DEFAULT NULL,
+  `sent_at` DATETIME DEFAULT NULL,
+  `completed_at` DATETIME DEFAULT NULL,
+  `voided_at` DATETIME DEFAULT NULL,
+  `void_reason` VARCHAR(500) DEFAULT NULL,
   `created_by` INT UNSIGNED DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (`client_id`) REFERENCES `clients`(`id`)
+  FOREIGN KEY (`client_id`) REFERENCES `clients`(`id`),
+  FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON DELETE SET NULL,
+  KEY `idx_esign_status` (`status`),
+  KEY `idx_esign_company` (`company_id`)
+) ENGINE=InnoDB;
+
+CREATE TABLE `esign_signers` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `esign_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `email` VARCHAR(255) NOT NULL,
+  `role` VARCHAR(50) DEFAULT 'Signer',
+  `person_type` VARCHAR(50) DEFAULT 'Other',
+  `person_id` INT UNSIGNED DEFAULT NULL,
+  `routing_order` INT DEFAULT 1,
+  `status` VARCHAR(50) DEFAULT 'Pending',
+  `signed_at` DATETIME DEFAULT NULL,
+  `viewed_at` DATETIME DEFAULT NULL,
+  `declined_at` DATETIME DEFAULT NULL,
+  `decline_reason` VARCHAR(500) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`esign_id`) REFERENCES `esign_documents`(`id`) ON DELETE CASCADE,
+  KEY `idx_signer_esign` (`esign_id`),
+  KEY `idx_signer_status` (`status`)
+) ENGINE=InnoDB;
+
+CREATE TABLE `esign_audit_log` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `esign_id` INT UNSIGNED NOT NULL,
+  `event` VARCHAR(100) NOT NULL,
+  `actor` VARCHAR(255) DEFAULT NULL,
+  `actor_email` VARCHAR(255) DEFAULT NULL,
+  `details` TEXT DEFAULT NULL,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`esign_id`) REFERENCES `esign_documents`(`id`) ON DELETE CASCADE,
+  KEY `idx_audit_esign` (`esign_id`)
 ) ENGINE=InnoDB;
 
 -- ================================================================

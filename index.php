@@ -435,6 +435,10 @@ function dispatchController($map, $params = []) {
     if (!empty($params[0]) && method_exists($controller, $params[0])) {
         $method = array_shift($params);
         call_user_func_array([$controller, $method], $params);
+    } elseif (!empty($params[0]) && method_exists($controller, '__call')) {
+        // Support __call for method name aliasing (e.g. Esign::view -> detail)
+        $method = array_shift($params);
+        call_user_func_array([$controller, $method], $params);
     } elseif (method_exists($controller, 'index')) {
         call_user_func_array([$controller, 'index'], $params);
     } else {
