@@ -178,22 +178,68 @@ CREATE TABLE IF NOT EXISTS `esign_audit_log` (
 ) ENGINE=InnoDB;
 SQL
 
-  # Ensure esign_documents has company_id column (may be missing from older schema)
+  # Recreate eSign tables with correct schema (drop old incomplete tables)
   mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
-ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED DEFAULT NULL AFTER `user_id`;
-ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `document_type` VARCHAR(100) DEFAULT 'General' AFTER `file_name`;
-ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `routing_order` ENUM('sequential','parallel') DEFAULT 'parallel' AFTER `status`;
-ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `expires_at` DATETIME DEFAULT NULL AFTER `routing_order`;
-ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `sent_at` DATETIME DEFAULT NULL AFTER `expires_at`;
-ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `completed_at` DATETIME DEFAULT NULL AFTER `sent_at`;
-ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `voided_at` DATETIME DEFAULT NULL AFTER `completed_at`;
-ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `void_reason` TEXT DEFAULT NULL AFTER `voided_at`;
-ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `role` ENUM('Signer','Approver','Viewer','CC') DEFAULT 'Signer' AFTER `email`;
-ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `routing_order` INT DEFAULT 1 AFTER `role`;
-ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `ip_address` VARCHAR(45) DEFAULT NULL AFTER `signed_at`;
-ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `signature_data` TEXT DEFAULT NULL AFTER `ip_address`;
-ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `decline_reason` TEXT DEFAULT NULL AFTER `signature_data`;
-ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `reminder_sent_at` DATETIME DEFAULT NULL AFTER `decline_reason`;
+DROP TABLE IF EXISTS `esign_audit_log`;
+DROP TABLE IF EXISTS `esign_signers`;
+DROP TABLE IF EXISTS `esign_documents`;
+SQL
+  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
+CREATE TABLE `esign_documents` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `client_id` INT UNSIGNED NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `company_id` INT UNSIGNED DEFAULT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `description` TEXT,
+  `file_path` VARCHAR(500) DEFAULT NULL,
+  `file_name` VARCHAR(255) DEFAULT NULL,
+  `document_type` VARCHAR(100) DEFAULT 'General',
+  `status` ENUM('Draft','Sent','Partially Signed','Completed','Voided','Expired') DEFAULT 'Draft',
+  `routing_order` ENUM('sequential','parallel') DEFAULT 'parallel',
+  `expires_at` DATETIME DEFAULT NULL,
+  `sent_at` DATETIME DEFAULT NULL,
+  `completed_at` DATETIME DEFAULT NULL,
+  `voided_at` DATETIME DEFAULT NULL,
+  `void_reason` TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_client` (`client_id`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_company` (`company_id`)
+) ENGINE=InnoDB;
+
+CREATE TABLE `esign_signers` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `esign_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `email` VARCHAR(255) NOT NULL,
+  `role` ENUM('Signer','Approver','Viewer','CC') DEFAULT 'Signer',
+  `routing_order` INT DEFAULT 1,
+  `status` ENUM('Pending','Sent','Viewed','Completed','Declined','Expired') DEFAULT 'Pending',
+  `signed_at` DATETIME DEFAULT NULL,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `signature_data` TEXT DEFAULT NULL,
+  `decline_reason` TEXT DEFAULT NULL,
+  `reminder_sent_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`esign_id`) REFERENCES `esign_documents`(`id`) ON DELETE CASCADE,
+  INDEX `idx_esign` (`esign_id`),
+  INDEX `idx_status` (`status`)
+) ENGINE=InnoDB;
+
+CREATE TABLE `esign_audit_log` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `esign_id` INT UNSIGNED NOT NULL,
+  `event` VARCHAR(100) NOT NULL,
+  `details` TEXT DEFAULT NULL,
+  `user_name` VARCHAR(255) DEFAULT NULL,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`esign_id`) REFERENCES `esign_documents`(`id`) ON DELETE CASCADE,
+  INDEX `idx_esign` (`esign_id`)
+) ENGINE=InnoDB;
 SQL
 
   echo "DB migrations done."
