@@ -178,6 +178,24 @@ CREATE TABLE IF NOT EXISTS `esign_audit_log` (
 ) ENGINE=InnoDB;
 SQL
 
+  # Ensure esign_documents has company_id column (may be missing from older schema)
+  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
+ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED DEFAULT NULL AFTER `user_id`;
+ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `document_type` VARCHAR(100) DEFAULT 'General' AFTER `file_name`;
+ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `routing_order` ENUM('sequential','parallel') DEFAULT 'parallel' AFTER `status`;
+ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `expires_at` DATETIME DEFAULT NULL AFTER `routing_order`;
+ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `sent_at` DATETIME DEFAULT NULL AFTER `expires_at`;
+ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `completed_at` DATETIME DEFAULT NULL AFTER `sent_at`;
+ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `voided_at` DATETIME DEFAULT NULL AFTER `completed_at`;
+ALTER TABLE `esign_documents` ADD COLUMN IF NOT EXISTS `void_reason` TEXT DEFAULT NULL AFTER `voided_at`;
+ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `role` ENUM('Signer','Approver','Viewer','CC') DEFAULT 'Signer' AFTER `email`;
+ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `routing_order` INT DEFAULT 1 AFTER `role`;
+ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `ip_address` VARCHAR(45) DEFAULT NULL AFTER `signed_at`;
+ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `signature_data` TEXT DEFAULT NULL AFTER `ip_address`;
+ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `decline_reason` TEXT DEFAULT NULL AFTER `signature_data`;
+ALTER TABLE `esign_signers` ADD COLUMN IF NOT EXISTS `reminder_sent_at` DATETIME DEFAULT NULL AFTER `decline_reason`;
+SQL
+
   echo "DB migrations done."
 
   # Run Teamwork.sg data import (one-time, checks if enough companies have incorp dates)
