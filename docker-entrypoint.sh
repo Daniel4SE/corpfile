@@ -119,6 +119,65 @@ CREATE TABLE IF NOT EXISTS `change_requests` (
   INDEX `idx_type` (`change_type`)
 ) ENGINE=InnoDB;
 SQL
+  # eSign tables
+  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
+CREATE TABLE IF NOT EXISTS `esign_documents` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `client_id` INT UNSIGNED NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `company_id` INT UNSIGNED DEFAULT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `description` TEXT,
+  `document_type` VARCHAR(100) DEFAULT 'General',
+  `file_path` VARCHAR(500) DEFAULT NULL,
+  `file_name` VARCHAR(255) DEFAULT NULL,
+  `status` ENUM('Draft','Sent','Partially Signed','Completed','Voided','Expired') DEFAULT 'Draft',
+  `routing_order` ENUM('sequential','parallel') DEFAULT 'parallel',
+  `expires_at` DATETIME DEFAULT NULL,
+  `sent_at` DATETIME DEFAULT NULL,
+  `completed_at` DATETIME DEFAULT NULL,
+  `voided_at` DATETIME DEFAULT NULL,
+  `void_reason` TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_client` (`client_id`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_company` (`company_id`)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `esign_signers` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `esign_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `email` VARCHAR(255) NOT NULL,
+  `role` ENUM('Signer','Approver','Viewer','CC') DEFAULT 'Signer',
+  `routing_order` INT DEFAULT 1,
+  `status` ENUM('Pending','Sent','Viewed','Completed','Declined','Expired') DEFAULT 'Pending',
+  `signed_at` DATETIME DEFAULT NULL,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `signature_data` TEXT DEFAULT NULL,
+  `decline_reason` TEXT DEFAULT NULL,
+  `reminder_sent_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`esign_id`) REFERENCES `esign_documents`(`id`) ON DELETE CASCADE,
+  INDEX `idx_esign` (`esign_id`),
+  INDEX `idx_status` (`status`)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `esign_audit_log` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `esign_id` INT UNSIGNED NOT NULL,
+  `event` VARCHAR(100) NOT NULL,
+  `details` TEXT DEFAULT NULL,
+  `user_name` VARCHAR(255) DEFAULT NULL,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`esign_id`) REFERENCES `esign_documents`(`id`) ON DELETE CASCADE,
+  INDEX `idx_esign` (`esign_id`)
+) ENGINE=InnoDB;
+SQL
+
   echo "DB migrations done."
 
   # Run Teamwork.sg data import (one-time, checks if enough companies have incorp dates)
