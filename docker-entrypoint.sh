@@ -188,25 +188,31 @@ SQL
 CREATE TABLE `esign_documents` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `client_id` INT UNSIGNED NOT NULL,
-  `user_id` INT UNSIGNED NOT NULL,
   `company_id` INT UNSIGNED DEFAULT NULL,
+  `document_id` INT UNSIGNED DEFAULT NULL,
   `title` VARCHAR(255) NOT NULL,
+  `subject` VARCHAR(500) DEFAULT NULL,
+  `message` TEXT DEFAULT NULL,
   `description` TEXT,
   `file_path` VARCHAR(500) DEFAULT NULL,
   `file_name` VARCHAR(255) DEFAULT NULL,
   `document_type` VARCHAR(100) DEFAULT 'General',
   `status` ENUM('Draft','Sent','Partially Signed','Completed','Voided','Expired') DEFAULT 'Draft',
+  `signing_order` ENUM('sequential','parallel') DEFAULT 'parallel',
   `routing_order` ENUM('sequential','parallel') DEFAULT 'parallel',
+  `unique_key` VARCHAR(50) DEFAULT NULL,
   `expires_at` DATETIME DEFAULT NULL,
   `sent_at` DATETIME DEFAULT NULL,
   `completed_at` DATETIME DEFAULT NULL,
   `voided_at` DATETIME DEFAULT NULL,
   `void_reason` TEXT DEFAULT NULL,
+  `created_by` INT UNSIGNED DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_client` (`client_id`),
   INDEX `idx_status` (`status`),
-  INDEX `idx_company` (`company_id`)
+  INDEX `idx_company` (`company_id`),
+  INDEX `idx_unique_key` (`unique_key`)
 ) ENGINE=InnoDB;
 
 CREATE TABLE `esign_signers` (
