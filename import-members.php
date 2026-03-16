@@ -33,6 +33,11 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS member_identifications (
     client_id INT DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_member (member_id)
 )");
+foreach (['id_slot INT DEFAULT 1', 'id_expiry_date DATE DEFAULT NULL', 'id_issued_date DATE DEFAULT NULL', 'id_issued_country VARCHAR(100) DEFAULT NULL', 'client_id INT DEFAULT NULL'] as $cd) {
+    $cn = explode(' ', $cd)[0];
+    $ex = $pdo->query("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='{$dbName}' AND table_name='member_identifications' AND column_name='{$cn}'")->fetchColumn();
+    if (!$ex) { $pdo->exec("ALTER TABLE member_identifications ADD COLUMN {$cd}"); echo "  Added member_identifications.{$cn}\n"; }
+}
 
 $json = file_get_contents(__DIR__ . '/scraped-members.json');
 $members = json_decode($json, true);
