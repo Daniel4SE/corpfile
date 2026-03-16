@@ -1,6 +1,4 @@
 <?php
-require_once __DIR__ . '/application/core/Database.php';
-
 $dbHost = getenv('DB_HOST') ?: '127.0.0.1';
 $dbPort = getenv('DB_PORT') ?: '3306';
 $dbUser = getenv('DB_USER') ?: 'root';
