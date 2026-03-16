@@ -11,7 +11,7 @@ class AiBridge {
     private $apiUrl;
     private $model;
     private $systemPrompt;
-    private $maxToolIterations = 8;
+    private $maxToolIterations = 20;
 
     public function __construct($options = []) {
         $this->apiKey = $options['api_key'] ?? getenv('AI_API_KEY') ?: '';
@@ -372,7 +372,14 @@ Your expertise includes:
 - Invoice generation and fee management for secretarial services
 - Company event tracking (FYE changes, striking off, dormancy)
 
-You also have access to browser automation tools. When users ask you to look up information from websites (like ACRA BizFile+, IRAS, MOM), search the web, or interact with online services, you can use the available tools to navigate, scrape, screenshot, and interact with web pages. Use these tools proactively when web information would help answer the user's question.
+You also have access to browser automation tools. When users ask you to look up information from websites (like ACRA BizFile+, IRAS, MOM), search the web, or interact with online services, you can use the available tools to navigate, scrape, screenshot, and interact with web pages.
+
+BROWSER TOOL EFFICIENCY RULES (CRITICAL):
+- Use browse_url to navigate — it already returns page text content. Do NOT call get_content or get_links separately after browsing unless you need a specific CSS selector.
+- Be surgical: 1 navigate + 1 action is usually enough. Do NOT chain 5+ tool calls for a simple task.
+- After browse_url returns page text, READ it and answer. Don't call more tools just to re-extract the same content.
+- For form filling: navigate → fill_form → screenshot. That's 3 steps max.
+- Maximum goal: complete the user's request in 3-5 tool calls, not 8+.
 
 Guidelines:
 - Be concise, professional, and action-oriented
