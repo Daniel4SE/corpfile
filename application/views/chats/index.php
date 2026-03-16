@@ -493,6 +493,83 @@
     40% { transform: scale(1); opacity: 1; }
 }
 
+.cf-sse-status-bar {
+    width: 100%;
+    max-width: 85%;
+    border: 1px solid #dbeafe;
+    background: #eff6ff;
+    color: #1e3a8a;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.cf-sse-status-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+.cf-sse-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2563eb;
+    animation: cfSsePulse 1.2s infinite ease-in-out;
+}
+@keyframes cfSsePulse {
+    0%, 100% { transform: scale(0.9); opacity: 0.6; }
+    50% { transform: scale(1.1); opacity: 1; }
+}
+
+.cf-step-stream {
+    width: 100%;
+    max-width: 85%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-left: 2px solid #dbeafe;
+    padding-left: 12px;
+}
+.cf-step-item {
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 8px 10px;
+}
+.cf-step-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.4;
+}
+.cf-step-index {
+    font-weight: 700;
+    color: #1e3a8a;
+    min-width: 42px;
+}
+.cf-step-ok { color: #15803d; }
+.cf-step-fail { color: #b91c1c; }
+.cf-step-meta {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #475569;
+    word-break: break-word;
+}
+.cf-step-thumb {
+    margin-top: 6px;
+    display: inline-block;
+}
+.cf-step-thumb img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    display: block;
+}
+
 /* AI content formatting */
 .cf-ai-content { display: inline; }
 .cf-ai-content pre {
@@ -1094,27 +1171,55 @@ function sendChatSSE(payload, chatBody) {
     }).catch(function() { finishSSE(); showChatError(chatBody, 'Connection lost during browser operation.'); });
 }
 
+function ensureSSEStatus(chatBody) {
+    var bar = document.getElementById('chatSSEStatus');
+    if (bar) return bar;
+    bar = document.createElement('div');
+    bar.id = 'chatSSEStatus';
+    bar.className = 'cf-chat-msg assistant cf-sse-status-bar';
+    var typing = document.getElementById('chatTyping');
+    chatBody.insertBefore(bar, typing || null);
+    return bar;
+}
+
+function ensureStepStream(chatBody) {
+    var stream = document.getElementById('chatStepStream');
+    if (stream) return stream;
+    stream = document.createElement('div');
+    stream.id = 'chatStepStream';
+    stream.className = 'cf-chat-msg assistant cf-step-stream';
+    var typing = document.getElementById('chatTyping');
+    chatBody.insertBefore(stream, typing || null);
+    return stream;
+}
+
 function handleSSEEvent(event, data, chatBody) {
     if (event === 'status') {
         var typing = document.getElementById('chatTyping');
-        if (typing) typing.innerHTML = '<span></span><span></span><span></span> <small style="color:#94a3b8;margin-left:8px">' + (data.message || '') + '</small>';
+        var statusMsg = data.message || '';
+        if (typing) typing.innerHTML = '<span></span><span></span><span></span> <small style="color:#94a3b8;margin-left:8px">' + statusMsg + '</small>';
+
+        var statusBar = ensureSSEStatus(chatBody);
+        statusBar.innerHTML = '<span class="cf-sse-status-label"><span class="cf-sse-status-dot"></span>Status</span> ' + statusMsg;
+        chatBody.scrollTop = chatBody.scrollHeight;
     }
     else if (event === 'tool_step') {
         var typing = document.getElementById('chatTyping');
-        if (typing) typing.innerHTML = '<span></span><span></span><span></span> <small style="color:#94a3b8;margin-left:8px">Step ' + data.step + ': ' + data.tool + (data.url ? ' → ' + data.url.substring(0, 50) : '') + '</small>';
+        var context = data.url || data.query || '';
+        var contextText = context ? ' -> ' + context.substring(0, 80) : '';
+        if (typing) typing.innerHTML = '<span></span><span></span><span></span> <small style="color:#94a3b8;margin-left:8px">Step ' + data.step + ': ' + data.tool + contextText + '</small>';
 
-        if (data.screenshot) {
-            var imgDiv = document.createElement('div');
-            imgDiv.className = 'cf-chat-msg assistant cf-browser-step';
-            imgDiv.style.cssText = 'max-width:85%;padding:6px;opacity:0;transition:opacity 0.3s;';
-            var label = data.tool + (data.url ? ': ' + data.url.substring(0,50) : (data.query ? ': ' + data.query : ''));
-            var icon = data.ok ? '<span style="color:#10b981">✓</span>' : '<span style="color:#ef4444">✗</span>';
-            imgDiv.innerHTML = '<div style="font-size:11px;color:#64748b;margin-bottom:4px">' + icon + ' Step ' + data.step + ' — ' + label + '</div>' +
-                '<img src="data:image/png;base64,' + data.screenshot + '" style="max-width:100%;border-radius:8px;border:1px solid #e5e7eb;" alt="Step ' + data.step + '">';
-            chatBody.insertBefore(imgDiv, document.getElementById('chatTyping'));
-            setTimeout(function() { imgDiv.style.opacity = '1'; }, 50);
-            chatBody.scrollTop = chatBody.scrollHeight;
-        }
+        var stream = ensureStepStream(chatBody);
+        var card = document.createElement('div');
+        card.className = 'cf-step-item';
+        var stateClass = data.ok === false ? 'cf-step-fail' : 'cf-step-ok';
+        var stateText = data.ok === false ? 'Failed' : 'Done';
+        var detail = data.url || data.query || '';
+        var thumb = data.screenshot ? '<a class="cf-step-thumb" href="data:image/png;base64,' + data.screenshot + '" target="_blank" rel="noopener noreferrer"><img src="data:image/png;base64,' + data.screenshot + '" alt="Step ' + data.step + ' screenshot"></a>' : '';
+        card.innerHTML = '<div class="cf-step-head"><span class="cf-step-index">Step ' + data.step + '</span><strong>' + (data.tool || 'tool') + '</strong><span class="' + stateClass + '">' + stateText + '</span></div>' +
+            (detail ? '<div class="cf-step-meta">' + detail + '</div>' : '') + thumb;
+        stream.appendChild(card);
+        chatBody.scrollTop = chatBody.scrollHeight;
     }
     else if (event === 'result') {
         var typing = document.getElementById('chatTyping');

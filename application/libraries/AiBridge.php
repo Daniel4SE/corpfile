@@ -196,11 +196,26 @@ class AiBridge {
 
                     try {
                         $execResult = $toolExecutor($toolName, $toolInput);
+                        $screenshotData = null;
+                        if (is_array($execResult) && isset($execResult['_screenshot'])) {
+                            $screenshotData = $execResult['_screenshot'];
+                            unset($execResult['_screenshot']);
+                        }
+
+                        $resultStr = is_array($execResult) ? json_encode($execResult) : (string)$execResult;
+                        if (strlen($resultStr) > 10000) {
+                            $resultStr = substr($resultStr, 0, 10000) . '... [truncated]';
+                        }
+
                         $toolResults[] = [
                             'type'        => 'tool_result',
                             'tool_use_id' => $toolId,
-                            'content'     => is_array($execResult) ? json_encode($execResult) : (string)$execResult,
+                            'content'     => $resultStr,
                         ];
+
+                        if ($screenshotData) {
+                            $execResult['_screenshot'] = $screenshotData;
+                        }
 
                         $lastIdx = count($allToolCalls) - 1;
                         $allToolCalls[$lastIdx]['result'] = $execResult;
