@@ -254,6 +254,29 @@ CREATE TABLE `esign_audit_log` (
 ) ENGINE=InnoDB;
 SQL
 
+  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
+CREATE TABLE IF NOT EXISTS `work_passes` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `company_id` INT NOT NULL,
+  `member_id` INT DEFAULT NULL,
+  `holder_name` VARCHAR(255) NOT NULL,
+  `pass_type` ENUM('EP','DP','S Pass','Work Permit','EntrePass','PEP','LOC','TEP','Other') NOT NULL,
+  `fin_number` VARCHAR(50) DEFAULT NULL,
+  `pass_number` VARCHAR(100) DEFAULT NULL,
+  `nationality` VARCHAR(100) DEFAULT NULL,
+  `sponsor_name` VARCHAR(255) DEFAULT NULL,
+  `sector` VARCHAR(100) DEFAULT NULL,
+  `quota_type` VARCHAR(50) DEFAULT NULL,
+  `issue_date` DATE DEFAULT NULL,
+  `expiry_date` DATE DEFAULT NULL,
+  `status` VARCHAR(50) DEFAULT 'Active',
+  `remarks` TEXT DEFAULT NULL,
+  `client_id` INT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+SQL
+
   echo "DB migrations done."
 
   # Run Teamwork.sg data import (one-time, checks if enough companies have incorp dates)

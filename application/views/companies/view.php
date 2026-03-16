@@ -178,6 +178,31 @@
                             <i class="fa fa-ellipsis-h"></i> Others
                         </a>
                     </li>
+                    <li role="presentation">
+                        <a href="#tab_ep" role="tab" data-toggle="tab" aria-controls="tab_ep">
+                            <i class="fa fa-id-card"></i> EP
+                        </a>
+                    </li>
+                    <li role="presentation">
+                        <a href="#tab_dp" role="tab" data-toggle="tab" aria-controls="tab_dp">
+                            <i class="fa fa-users"></i> DP
+                        </a>
+                    </li>
+                    <li role="presentation">
+                        <a href="#tab_spass" role="tab" data-toggle="tab" aria-controls="tab_spass">
+                            <i class="fa fa-id-badge"></i> S Pass
+                        </a>
+                    </li>
+                    <li role="presentation">
+                        <a href="#tab_wp" role="tab" data-toggle="tab" aria-controls="tab_wp">
+                            <i class="fa fa-briefcase"></i> WP
+                        </a>
+                    </li>
+                    <li role="presentation">
+                        <a href="#tab_otherpass" role="tab" data-toggle="tab" aria-controls="tab_otherpass">
+                            <i class="fa fa-passport"></i> Passes
+                        </a>
+                    </li>
                 </ul>
                 </div><!-- /.bar_tabs-wrapper -->
 
@@ -1213,6 +1238,166 @@
                     </div>
                     <!-- END TAB 16: OTHERS -->
 
+
+                    <!-- ============================================================= -->
+                    <!-- TAB 17: EP -->
+                    <!-- ============================================================= -->
+                    <div id="tab_ep" class="tab-pane fade" role="tabpanel">
+                        <div style="margin-top:15px;">
+                            <button class="btn btn-success btn-sm btn-add-record" onclick="addEP()">
+                                <i class="fa fa-plus"></i> Add Record
+                            </button>
+
+                            <table id="dt_ep" class="table table-striped table-bordered" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th width="40">S/No</th>
+                                        <th>Holder Name</th>
+                                        <th>Pass Type</th>
+                                        <th>FIN Number</th>
+                                        <th>Nationality</th>
+                                        <th>Issue Date</th>
+                                        <th>Expiry Date</th>
+                                        <th>Status</th>
+                                        <th width="100">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- No records placeholder - populated via AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- END TAB 17: EP -->
+
+
+                    <!-- ============================================================= -->
+                    <!-- TAB 18: DP -->
+                    <!-- ============================================================= -->
+                    <div id="tab_dp" class="tab-pane fade" role="tabpanel">
+                        <div style="margin-top:15px;">
+                            <button class="btn btn-success btn-sm btn-add-record" onclick="addDP()">
+                                <i class="fa fa-plus"></i> Add Record
+                            </button>
+
+                            <table id="dt_dp" class="table table-striped table-bordered" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th width="40">S/No</th>
+                                        <th>Holder Name</th>
+                                        <th>Sponsor (EP Holder)</th>
+                                        <th>FIN Number</th>
+                                        <th>Nationality</th>
+                                        <th>Issue Date</th>
+                                        <th>Expiry Date</th>
+                                        <th>Status</th>
+                                        <th width="100">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- No records placeholder - populated via AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- END TAB 18: DP -->
+
+
+                    <!-- ============================================================= -->
+                    <!-- TAB 19: S PASS -->
+                    <!-- ============================================================= -->
+                    <div id="tab_spass" class="tab-pane fade" role="tabpanel">
+                        <div style="margin-top:15px;">
+                            <button class="btn btn-success btn-sm btn-add-record" onclick="addSPass()">
+                                <i class="fa fa-plus"></i> Add Record
+                            </button>
+
+                            <table id="dt_spass" class="table table-striped table-bordered" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th width="40">S/No</th>
+                                        <th>Holder Name</th>
+                                        <th>FIN Number</th>
+                                        <th>Nationality</th>
+                                        <th>Issue Date</th>
+                                        <th>Expiry Date</th>
+                                        <th>Quota Type</th>
+                                        <th>Status</th>
+                                        <th width="100">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- No records placeholder - populated via AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- END TAB 19: S PASS -->
+
+
+                    <!-- ============================================================= -->
+                    <!-- TAB 20: WORK PERMIT -->
+                    <!-- ============================================================= -->
+                    <div id="tab_wp" class="tab-pane fade" role="tabpanel">
+                        <div style="margin-top:15px;">
+                            <button class="btn btn-success btn-sm btn-add-record" onclick="addWP()">
+                                <i class="fa fa-plus"></i> Add Record
+                            </button>
+
+                            <table id="dt_wp" class="table table-striped table-bordered" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th width="40">S/No</th>
+                                        <th>Holder Name</th>
+                                        <th>FIN Number</th>
+                                        <th>Nationality</th>
+                                        <th>Sector</th>
+                                        <th>Issue Date</th>
+                                        <th>Expiry Date</th>
+                                        <th>Status</th>
+                                        <th width="100">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- No records placeholder - populated via AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- END TAB 20: WORK PERMIT -->
+
+
+                    <!-- ============================================================= -->
+                    <!-- TAB 21: OTHER PASSES -->
+                    <!-- ============================================================= -->
+                    <div id="tab_otherpass" class="tab-pane fade" role="tabpanel">
+                        <div style="margin-top:15px;">
+                            <button class="btn btn-success btn-sm btn-add-record" onclick="addOtherPass()">
+                                <i class="fa fa-plus"></i> Add Record
+                            </button>
+
+                            <table id="dt_otherpass" class="table table-striped table-bordered" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th width="40">S/No</th>
+                                        <th>Holder Name</th>
+                                        <th>Pass Type</th>
+                                        <th>Pass Number</th>
+                                        <th>Nationality</th>
+                                        <th>Issue Date</th>
+                                        <th>Expiry Date</th>
+                                        <th>Status</th>
+                                        <th width="100">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- No records placeholder - populated via AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- END TAB 21: OTHER PASSES -->
+
                 </div>
                 <!-- End Tab Content -->
 
@@ -1506,6 +1691,66 @@ function addNominee() {
 
 function addOther() {
     loadModalForm('Add Record', BASE_URL + 'companies/other_form/' + companyId);
+}
+
+function addEP() {
+    alert('Coming soon');
+}
+
+function editEP(id) {
+    alert('Coming soon');
+}
+
+function deleteEP(id) {
+    alert('Coming soon');
+}
+
+function addDP() {
+    alert('Coming soon');
+}
+
+function editDP(id) {
+    alert('Coming soon');
+}
+
+function deleteDP(id) {
+    alert('Coming soon');
+}
+
+function addSPass() {
+    alert('Coming soon');
+}
+
+function editSPass(id) {
+    alert('Coming soon');
+}
+
+function deleteSPass(id) {
+    alert('Coming soon');
+}
+
+function addWP() {
+    alert('Coming soon');
+}
+
+function editWP(id) {
+    alert('Coming soon');
+}
+
+function deleteWP(id) {
+    alert('Coming soon');
+}
+
+function addOtherPass() {
+    alert('Coming soon');
+}
+
+function editOtherPass(id) {
+    alert('Coming soon');
+}
+
+function deleteOtherPass(id) {
+    alert('Coming soon');
 }
 
 
