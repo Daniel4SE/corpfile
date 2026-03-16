@@ -93,7 +93,7 @@ class BrowserTools {
                 'description' => 'Get current page metadata: title, URL, meta tags, form count, link count.',
                 'input_schema' => [
                     'type' => 'object',
-                    'properties' => [],
+                    'properties' => new \stdClass(),
                 ],
             ],
             [
