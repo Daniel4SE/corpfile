@@ -318,8 +318,138 @@ class Ai extends BaseController {
     }
 
     /**
-     * Agent-specific system prompts for specialized behavior.
+     * POST /ai/chat_stream — SSE streaming chat with live browser screenshots.
      */
+    public function chat_stream() {
+        $this->requireAuth();
+
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            $this->json(['ok' => false, 'error' => 'Method not allowed'], 405);
+            return;
+        }
+
+        $payload = $this->getJsonInput();
+        $message = trim((string) ($payload['message'] ?? ''));
+        if ($message === '' || strlen($message) > 4000) {
+            $this->json(['ok' => false, 'error' => 'Invalid message']);
+            return;
+        }
+
+        $conversationId = (int) ($payload['conversation_id'] ?? 0);
+        $agent = $payload['agent'] ?? null;
+        $model = $payload['model'] ?? null;
+        $userId = (int) ($_SESSION['user_id'] ?? 1);
+
+        $clientDbId = 0;
+        $client = $this->getClient();
+        if ($client) $clientDbId = (int) $client->id;
+
+        if ($conversationId <= 0 && $this->db) {
+            try {
+                $conversationId = (int) $this->db->insert('chat_conversations', [
+                    'user_id' => $userId, 'client_id' => $clientDbId,
+                    'title' => mb_substr($message, 0, 80), 'agent' => $agent, 'source' => 'chat',
+                ]);
+            } catch (\Exception $e) { $conversationId = 0; }
+        }
+
+        if ($conversationId > 0 && $this->db) {
+            try { $this->db->insert('chat_messages', ['conversation_id' => $conversationId, 'role' => 'user', 'content' => $message]); } catch (\Exception $e) {}
+        }
+
+        $history = [];
+        if ($conversationId > 0 && $this->db) {
+            try {
+                $rows = $this->db->fetchAll("SELECT role, content FROM chat_messages WHERE conversation_id = ? ORDER BY id ASC LIMIT 20", [$conversationId]);
+                foreach ($rows as $r) $history[] = ['role' => $r->role, 'content' => $r->content];
+            } catch (\Exception $e) {}
+        }
+
+        $contextInfo = $this->buildContextSnippet($message);
+        $enrichedMessage = $contextInfo ? $message . "\n\n---\n[Workspace context]\n" . $contextInfo : $message;
+
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        header('X-Accel-Buffering: no');
+        @ob_end_flush();
+        @set_time_limit(300);
+
+        $self = $this;
+        $sseEmit = function ($event, $data) {
+            echo "event: {$event}\ndata: " . json_encode($data) . "\n\n";
+            @ob_flush();
+            flush();
+        };
+
+        $sseEmit('status', ['step' => 'thinking', 'message' => 'AI is analyzing your request...']);
+
+        $browserServiceUrl = getenv('BROWSER_SERVICE_URL');
+        if (empty($browserServiceUrl)) {
+            $sseEmit('error', ['message' => 'Browser service not configured']);
+            $sseEmit('done', []);
+            return;
+        }
+
+        $browserTools = new BrowserTools(['session_id' => 'chat_' . ($conversationId ?: $userId)]);
+        $toolDefs = BrowserTools::getToolDefinitions();
+        $toolExecutor = function ($toolName, $input) use ($browserTools) {
+            return $browserTools->executeTool($toolName, $input);
+        };
+
+        $onToolStep = function ($toolCall, $iteration) use ($sseEmit) {
+            $event = [
+                'step'      => $iteration + 1,
+                'tool'      => $toolCall['tool'],
+                'ok'        => $toolCall['ok'] ?? false,
+                'url'       => $toolCall['input']['url'] ?? null,
+                'query'     => $toolCall['input']['query'] ?? null,
+            ];
+            if (!empty($toolCall['result']['_screenshot'])) {
+                $event['screenshot'] = $toolCall['result']['_screenshot'];
+            }
+            $sseEmit('tool_step', $event);
+        };
+
+        $agentPrompts = $this->getAgentSystemPrompts();
+        $bridgeOpts = [];
+        if ($agent && isset($agentPrompts[$agent])) $bridgeOpts['system_prompt'] = $agentPrompts[$agent];
+        $bridge = new AiBridge($bridgeOpts);
+
+        $opts = ['max_tokens' => 4096, 'temperature' => 0.3, 'timeout' => 180];
+        if ($model) $opts['model'] = $model;
+
+        if (count($history) > 1) {
+            $history[count($history) - 1]['content'] = $enrichedMessage;
+            $opts['messages'] = $history;
+            $result = $bridge->runTurnWithTools(null, $toolDefs, $toolExecutor, $opts, $onToolStep);
+        } else {
+            $result = $bridge->runTurnWithTools($enrichedMessage, $toolDefs, $toolExecutor, $opts, $onToolStep);
+        }
+
+        if (!empty($result['ok']) && $conversationId > 0 && $this->db) {
+            try {
+                $usage = $result['usage'] ?? [];
+                $this->db->insert('chat_messages', [
+                    'conversation_id' => $conversationId, 'role' => 'assistant',
+                    'content' => $result['response_text'], 'model' => $result['model'] ?? null,
+                    'tokens_in' => $usage['input_tokens'] ?? null, 'tokens_out' => $usage['output_tokens'] ?? null,
+                ]);
+                $this->db->update('chat_conversations', ['updated_at' => date('Y-m-d H:i:s')], 'id = ?', [$conversationId]);
+            } catch (\Exception $e) {}
+        }
+
+        $sseEmit('result', [
+            'ok' => $result['ok'] ?? false,
+            'response_text' => $result['response_text'] ?? null,
+            'error' => $result['error'] ?? null,
+            'conversation_id' => $conversationId ?: null,
+            'model' => $result['model'] ?? null,
+            'iterations' => $result['iterations'] ?? null,
+        ]);
+        $sseEmit('done', []);
+    }
+
     private function getAgentSystemPrompts() {
         $base = <<<'BASE'
 You are CorpFile AI, an intelligent assistant embedded in CorpFile, a corporate secretarial management platform used in Singapore.

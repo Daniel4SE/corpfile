@@ -122,10 +122,12 @@ class BrowserTools {
     }
 
     public function executeTool($toolName, $input) {
+        $autoScreenshot = in_array($toolName, ['browse_url', 'click', 'fill_form', 'scroll', 'web_search']);
+
         switch ($toolName) {
             case 'browse_url':
-                return $this->callTool('navigate', $input);
-
+                $r = $this->callTool('navigate', $input);
+                break;
             case 'screenshot':
                 $result = $this->callTool('screenshot', $input);
                 if (!empty($result['result']['data'])) {
@@ -133,33 +135,45 @@ class BrowserTools {
                         'type' => 'image',
                         'data' => $result['result']['data'],
                         'mime' => $result['result']['mime'] ?? 'image/png',
+                        '_screenshot' => $result['result']['data'],
                     ];
                 }
                 return $result;
-
             case 'get_content':
                 return $this->callTool('get_content', $input);
-
             case 'click':
-                return $this->callTool('click', $input);
-
+                $r = $this->callTool('click', $input);
+                break;
             case 'fill_form':
-                return $this->callTool('fill', $input);
-
+                $r = $this->callTool('fill', $input);
+                break;
             case 'get_links':
                 return $this->callTool('get_links', $input);
-
             case 'get_page_info':
                 return $this->callTool('get_page_info', $input);
-
             case 'scroll':
-                return $this->callTool('scroll', $input);
-
+                $r = $this->callTool('scroll', $input);
+                break;
             case 'web_search':
-                return $this->webSearch($input['query'] ?? '');
-
+                $r = $this->webSearch($input['query'] ?? '');
+                $autoScreenshot = true;
+                break;
             default:
                 throw new \Exception("Unknown browser tool: {$toolName}");
+        }
+
+        if ($autoScreenshot) {
+            $r['_screenshot'] = $this->takeQuickScreenshot();
+        }
+        return $r;
+    }
+
+    private function takeQuickScreenshot() {
+        try {
+            $shot = $this->callTool('screenshot', ['full_page' => false]);
+            return $shot['result']['data'] ?? null;
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 

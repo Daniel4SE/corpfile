@@ -109,7 +109,7 @@ class AiBridge {
      * @param array $options            Same as runTurn + 'tool_choice'
      * @return array                    ['ok', 'response_text', 'tool_calls' => [...], ...]
      */
-    public function runTurnWithTools($message, $tools, callable $toolExecutor, $options = []) {
+    public function runTurnWithTools($message, $tools, callable $toolExecutor, $options = [], ?callable $onToolStep = null) {
         if (empty($this->apiKey)) {
             return ['ok' => false, 'error' => 'AI_API_KEY not configured.'];
         }
@@ -205,6 +205,10 @@ class AiBridge {
                         $lastIdx = count($allToolCalls) - 1;
                         $allToolCalls[$lastIdx]['result'] = $execResult;
                         $allToolCalls[$lastIdx]['ok'] = true;
+
+                        if ($onToolStep) {
+                            $onToolStep($allToolCalls[$lastIdx], $iteration);
+                        }
                     } catch (\Throwable $e) {
                         $toolResults[] = [
                             'type'        => 'tool_result',
@@ -216,6 +220,10 @@ class AiBridge {
                         $lastIdx = count($allToolCalls) - 1;
                         $allToolCalls[$lastIdx]['error'] = $e->getMessage();
                         $allToolCalls[$lastIdx]['ok'] = false;
+
+                        if ($onToolStep) {
+                            $onToolStep($allToolCalls[$lastIdx], $iteration);
+                        }
                     }
                 }
 

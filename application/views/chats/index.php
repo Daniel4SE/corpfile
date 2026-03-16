@@ -1052,6 +1052,99 @@ function sendChatMessage() {
     if (currentConvAgent) chatPayload.agent = currentConvAgent;
     if (attachments.length) chatPayload.attachments = attachments;
 
+    var isBrowserTask = /go to|browse|navigate|visit|open.*\.com|open.*\.sg|open.*\.gov|acra|iras|bizfile|search google|web search|fill.*form|screenshot/i.test(message);
+
+    if (isBrowserTask && !attachments.length) {
+        sendChatSSE(chatPayload, chatBody);
+    } else {
+        sendChatFetch(chatPayload, chatBody, controller, timeoutId, attachments);
+    }
+}
+
+function sendChatSSE(payload, chatBody) {
+    fetch(BASE + 'ai/chat_stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }).then(function(response) {
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+
+        function processChunk() {
+            reader.read().then(function(result) {
+                if (result.done) { finishSSE(); return; }
+                buffer += decoder.decode(result.value, { stream: true });
+                var lines = buffer.split('\n');
+                buffer = lines.pop();
+
+                var currentEvent = '';
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i];
+                    if (line.startsWith('event: ')) { currentEvent = line.substring(7); }
+                    else if (line.startsWith('data: ')) {
+                        try { handleSSEEvent(currentEvent, JSON.parse(line.substring(6)), chatBody); }
+                        catch(e) {}
+                    }
+                }
+                processChunk();
+            });
+        }
+        processChunk();
+    }).catch(function() { finishSSE(); showChatError(chatBody, 'Connection lost during browser operation.'); });
+}
+
+function handleSSEEvent(event, data, chatBody) {
+    if (event === 'status') {
+        var typing = document.getElementById('chatTyping');
+        if (typing) typing.innerHTML = '<span></span><span></span><span></span> <small style="color:#94a3b8;margin-left:8px">' + (data.message || '') + '</small>';
+    }
+    else if (event === 'tool_step') {
+        var typing = document.getElementById('chatTyping');
+        if (typing) typing.innerHTML = '<span></span><span></span><span></span> <small style="color:#94a3b8;margin-left:8px">Step ' + data.step + ': ' + data.tool + (data.url ? ' → ' + data.url.substring(0, 50) : '') + '</small>';
+
+        if (data.screenshot) {
+            var imgDiv = document.createElement('div');
+            imgDiv.className = 'cf-chat-msg assistant cf-browser-step';
+            imgDiv.style.cssText = 'max-width:85%;padding:6px;opacity:0;transition:opacity 0.3s;';
+            var label = data.tool + (data.url ? ': ' + data.url.substring(0,50) : (data.query ? ': ' + data.query : ''));
+            var icon = data.ok ? '<span style="color:#10b981">✓</span>' : '<span style="color:#ef4444">✗</span>';
+            imgDiv.innerHTML = '<div style="font-size:11px;color:#64748b;margin-bottom:4px">' + icon + ' Step ' + data.step + ' — ' + label + '</div>' +
+                '<img src="data:image/png;base64,' + data.screenshot + '" style="max-width:100%;border-radius:8px;border:1px solid #e5e7eb;" alt="Step ' + data.step + '">';
+            chatBody.insertBefore(imgDiv, document.getElementById('chatTyping'));
+            setTimeout(function() { imgDiv.style.opacity = '1'; }, 50);
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+    }
+    else if (event === 'result') {
+        var typing = document.getElementById('chatTyping');
+        if (typing) typing.remove();
+        isSending = false;
+        if (data.conversation_id) { currentConversationId = data.conversation_id; loadConversations(); }
+        if (data.ok && data.response_text) { appendMessage('assistant', data.response_text); }
+        else { showChatError(chatBody, data.error || 'AI error'); }
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
+    else if (event === 'done') { finishSSE(); }
+}
+
+function finishSSE() {
+    var typing = document.getElementById('chatTyping');
+    if (typing) typing.remove();
+    isSending = false;
+}
+
+function showChatError(chatBody, msg) {
+    var errDiv = document.createElement('div');
+    errDiv.className = 'cf-chat-msg assistant cf-chat-offline';
+    errDiv.innerHTML = '<span class="cf-msg-avatar" style="background:linear-gradient(135deg,#f0ad4e,#ec971f)"><i class="fa fa-info"></i></span>' +
+        '<div><strong>AI Agent error</strong><br><span style="font-size:12px;color:var(--cf-text-secondary)">' + msg + '</span></div>';
+    chatBody.appendChild(errDiv);
+}
+
+function sendChatFetch(chatPayload, chatBody, controller, timeoutId, attachments) {
+    if (attachments.length) chatPayload.attachments = attachments;
+
     fetch(BASE + 'ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1070,63 +1163,16 @@ function sendChatMessage() {
         var typing = document.getElementById('chatTyping');
         if (typing) typing.remove();
         isSending = false;
-
-        // Track conversation_id returned by server
-        if (data.conversation_id) {
-            currentConversationId = data.conversation_id;
-            // Refresh sidebar to show new/updated conversation
-            loadConversations();
-        }
-
-        if (data.ok && data.response_text) {
-            // Show tool call indicators before the response
-            if (data.tool_calls && data.tool_calls.length > 0) {
-                var toolBar = document.createElement('div');
-                toolBar.className = 'cf-chat-msg assistant';
-                toolBar.style.cssText = 'max-width:85%;padding:8px 14px;background:#f0f4ff;border:1px solid #dbe4ff;font-size:12px;color:#475569;';
-                var toolHtml = '<span style="font-weight:600;color:var(--cf-primary)"><i class="fa fa-globe"></i> Browser</span> ';
-                data.tool_calls.forEach(function(tc) {
-                    var icon = tc.ok ? '<span style="color:#10b981">✓</span>' : '<span style="color:#ef4444">✗</span>';
-                    var label = tc.url ? tc.tool + ': ' + tc.url.substring(0, 60) : (tc.query ? 'search: ' + tc.query : tc.tool);
-                    toolHtml += '<span style="display:inline-block;margin:2px 4px;padding:1px 8px;background:#fff;border-radius:4px;border:1px solid #e5e7eb;">' + icon + ' ' + label + '</span>';
-                });
-                if (data.iterations) toolHtml += ' <span style="color:#94a3b8;">(' + data.iterations + ' steps)</span>';
-                toolBar.innerHTML = toolHtml;
-                chatBody.appendChild(toolBar);
-
-                // Show screenshots if any
-                data.tool_calls.forEach(function(tc) {
-                    if (tc.screenshot) {
-                        var imgDiv = document.createElement('div');
-                        imgDiv.className = 'cf-chat-msg assistant';
-                        imgDiv.style.cssText = 'max-width:85%;padding:8px;';
-                        imgDiv.innerHTML = '<img src="data:image/png;base64,' + tc.screenshot + '" style="max-width:100%;border-radius:8px;border:1px solid #e5e7eb;" alt="Browser screenshot">';
-                        chatBody.appendChild(imgDiv);
-                    }
-                });
-            }
-            appendMessage('assistant', data.response_text);
-        } else {
-            var errDiv = document.createElement('div');
-            errDiv.className = 'cf-chat-msg assistant cf-chat-offline';
-            errDiv.innerHTML = '<span class="cf-msg-avatar" style="background:linear-gradient(135deg,#f0ad4e,#ec971f)"><i class="fa fa-info"></i></span>' +
-                '<div><strong>AI Agent error</strong><br>' +
-                '<span style="font-size:12px;color:var(--cf-text-secondary)">' + (data.error || 'Something went wrong. Please try again.') + '</span></div>';
-            chatBody.appendChild(errDiv);
-        }
+        if (data.conversation_id) { currentConversationId = data.conversation_id; loadConversations(); }
+        if (data.ok && data.response_text) { appendMessage('assistant', data.response_text); }
+        else { showChatError(chatBody, data.error || 'Something went wrong.'); }
         chatBody.scrollTop = chatBody.scrollHeight;
     })
     .catch(function(err) {
         var typing = document.getElementById('chatTyping');
         if (typing) typing.remove();
         isSending = false;
-
-        var errDiv = document.createElement('div');
-        errDiv.className = 'cf-chat-msg assistant cf-chat-offline';
-        errDiv.innerHTML = '<span class="cf-msg-avatar" style="background:linear-gradient(135deg,#f0ad4e,#ec971f)"><i class="fa fa-info"></i></span>' +
-            '<div><strong>Connection unavailable</strong><br>' +
-            '<span style="font-size:12px;color:var(--cf-text-secondary)">Unable to reach the AI service. Please check your connection and try again later.</span></div>';
-        chatBody.appendChild(errDiv);
+        showChatError(chatBody, 'Unable to reach the AI service. Please try again later.');
         chatBody.scrollTop = chatBody.scrollHeight;
     });
 }
