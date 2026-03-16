@@ -337,6 +337,16 @@ SQL
   fi
 fi
 
+  # Import scraped member profiles from teamWork (one-time)
+  MEMBER_IMPORT_DONE=$(mysql $MYSQL_OPTS -N -e "SELECT COUNT(*) FROM members WHERE date_of_birth IS NOT NULL AND client_id = (SELECT id FROM clients LIMIT 1)" "$DB_NAME" 2>/dev/null || echo "0")
+  if [ "$MEMBER_IMPORT_DONE" -lt "100" ] && [ -f /var/www/html/import-members.php ]; then
+    echo "Importing scraped member data..."
+    php /var/www/html/import-members.php 2>&1 || true
+  else
+    echo "Member data already imported (${MEMBER_IMPORT_DONE} with DOB), skipping."
+  fi
+fi
+
 # Start PHP built-in server (same as local dev)
 echo "Starting CorpFile on port $PORT..."
 exec php -S "0.0.0.0:$PORT" -t /var/www/html /var/www/html/index.php
