@@ -73,22 +73,29 @@ ALTER TABLE `companies` ADD COLUMN IF NOT EXISTS `is_audit_client` TINYINT DEFAU
 ALTER TABLE `companies` ADD COLUMN IF NOT EXISTS `is_listed_related` TINYINT DEFAULT 0;
 SQL
 
-  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `gender` VARCHAR(20) DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `alias_name` VARCHAR(255) DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `date_of_birth` DATE DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `country_of_birth` VARCHAR(100) DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `risk_assessment_rating` VARCHAR(20) DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `additional_notes` TEXT DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `father_name` VARCHAR(255) DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `mother_name` VARCHAR(255) DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `spouse_name` VARCHAR(255) DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `phone` VARCHAR(50) DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `residential_address` TEXT DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `foreign_address` TEXT DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `contact_address` TEXT DEFAULT NULL;
-ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `default_address_type` VARCHAR(30) DEFAULT 'Contact Address';
-SQL
+  for col_def in \
+    "gender VARCHAR(20) DEFAULT NULL" \
+    "alias_name VARCHAR(255) DEFAULT NULL" \
+    "date_of_birth DATE DEFAULT NULL" \
+    "country_of_birth VARCHAR(100) DEFAULT NULL" \
+    "risk_assessment_rating VARCHAR(20) DEFAULT NULL" \
+    "additional_notes TEXT DEFAULT NULL" \
+    "father_name VARCHAR(255) DEFAULT NULL" \
+    "mother_name VARCHAR(255) DEFAULT NULL" \
+    "spouse_name VARCHAR(255) DEFAULT NULL" \
+    "phone VARCHAR(50) DEFAULT NULL" \
+    "residential_address TEXT DEFAULT NULL" \
+    "foreign_address TEXT DEFAULT NULL" \
+    "contact_address TEXT DEFAULT NULL" \
+    "default_address_type VARCHAR(30) DEFAULT 'Contact Address'" \
+  ; do
+    col_name=$(echo "$col_def" | awk '{print $1}')
+    HAS_COL=$(mysql $MYSQL_OPTS -N -e "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$DB_NAME' AND table_name='members' AND column_name='$col_name'" "$DB_NAME" 2>/dev/null || echo "0")
+    if [ "$HAS_COL" = "0" ]; then
+      mysql $MYSQL_OPTS "$DB_NAME" -e "ALTER TABLE members ADD COLUMN $col_def" 2>/dev/null || true
+      echo "  Added members.$col_name"
+    fi
+  done
 
   mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
 CREATE TABLE IF NOT EXISTS `member_identifications` (
