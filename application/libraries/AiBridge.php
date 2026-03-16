@@ -165,9 +165,18 @@ class AiBridge {
             }
 
             if ($stopReason === 'tool_use') {
+                // Fix empty input objects: PHP json_decode turns {} into [] (array),
+                // but Claude API requires {} (object). Convert empty arrays to stdClass.
+                $fixedContent = array_map(function ($block) {
+                    if (($block['type'] ?? '') === 'tool_use' && isset($block['input']) && is_array($block['input']) && empty($block['input'])) {
+                        $block['input'] = new \stdClass();
+                    }
+                    return $block;
+                }, $data['content']);
+
                 $messages[] = [
                     'role'    => 'assistant',
-                    'content' => $data['content'],
+                    'content' => $fixedContent,
                 ];
 
                 $toolResults = [];
