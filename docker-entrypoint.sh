@@ -335,7 +335,6 @@ SQL
     echo "Running officials migration..."
     php /var/www/html/data_import/migrate_officials.php 2>&1 || true
   fi
-fi
 
   # Import scraped member profiles from teamWork (one-time)
   MEMBER_IMPORT_DONE=$(mysql $MYSQL_OPTS -N -e "SELECT COUNT(*) FROM members WHERE date_of_birth IS NOT NULL AND client_id = (SELECT id FROM clients LIMIT 1)" "$DB_NAME" 2>/dev/null || echo "0")
