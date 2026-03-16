@@ -67,6 +67,12 @@ CREATE TABLE IF NOT EXISTS `oauth_users` (
 ) ENGINE=InnoDB;
 SQL
 
+  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
+ALTER TABLE `companies` ADD COLUMN IF NOT EXISTS `is_accounting_client` TINYINT DEFAULT 0;
+ALTER TABLE `companies` ADD COLUMN IF NOT EXISTS `is_audit_client` TINYINT DEFAULT 0;
+ALTER TABLE `companies` ADD COLUMN IF NOT EXISTS `is_listed_related` TINYINT DEFAULT 0;
+SQL
+
   # Chat history tables
   mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
 CREATE TABLE IF NOT EXISTS `chat_conversations` (

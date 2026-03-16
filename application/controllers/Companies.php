@@ -359,13 +359,214 @@ class Companies extends BaseController {
 
 // Company List controller (maps to /company_list)
 class Company_list extends BaseController {
+    private function getClientRecord() {
+        if (!$this->db) return null;
+        $clientId = $_SESSION['client_id'] ?? '';
+        if (!$clientId) return null;
+        return $this->db->fetchOne("SELECT id, company_name FROM clients WHERE client_id = ?", [$clientId]);
+    }
+
+    private function readFilters() {
+        $alerts = $_GET['alert'] ?? [];
+        if (is_string($alerts) && $alerts !== '') {
+            $alerts = explode(',', $alerts);
+        }
+        if (!is_array($alerts)) {
+            $alerts = [];
+        }
+
+        $companyIds = $_GET['company_id'] ?? [];
+        if (!is_array($companyIds)) {
+            $companyIds = [$companyIds];
+        }
+
+        $entityStatus = trim((string)($_GET['filter_entity_status'] ?? ''));
+        $clientType = trim((string)($_GET['client_type'] ?? ($_GET['type'] ?? '')));
+
+        return [
+            'country' => strtolower(trim((string)($_GET['country'] ?? 'all'))),
+            'company_ids' => array_values(array_filter(array_map('intval', $companyIds))),
+            'reg_no' => trim((string)($_GET['filter_reg_no'] ?? '')),
+            'status' => trim((string)($_GET['filter_status'] ?? '')),
+            'entity_status' => in_array($entityStatus, ['prospect', 'client', 'non_client'], true) ? $entityStatus : '',
+            'client_type' => in_array($clientType, ['css_client', 'accounting_only', 'audit_client', 'listed_related'], true) ? $clientType : '',
+            'alerts' => array_values(array_intersect(['fye', 'agm_due', 'ar_due', 'ep_due', 'id_passport_due', 'missing_info'], array_map('strtolower', array_map('trim', $alerts)))),
+        ];
+    }
+
+    private function countryCondition($country) {
+        if ($country === 'sg' || $country === 'singapore') {
+            return ["UPPER(COALESCE(c.country, '')) = 'SINGAPORE'", []];
+        }
+        if ($country === 'my' || $country === 'malaysia') {
+            return ["UPPER(COALESCE(c.country, '')) = 'MALAYSIA'", []];
+        }
+        if ($country === 'bvi_cayman' || $country === 'bvi' || $country === 'cayman') {
+            return ["UPPER(COALESCE(c.country, '')) IN ('BVI', 'CAYMAN ISLANDS', 'BRITISH VIRGIN ISLANDS')", []];
+        }
+        return ['', []];
+    }
+
+    private function clientTypeCondition($clientType, $clientCompanyName) {
+        if ($clientType === 'css_client') {
+            return [
+                "(c.is_css_client = 1 OR EXISTS (
+                    SELECT 1 FROM secretaries s
+                    WHERE s.company_id = c.id
+                      AND UPPER(TRIM(COALESCE(s.name, ''))) = UPPER(TRIM(?))
+                ))",
+                [$clientCompanyName]
+            ];
+        }
+
+        if ($clientType === 'accounting_only') {
+            return ["c.is_accounting_client = 1 AND COALESCE(c.is_audit_client, 0) = 0", []];
+        }
+
+        if ($clientType === 'audit_client') {
+            return [
+                "(c.is_audit_client = 1 OR EXISTS (
+                    SELECT 1 FROM auditors a
+                    WHERE a.company_id = c.id
+                      AND (
+                        UPPER(TRIM(COALESCE(a.name, ''))) = UPPER(TRIM(?))
+                        OR UPPER(TRIM(COALESCE(a.firm_name, ''))) = UPPER(TRIM(?))
+                      )
+                ))",
+                [$clientCompanyName, $clientCompanyName]
+            ];
+        }
+
+        if ($clientType === 'listed_related') {
+            return ["COALESCE(c.is_listed_related, 0) = 1", []];
+        }
+
+        return ['', []];
+    }
+
+    private function alertCondition($alert) {
+        if ($alert === 'fye') {
+            return "c.fye_date IS NOT NULL AND c.fye_date BETWEEN DATE_SUB(CURDATE(), INTERVAL 3 MONTH) AND CURDATE()";
+        }
+
+        if ($alert === 'agm_due') {
+            return "c.next_agm_due IS NOT NULL AND c.next_agm_due <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH)";
+        }
+
+        if ($alert === 'ar_due') {
+            return "(
+                (c.date_of_ar IS NOT NULL AND c.date_of_ar <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
+                OR
+                (c.last_ar_filing IS NOT NULL AND DATE_ADD(c.last_ar_filing, INTERVAL 12 MONTH) <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
+            )";
+        }
+
+        if ($alert === 'ep_due') {
+            return "EXISTS (
+                SELECT 1 FROM due_dates d
+                WHERE d.company_id = c.id
+                  AND d.due_date IS NOT NULL
+                  AND d.due_date <= DATE_ADD(CURDATE(), INTERVAL 3 MONTH)
+                  AND (
+                    UPPER(COALESCE(d.event_name, '')) LIKE '%EMPLOYMENT PASS%'
+                    OR UPPER(COALESCE(d.event_name, '')) LIKE '%EP EXPIRY%'
+                    OR UPPER(COALESCE(d.event_name, '')) LIKE 'EP%'
+                  )
+            )";
+        }
+
+        if ($alert === 'id_passport_due') {
+            return "EXISTS (
+                SELECT 1
+                FROM member_identifications mi
+                WHERE mi.expired_date IS NOT NULL
+                  AND mi.expired_date <= DATE_ADD(CURDATE(), INTERVAL 3 MONTH)
+                  AND (
+                    EXISTS (SELECT 1 FROM directors dr WHERE dr.company_id = c.id AND dr.member_id = mi.member_id)
+                    OR EXISTS (SELECT 1 FROM shareholders sh WHERE sh.company_id = c.id AND sh.member_id = mi.member_id)
+                    OR EXISTS (SELECT 1 FROM secretaries se WHERE se.company_id = c.id AND se.member_id = mi.member_id)
+                    OR EXISTS (SELECT 1 FROM controllers co WHERE co.company_id = c.id AND co.member_id = mi.member_id)
+                    OR EXISTS (SELECT 1 FROM company_officials cf WHERE cf.company_id = c.id AND cf.member_id = mi.member_id)
+                  )
+            )";
+        }
+
+        if ($alert === 'missing_info') {
+            return "(
+                COALESCE(TRIM(c.registration_number), '') = ''
+                OR c.fye_date IS NULL
+                OR c.incorporation_date IS NULL
+                OR NOT EXISTS (SELECT 1 FROM directors dr WHERE dr.company_id = c.id)
+            )";
+        }
+
+        return '';
+    }
+
+    private function buildFilterQueryParts($filters, $clientCompanyName) {
+        $where = [];
+        $params = [];
+
+        $countryFilter = $this->countryCondition($filters['country']);
+        if ($countryFilter[0] !== '') {
+            $where[] = $countryFilter[0];
+            $params = array_merge($params, $countryFilter[1]);
+        }
+
+        if (!empty($filters['company_ids'])) {
+            $where[] = 'c.id IN (' . implode(',', array_fill(0, count($filters['company_ids']), '?')) . ')';
+            $params = array_merge($params, $filters['company_ids']);
+        }
+
+        if ($filters['reg_no'] !== '') {
+            $where[] = '(c.registration_number LIKE ? OR c.acra_registration_number LIKE ?)';
+            $needle = '%' . $filters['reg_no'] . '%';
+            $params[] = $needle;
+            $params[] = $needle;
+        }
+
+        if ($filters['status'] !== '') {
+            $where[] = 'c.internal_css_status = ?';
+            $params[] = $filters['status'];
+        }
+
+        if ($filters['entity_status'] === 'prospect') {
+            $where[] = 'c.is_prospect = 1';
+        }
+        if ($filters['entity_status'] === 'client') {
+            $where[] = 'c.is_client = 1';
+        }
+        if ($filters['entity_status'] === 'non_client') {
+            $where[] = 'c.is_non_client = 1';
+        }
+
+        $clientTypeFilter = $this->clientTypeCondition($filters['client_type'], $clientCompanyName);
+        if ($clientTypeFilter[0] !== '') {
+            $where[] = $clientTypeFilter[0];
+            $params = array_merge($params, $clientTypeFilter[1]);
+        }
+
+        if (!empty($filters['alerts'])) {
+            foreach ($filters['alerts'] as $alert) {
+                $alertCondition = $this->alertCondition($alert);
+                if ($alertCondition !== '') {
+                    $where[] = '(' . $alertCondition . ')';
+                }
+            }
+        }
+
+        return [$where, $params];
+    }
+
     public function index() {
         $this->requireAuth();
+        $filters = $this->readFilters();
         
         $data = [
             'page_title' => 'List Of Companies',
             'companies' => [],
             'total' => 0,
+            'filters' => $filters,
             'company_types' => [],
             'statuses' => [
                 'Pre-Incorporation', 'Active', 'Terminated', 'Dormant',
@@ -376,16 +577,22 @@ class Company_list extends BaseController {
         ];
         
         if ($this->db) {
-            $clientId = $_SESSION['client_id'] ?? '';
-            $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
+            $client = $this->getClientRecord();
             if ($client) {
+                $parts = $this->buildFilterQueryParts($filters, (string)($client->company_name ?? ''));
+                $whereSql = '';
+                if (!empty($parts[0])) {
+                    $whereSql = ' AND ' . implode(' AND ', $parts[0]);
+                }
+                $params = array_merge([$client->id], $parts[1]);
+
                 $data['companies'] = $this->db->fetchAll(
                     "SELECT c.*, ct.type_name as company_type_name 
                      FROM companies c 
-                     LEFT JOIN company_types ct ON ct.id = c.company_type_id
-                     WHERE c.client_id = ? 
+                      LEFT JOIN company_types ct ON ct.id = c.company_type_id
+                     WHERE c.client_id = ? {$whereSql}
                      ORDER BY c.company_name ASC",
-                    [$client->id]
+                    $params
                 );
                 $data['total'] = count($data['companies']);
                 $data['company_types'] = $this->db->fetchAll(
@@ -396,6 +603,134 @@ class Company_list extends BaseController {
         }
         
         $this->loadLayout('companies/list', $data);
+    }
+
+    public function filter_counts() {
+        $this->requireAuth();
+
+        $counts = [
+            'country' => [
+                'all' => 0,
+                'sg' => 0,
+                'my' => 0,
+                'bvi_cayman' => 0,
+            ],
+            'client_type' => [
+                'css_client' => 0,
+                'accounting_only' => 0,
+                'audit_client' => 0,
+                'listed_related' => 0,
+            ],
+            'alerts' => [
+                'fye' => 0,
+                'agm_due' => 0,
+                'ar_due' => 0,
+                'ep_due' => 0,
+                'id_passport_due' => 0,
+                'missing_info' => 0,
+            ],
+        ];
+
+        if (!$this->db) {
+            $this->json(['ok' => true, 'counts' => $counts]);
+            return;
+        }
+
+        $client = $this->getClientRecord();
+        if (!$client) {
+            $this->json(['ok' => true, 'counts' => $counts]);
+            return;
+        }
+
+        $sql = "SELECT
+                    COUNT(*) AS total_count,
+                    SUM(CASE WHEN UPPER(COALESCE(c.country, '')) = 'SINGAPORE' THEN 1 ELSE 0 END) AS sg_count,
+                    SUM(CASE WHEN UPPER(COALESCE(c.country, '')) = 'MALAYSIA' THEN 1 ELSE 0 END) AS my_count,
+                    SUM(CASE WHEN UPPER(COALESCE(c.country, '')) IN ('BVI', 'CAYMAN ISLANDS', 'BRITISH VIRGIN ISLANDS') THEN 1 ELSE 0 END) AS bvi_cayman_count,
+
+                    SUM(CASE WHEN (c.is_css_client = 1 OR EXISTS (
+                        SELECT 1 FROM secretaries s
+                        WHERE s.company_id = c.id
+                          AND UPPER(TRIM(COALESCE(s.name, ''))) = UPPER(TRIM(?))
+                    )) THEN 1 ELSE 0 END) AS css_client_count,
+                    SUM(CASE WHEN c.is_accounting_client = 1 AND COALESCE(c.is_audit_client, 0) = 0 THEN 1 ELSE 0 END) AS accounting_only_count,
+                    SUM(CASE WHEN (c.is_audit_client = 1 OR EXISTS (
+                        SELECT 1 FROM auditors a
+                        WHERE a.company_id = c.id
+                          AND (
+                            UPPER(TRIM(COALESCE(a.name, ''))) = UPPER(TRIM(?))
+                            OR UPPER(TRIM(COALESCE(a.firm_name, ''))) = UPPER(TRIM(?))
+                          )
+                    )) THEN 1 ELSE 0 END) AS audit_client_count,
+                    SUM(CASE WHEN COALESCE(c.is_listed_related, 0) = 1 THEN 1 ELSE 0 END) AS listed_related_count,
+
+                    SUM(CASE WHEN c.fye_date IS NOT NULL AND c.fye_date BETWEEN DATE_SUB(CURDATE(), INTERVAL 3 MONTH) AND CURDATE() THEN 1 ELSE 0 END) AS fye_count,
+                    SUM(CASE WHEN c.next_agm_due IS NOT NULL AND c.next_agm_due <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH) THEN 1 ELSE 0 END) AS agm_due_count,
+                    SUM(CASE WHEN (
+                        (c.date_of_ar IS NOT NULL AND c.date_of_ar <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
+                        OR
+                        (c.last_ar_filing IS NOT NULL AND DATE_ADD(c.last_ar_filing, INTERVAL 12 MONTH) <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
+                    ) THEN 1 ELSE 0 END) AS ar_due_count,
+                    SUM(CASE WHEN EXISTS (
+                        SELECT 1 FROM due_dates d
+                        WHERE d.company_id = c.id
+                          AND d.due_date IS NOT NULL
+                          AND d.due_date <= DATE_ADD(CURDATE(), INTERVAL 3 MONTH)
+                          AND (
+                            UPPER(COALESCE(d.event_name, '')) LIKE '%EMPLOYMENT PASS%'
+                            OR UPPER(COALESCE(d.event_name, '')) LIKE '%EP EXPIRY%'
+                            OR UPPER(COALESCE(d.event_name, '')) LIKE 'EP%'
+                          )
+                    ) THEN 1 ELSE 0 END) AS ep_due_count,
+                    SUM(CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM member_identifications mi
+                        WHERE mi.expired_date IS NOT NULL
+                          AND mi.expired_date <= DATE_ADD(CURDATE(), INTERVAL 3 MONTH)
+                          AND (
+                            EXISTS (SELECT 1 FROM directors dr WHERE dr.company_id = c.id AND dr.member_id = mi.member_id)
+                            OR EXISTS (SELECT 1 FROM shareholders sh WHERE sh.company_id = c.id AND sh.member_id = mi.member_id)
+                            OR EXISTS (SELECT 1 FROM secretaries se WHERE se.company_id = c.id AND se.member_id = mi.member_id)
+                            OR EXISTS (SELECT 1 FROM controllers co WHERE co.company_id = c.id AND co.member_id = mi.member_id)
+                            OR EXISTS (SELECT 1 FROM company_officials cf WHERE cf.company_id = c.id AND cf.member_id = mi.member_id)
+                          )
+                    ) THEN 1 ELSE 0 END) AS id_passport_due_count,
+                    SUM(CASE WHEN (
+                        COALESCE(TRIM(c.registration_number), '') = ''
+                        OR c.fye_date IS NULL
+                        OR c.incorporation_date IS NULL
+                        OR NOT EXISTS (SELECT 1 FROM directors dr WHERE dr.company_id = c.id)
+                    ) THEN 1 ELSE 0 END) AS missing_info_count
+                FROM companies c
+                WHERE c.client_id = ?";
+
+        $row = $this->db->fetchOne($sql, [
+            (string)($client->company_name ?? ''),
+            (string)($client->company_name ?? ''),
+            (string)($client->company_name ?? ''),
+            $client->id,
+        ]);
+
+        if ($row) {
+            $counts['country']['all'] = (int)$row->total_count;
+            $counts['country']['sg'] = (int)$row->sg_count;
+            $counts['country']['my'] = (int)$row->my_count;
+            $counts['country']['bvi_cayman'] = (int)$row->bvi_cayman_count;
+
+            $counts['client_type']['css_client'] = (int)$row->css_client_count;
+            $counts['client_type']['accounting_only'] = (int)$row->accounting_only_count;
+            $counts['client_type']['audit_client'] = (int)$row->audit_client_count;
+            $counts['client_type']['listed_related'] = (int)$row->listed_related_count;
+
+            $counts['alerts']['fye'] = (int)$row->fye_count;
+            $counts['alerts']['agm_due'] = (int)$row->agm_due_count;
+            $counts['alerts']['ar_due'] = (int)$row->ar_due_count;
+            $counts['alerts']['ep_due'] = (int)$row->ep_due_count;
+            $counts['alerts']['id_passport_due'] = (int)$row->id_passport_due_count;
+            $counts['alerts']['missing_info'] = (int)$row->missing_info_count;
+        }
+
+        $this->json(['ok' => true, 'counts' => $counts]);
     }
 }
 

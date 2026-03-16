@@ -38,6 +38,14 @@
 </div>
 <div class="clearfix"></div>
 
+<?php
+$filters = $filters ?? [];
+$selectedCompanyIds = array_map('intval', $filters['company_ids'] ?? []);
+$selectedAlerts = $filters['alerts'] ?? [];
+$selectedCountry = $filters['country'] ?? 'all';
+$selectedClientType = $filters['client_type'] ?? '';
+?>
+
 <div class="row">
     <div class="col-md-12">
         <div class="x_panel">
@@ -54,27 +62,43 @@
                     </span>
                 </div>
 
+                <div class="cf-country-chips">
+                    <button type="button" class="btn btn-default btn-sm country-chip <?= ($selectedCountry === 'all' || $selectedCountry === '') ? 'active' : '' ?>" data-country="all">
+                        All <span class="badge" id="countryCountAll">0</span>
+                    </button>
+                    <button type="button" class="btn btn-default btn-sm country-chip <?= ($selectedCountry === 'sg' || $selectedCountry === 'singapore') ? 'active' : '' ?>" data-country="sg">
+                        Singapore <span class="badge" id="countryCountSg">0</span>
+                    </button>
+                    <button type="button" class="btn btn-default btn-sm country-chip <?= ($selectedCountry === 'my' || $selectedCountry === 'malaysia') ? 'active' : '' ?>" data-country="my">
+                        Malaysia <span class="badge" id="countryCountMy">0</span>
+                    </button>
+                    <button type="button" class="btn btn-default btn-sm country-chip <?= ($selectedCountry === 'bvi_cayman' || $selectedCountry === 'bvi' || $selectedCountry === 'cayman') ? 'active' : '' ?>" data-country="bvi_cayman">
+                        BVI/Cayman <span class="badge" id="countryCountBvi">0</span>
+                    </button>
+                </div>
+
                 <!-- Filter Panel -->
                 <div id="filterPanel" style="display:none; background:var(--cf-card-bg); padding:20px; border-radius:var(--cf-radius); margin-bottom:16px; border:1px solid var(--cf-border);">
+                    <input type="hidden" name="country" value="<?= htmlspecialchars($selectedCountry) ?>">
                     <div class="row">
                         <div class="col-md-3">
                             <label style="font-size:12px; font-weight:600; color:var(--cf-text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Entity Name</label>
                             <select class="form-control select2" name="company_id[]" multiple>
                                 <?php foreach ($companies as $c): ?>
-                                <option value="<?= $c->id ?>"><?= htmlspecialchars($c->company_name) ?></option>
+                                <option value="<?= $c->id ?>" <?= in_array((int)$c->id, $selectedCompanyIds, true) ? 'selected' : '' ?>><?= htmlspecialchars($c->company_name) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-3">
                             <label style="font-size:12px; font-weight:600; color:var(--cf-text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Registration No.</label>
-                            <input type="text" class="form-control" name="filter_reg_no" placeholder="Enter UEN / Reg No.">
+                            <input type="text" class="form-control" name="filter_reg_no" placeholder="Enter UEN / Reg No." value="<?= htmlspecialchars($filters['reg_no'] ?? '') ?>">
                         </div>
                         <div class="col-md-3">
                             <label style="font-size:12px; font-weight:600; color:var(--cf-text-secondary); text-transform:uppercase; letter-spacing:0.5px;">CSS Status</label>
                             <select class="form-control" name="filter_status">
                                 <option value="">All Statuses</option>
                                 <?php foreach ($statuses as $s): ?>
-                                <option value="<?= $s ?>"><?= $s ?></option>
+                                <option value="<?= $s ?>" <?= ($filters['status'] ?? '') === $s ? 'selected' : '' ?>><?= $s ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -82,10 +106,34 @@
                             <label style="font-size:12px; font-weight:600; color:var(--cf-text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Entity Type</label>
                             <select class="form-control" name="filter_entity_status">
                                 <option value="">All Types</option>
-                                <option value="prospect">Prospect</option>
-                                <option value="client">Client</option>
-                                <option value="non_client">Non-Client</option>
+                                <option value="prospect" <?= ($filters['entity_status'] ?? '') === 'prospect' ? 'selected' : '' ?>>Prospect</option>
+                                <option value="client" <?= ($filters['entity_status'] ?? '') === 'client' ? 'selected' : '' ?>>Client</option>
+                                <option value="non_client" <?= ($filters['entity_status'] ?? '') === 'non_client' ? 'selected' : '' ?>>Non-Client</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="row" style="margin-top:14px;">
+                        <div class="col-md-4">
+                            <label style="font-size:12px; font-weight:600; color:var(--cf-text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Client Type</label>
+                            <select class="form-control" name="client_type">
+                                <option value="">All Client Types</option>
+                                <option value="css_client" <?= $selectedClientType === 'css_client' ? 'selected' : '' ?>>CSS Client</option>
+                                <option value="accounting_only" <?= $selectedClientType === 'accounting_only' ? 'selected' : '' ?>>Accounting Only</option>
+                                <option value="audit_client" <?= $selectedClientType === 'audit_client' ? 'selected' : '' ?>>Audit Client</option>
+                                <option value="listed_related" <?= $selectedClientType === 'listed_related' ? 'selected' : '' ?>>Listed Company Related</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label style="font-size:12px; font-weight:600; color:var(--cf-text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Alert Filters</label>
+                            <div class="cf-alert-grid">
+                                <label class="cf-alert-toggle"><input type="checkbox" name="alert[]" value="fye" <?= in_array('fye', $selectedAlerts, true) ? 'checked' : '' ?>> FYE Alert <span class="badge" id="alertCountFye">0</span></label>
+                                <label class="cf-alert-toggle"><input type="checkbox" name="alert[]" value="agm_due" <?= in_array('agm_due', $selectedAlerts, true) ? 'checked' : '' ?>> AGM Due <span class="badge" id="alertCountAgm">0</span></label>
+                                <label class="cf-alert-toggle"><input type="checkbox" name="alert[]" value="ar_due" <?= in_array('ar_due', $selectedAlerts, true) ? 'checked' : '' ?>> AR Due <span class="badge" id="alertCountAr">0</span></label>
+                                <label class="cf-alert-toggle"><input type="checkbox" name="alert[]" value="ep_due" <?= in_array('ep_due', $selectedAlerts, true) ? 'checked' : '' ?>> EP Due <span class="badge" id="alertCountEp">0</span></label>
+                                <label class="cf-alert-toggle"><input type="checkbox" name="alert[]" value="id_passport_due" <?= in_array('id_passport_due', $selectedAlerts, true) ? 'checked' : '' ?>> ID/Passport Due <span class="badge" id="alertCountId">0</span></label>
+                                <label class="cf-alert-toggle"><input type="checkbox" name="alert[]" value="missing_info" <?= in_array('missing_info', $selectedAlerts, true) ? 'checked' : '' ?>> Missing Info <span class="badge" id="alertCountMissing">0</span></label>
+                            </div>
                         </div>
                     </div>
                     <div style="margin-top:14px; display:flex; gap:8px;">
@@ -181,6 +229,8 @@
 </div>
 
 <script>
+var currentFilters = <?= json_encode($filters ?? []) ?>;
+
 $(document).ready(function() {
     if ($.fn.DataTable) {
         $('#datatable').DataTable({
@@ -199,6 +249,19 @@ $(document).ready(function() {
     if ($.fn.select2) {
         $('.select2').select2({ placeholder: 'Select companies...' });
     }
+
+    if ((currentFilters.alerts && currentFilters.alerts.length) || (currentFilters.client_type) || (currentFilters.reg_no) || (currentFilters.status) || (currentFilters.entity_status) || (currentFilters.company_ids && currentFilters.company_ids.length)) {
+        $('#filterPanel').show();
+        $('#toggleFilter').addClass('active');
+    }
+
+    $(document).on('click', '.country-chip', function() {
+        $('.country-chip').removeClass('active');
+        $(this).addClass('active');
+        $('input[name="country"]').val($(this).data('country'));
+    });
+
+    loadFilterCounts();
 
     $('#toggleFilter').click(function() {
         $('#filterPanel').slideToggle(200);
@@ -227,10 +290,60 @@ $(document).ready(function() {
     });
 });
 
-function applyFilter() { console.log('Applying filters...'); }
+function loadFilterCounts() {
+    $.getJSON('<?= base_url('company_list/filter_counts') ?>', function(resp) {
+        if (!resp || !resp.ok || !resp.counts) return;
+
+        $('#countryCountAll').text(resp.counts.country.all || 0);
+        $('#countryCountSg').text(resp.counts.country.sg || 0);
+        $('#countryCountMy').text(resp.counts.country.my || 0);
+        $('#countryCountBvi').text(resp.counts.country.bvi_cayman || 0);
+
+        $('#alertCountFye').text(resp.counts.alerts.fye || 0);
+        $('#alertCountAgm').text(resp.counts.alerts.agm_due || 0);
+        $('#alertCountAr').text(resp.counts.alerts.ar_due || 0);
+        $('#alertCountEp').text(resp.counts.alerts.ep_due || 0);
+        $('#alertCountId').text(resp.counts.alerts.id_passport_due || 0);
+        $('#alertCountMissing').text(resp.counts.alerts.missing_info || 0);
+    });
+}
+
+function applyFilter() {
+    var params = new URLSearchParams();
+    var country = $('input[name="country"]').val() || 'all';
+
+    if (country && country !== 'all') {
+        params.set('country', country);
+    }
+
+    var companyIds = $('select[name="company_id[]"]').val() || [];
+    companyIds.forEach(function(id) {
+        if (id) params.append('company_id[]', id);
+    });
+
+    var regNo = $('input[name="filter_reg_no"]').val().trim();
+    if (regNo) params.set('filter_reg_no', regNo);
+
+    var status = $('select[name="filter_status"]').val();
+    if (status) params.set('filter_status', status);
+
+    var entityStatus = $('select[name="filter_entity_status"]').val();
+    if (entityStatus) params.set('filter_entity_status', entityStatus);
+
+    var clientType = $('select[name="client_type"]').val();
+    if (clientType) params.set('client_type', clientType);
+
+    $('input[name="alert[]"]:checked').each(function() {
+        params.append('alert[]', $(this).val());
+    });
+
+    var url = '<?= base_url('company_list') ?>';
+    var query = params.toString();
+    window.location.href = query ? (url + '?' + query) : url;
+}
+
 function resetFilter() {
-    $('select[name]').val('').trigger('change');
-    $('input[name]').val('');
+    window.location.href = '<?= base_url('company_list') ?>';
 }
 
 /* ── Change Button: open modal ── */
@@ -397,4 +510,61 @@ function copyChangeResult() {
 .change-check-item:hover { background: var(--cf-card-bg); border-color: var(--cf-accent); }
 .change-check-item input[type=checkbox]:checked + i { color: var(--cf-primary); }
 .change-check-item:has(input:checked) { background: #eff6ff; border-color: var(--cf-accent); }
+
+.cf-country-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.cf-country-chips .country-chip {
+    border-radius: 999px;
+    border-color: var(--cf-border);
+    color: var(--cf-primary);
+}
+.cf-country-chips .country-chip.active {
+    background: var(--cf-primary);
+    border-color: var(--cf-primary);
+    color: #fff;
+}
+.cf-country-chips .country-chip .badge {
+    margin-left: 6px;
+    background: rgba(32, 101, 112, 0.12);
+    color: var(--cf-primary);
+}
+.cf-country-chips .country-chip.active .badge {
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+}
+
+.cf-alert-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: 8px;
+}
+.cf-alert-toggle {
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius-sm);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: #fff;
+}
+.cf-alert-toggle input { margin: 0 6px 0 0; }
+.cf-alert-toggle .badge {
+    background: #f59e0b;
+    color: #fff;
+}
+
+@media (max-width: 992px) {
+    .cf-alert-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+}
+
+@media (max-width: 640px) {
+    .cf-alert-grid { grid-template-columns: 1fr; }
+}
 </style>
