@@ -564,6 +564,9 @@
 
         <div class="cf-chat-chips" id="chatChips">
             <button class="cf-chat-chip" onclick="sendChatChip('Fill IR8A form for selected employee')">Fill IR8A</button>
+            <button class="cf-chat-chip" onclick="sendChatChip('Search ACRA for company registration status')"><i class="fa fa-globe"></i> ACRA Lookup</button>
+            <button class="cf-chat-chip" onclick="sendChatChip('Search Google for latest Singapore Companies Act amendments')"><i class="fa fa-search"></i> Web Search</button>
+            <button class="cf-chat-chip" onclick="sendChatChip('Go to IRAS website and check the latest IR8A filing deadlines')"><i class="fa fa-external-link"></i> Browse IRAS</button>
         </div>
 
         <div class="cf-chat-messages" id="chatMessages">
@@ -1076,6 +1079,32 @@ function sendChatMessage() {
         }
 
         if (data.ok && data.response_text) {
+            // Show tool call indicators before the response
+            if (data.tool_calls && data.tool_calls.length > 0) {
+                var toolBar = document.createElement('div');
+                toolBar.className = 'cf-chat-msg assistant';
+                toolBar.style.cssText = 'max-width:85%;padding:8px 14px;background:#f0f4ff;border:1px solid #dbe4ff;font-size:12px;color:#475569;';
+                var toolHtml = '<span style="font-weight:600;color:var(--cf-primary)"><i class="fa fa-globe"></i> Browser</span> ';
+                data.tool_calls.forEach(function(tc) {
+                    var icon = tc.ok ? '<span style="color:#10b981">✓</span>' : '<span style="color:#ef4444">✗</span>';
+                    var label = tc.url ? tc.tool + ': ' + tc.url.substring(0, 60) : (tc.query ? 'search: ' + tc.query : tc.tool);
+                    toolHtml += '<span style="display:inline-block;margin:2px 4px;padding:1px 8px;background:#fff;border-radius:4px;border:1px solid #e5e7eb;">' + icon + ' ' + label + '</span>';
+                });
+                if (data.iterations) toolHtml += ' <span style="color:#94a3b8;">(' + data.iterations + ' steps)</span>';
+                toolBar.innerHTML = toolHtml;
+                chatBody.appendChild(toolBar);
+
+                // Show screenshots if any
+                data.tool_calls.forEach(function(tc) {
+                    if (tc.screenshot) {
+                        var imgDiv = document.createElement('div');
+                        imgDiv.className = 'cf-chat-msg assistant';
+                        imgDiv.style.cssText = 'max-width:85%;padding:8px;';
+                        imgDiv.innerHTML = '<img src="data:image/png;base64,' + tc.screenshot + '" style="max-width:100%;border-radius:8px;border:1px solid #e5e7eb;" alt="Browser screenshot">';
+                        chatBody.appendChild(imgDiv);
+                    }
+                });
+            }
             appendMessage('assistant', data.response_text);
         } else {
             var errDiv = document.createElement('div');

@@ -27,3 +27,28 @@ services:
         sync: false
       - key: AI_MODEL
         value: claude-opus-4-6
+      - key: BROWSER_SERVICE_URL
+        fromService:
+          name: corpfile-browser
+          type: pserv
+          property: host
+      - key: BROWSER_SERVICE_KEY
+        sync: false
+
+  - type: pserv
+    name: corpfile-browser
+    runtime: docker
+    repo: https://github.com/Daniel4SE/corpfile.git
+    dockerfilePath: ./browser-service/Dockerfile
+    dockerContext: ./browser-service
+    plan: starter
+    autoDeploy: true
+    envVars:
+      - key: BROWSER_SERVICE_PORT
+        value: 3100
+      - key: BROWSER_SERVICE_KEY
+        sync: false
+      - key: MAX_CONCURRENT
+        value: 3
+      - key: ACTION_TIMEOUT
+        value: 30000

@@ -1,5 +1,6 @@
 <?php
 require_once APPPATH . 'libraries/AiBridge.php';
+require_once APPPATH . 'libraries/BrowserTools.php';
 
 /**
  * AI Controller
@@ -202,7 +203,6 @@ class Ai extends BaseController {
 
         @set_time_limit(300);
 
-        // Agent-specific system prompts
         $agentPrompts = $this->getAgentSystemPrompts();
         $bridgeOpts = [];
         if ($agent && isset($agentPrompts[$agent])) {
@@ -211,21 +211,17 @@ class Ai extends BaseController {
 
         $bridge = new AiBridge($bridgeOpts);
 
-        // If we have multi-turn history, pass it to the bridge
         $opts = [
             'max_tokens'  => 4096,
             'temperature' => 0.3,
             'timeout'     => 180,
         ];
-        // Pass per-request model override if provided
         if ($model) {
             $opts['model'] = $model;
         }
 
-        // Build the final user content (may include image/document blocks for Claude vision)
         $userContent = $enrichedMessage;
         if (!empty($imageBlocks)) {
-            // Multi-modal: content is an array of blocks
             $contentBlocks = [];
             foreach ($imageBlocks as $block) {
                 $contentBlocks[] = $block;
@@ -235,12 +231,36 @@ class Ai extends BaseController {
         }
 
         if (count($history) > 1) {
-            // Replace the last user message with enriched version (with context + files)
             $history[count($history) - 1]['content'] = $userContent;
             $opts['messages'] = $history;
-            $result = $bridge->runTurn(null, $opts);
+        }
+
+        // ── Try Tool Use path if browser service is configured ──
+        $browserServiceUrl = getenv('BROWSER_SERVICE_URL');
+        $useBrowserTools = !empty($browserServiceUrl);
+        $result = null;
+
+        if ($useBrowserTools) {
+            $browserTools = new BrowserTools([
+                'session_id' => 'chat_' . ($conversationId ?: $userId),
+            ]);
+
+            $toolDefs = BrowserTools::getToolDefinitions();
+            $toolExecutor = function ($toolName, $input) use ($browserTools) {
+                return $browserTools->executeTool($toolName, $input);
+            };
+
+            if (count($history) > 1) {
+                $result = $bridge->runTurnWithTools(null, $toolDefs, $toolExecutor, $opts);
+            } else {
+                $result = $bridge->runTurnWithTools($userContent, $toolDefs, $toolExecutor, $opts);
+            }
         } else {
-            $result = $bridge->runTurn($userContent, $opts);
+            if (count($history) > 1) {
+                $result = $bridge->runTurn(null, $opts);
+            } else {
+                $result = $bridge->runTurn($userContent, $opts);
+            }
         }
 
         if (empty($result['ok'])) {
@@ -272,14 +292,29 @@ class Ai extends BaseController {
             } catch (\Exception $e) { /* non-fatal */ }
         }
 
-        $this->json([
+        $response = [
             'ok'              => true,
             'response_text'   => $result['response_text'],
             'conversation_id' => $conversationId ?: null,
             'model'           => $result['model'] ?? null,
             'provider'        => $result['provider'] ?? null,
             'usage'           => $result['usage'] ?? null,
-        ]);
+        ];
+
+        if (!empty($result['tool_calls'])) {
+            $response['tool_calls'] = array_map(function ($tc) {
+                $summary = ['tool' => $tc['tool'], 'ok' => $tc['ok'] ?? false];
+                if (!empty($tc['input']['url'])) $summary['url'] = $tc['input']['url'];
+                if (!empty($tc['input']['query'])) $summary['query'] = $tc['input']['query'];
+                if (!empty($tc['result']['result']['data']) && ($tc['tool'] === 'screenshot')) {
+                    $summary['screenshot'] = $tc['result']['result']['data'];
+                }
+                return $summary;
+            }, $result['tool_calls']);
+            $response['iterations'] = $result['iterations'] ?? null;
+        }
+
+        $this->json($response);
     }
 
     /**

@@ -3,6 +3,7 @@
  * AiBridge
  *
  * Calls the Anthropic Claude Messages API directly via HTTP.
+ * Supports Tool Use (function calling) for browser automation.
  * No CLI dependency — works anywhere PHP + curl are available.
  */
 class AiBridge {
@@ -10,6 +11,7 @@ class AiBridge {
     private $apiUrl;
     private $model;
     private $systemPrompt;
+    private $maxToolIterations = 8;
 
     public function __construct($options = []) {
         $this->apiKey = $options['api_key'] ?? getenv('AI_API_KEY') ?: '';
@@ -43,10 +45,7 @@ class AiBridge {
 
     /**
      * Send a message to Claude and return the response.
-     *
-     * @param string $message     User's message
-     * @param array  $options     Optional: system_prompt, max_tokens, temperature, context (array of prior messages)
-     * @return array              ['ok' => bool, 'response_text' => string, 'error' => string|null, ...]
+     * Original simple text-only method (backward compatible).
      */
     public function runTurn($message, $options = []) {
         if (empty($this->apiKey)) {
@@ -58,50 +57,15 @@ class AiBridge {
         $timeout     = (int) ($options['timeout']       ?? 90);
         $timeout     = max(15, min($timeout, 300));
 
-        // Build messages array (support conversation context / multi-turn)
-        $messages = [];
-        if (!empty($options['messages']) && is_array($options['messages'])) {
-            // Full message history provided (multi-turn)
-            // Content can be a string or an array of content blocks (for images)
-            foreach ($options['messages'] as $msg) {
-                $messages[] = [
-                    'role'    => $msg['role'] ?? 'user',
-                    'content' => $msg['content'] ?? '',
-                ];
-            }
-        } elseif (!empty($options['context']) && is_array($options['context'])) {
-            // Legacy: prior context + current message
-            foreach ($options['context'] as $msg) {
-                $messages[] = [
-                    'role'    => $msg['role'] ?? 'user',
-                    'content' => $msg['content'] ?? '',
-                ];
-            }
-        }
-
-        // If a message string is provided, append as latest user turn
-        // Content can also be an array of content blocks (for multi-modal: text + images)
-        if (is_array($message)) {
-            // Already structured content blocks
-            $messages[] = ['role' => 'user', 'content' => $message];
-        } else {
-            $message = trim((string) ($message ?? ''));
-            if ($message !== '') {
-                $messages[] = ['role' => 'user', 'content' => $message];
-            }
-        }
+        $messages = $this->buildMessages($message, $options);
 
         if (empty($messages)) {
             return ['ok' => false, 'error' => 'Prompt is required.'];
         }
 
-        // System prompt
         $systemPrompt = $options['system_prompt'] ?? $this->systemPrompt;
-
-        // Allow per-request model override
         $model = $options['model'] ?? $this->model;
 
-        // Build API request body
         $body = [
             'model'      => $model,
             'max_tokens' => $maxTokens,
@@ -121,16 +85,7 @@ class AiBridge {
         }
 
         $data = $result['data'];
-
-        // Extract text from response content blocks
-        $responseText = '';
-        if (!empty($data['content']) && is_array($data['content'])) {
-            foreach ($data['content'] as $block) {
-                if (($block['type'] ?? '') === 'text') {
-                    $responseText .= $block['text'];
-                }
-            }
-        }
+        $responseText = $this->extractText($data);
 
         return [
             'ok'            => true,
@@ -145,8 +100,191 @@ class AiBridge {
     }
 
     /**
-     * Make the actual HTTP call to the Anthropic API.
+     * Send a message with Tool Use support.
+     * Handles the full tool_use → execute → tool_result → repeat loop.
+     *
+     * @param string|array $message     User message
+     * @param array $tools              Tool definitions (Claude API format)
+     * @param callable $toolExecutor    function(string $toolName, array $input): array
+     * @param array $options            Same as runTurn + 'tool_choice'
+     * @return array                    ['ok', 'response_text', 'tool_calls' => [...], ...]
      */
+    public function runTurnWithTools($message, $tools, callable $toolExecutor, $options = []) {
+        if (empty($this->apiKey)) {
+            return ['ok' => false, 'error' => 'AI_API_KEY not configured.'];
+        }
+
+        $maxTokens   = (int) ($options['max_tokens']   ?? 4096);
+        $temperature = (float) ($options['temperature'] ?? 0.3);
+        $timeout     = (int) ($options['timeout']       ?? 120);
+        $timeout     = max(15, min($timeout, 300));
+
+        $messages = $this->buildMessages($message, $options);
+        if (empty($messages)) {
+            return ['ok' => false, 'error' => 'Prompt is required.'];
+        }
+
+        $systemPrompt = $options['system_prompt'] ?? $this->systemPrompt;
+        $model = $options['model'] ?? $this->model;
+
+        $allToolCalls = [];
+        $totalUsage = ['input_tokens' => 0, 'output_tokens' => 0];
+
+        for ($iteration = 0; $iteration < $this->maxToolIterations; $iteration++) {
+            $body = [
+                'model'      => $model,
+                'max_tokens' => $maxTokens,
+                'temperature'=> $temperature,
+                'system'     => $systemPrompt,
+                'messages'   => $messages,
+                'tools'      => $tools,
+            ];
+
+            if (!empty($options['tool_choice'])) {
+                $body['tool_choice'] = $options['tool_choice'];
+            }
+
+            $result = $this->callApi($body, $timeout);
+
+            if (!$result['ok']) {
+                return [
+                    'ok' => false,
+                    'error' => $result['error'],
+                    'response_text' => null,
+                    'tool_calls' => $allToolCalls,
+                    'iterations' => $iteration,
+                ];
+            }
+
+            $data = $result['data'];
+            $stopReason = $data['stop_reason'] ?? null;
+
+            if (!empty($data['usage'])) {
+                $totalUsage['input_tokens']  += $data['usage']['input_tokens'] ?? 0;
+                $totalUsage['output_tokens'] += $data['usage']['output_tokens'] ?? 0;
+            }
+
+            if ($stopReason === 'tool_use') {
+                $messages[] = [
+                    'role'    => 'assistant',
+                    'content' => $data['content'],
+                ];
+
+                $toolResults = [];
+                foreach ($data['content'] as $block) {
+                    if (($block['type'] ?? '') !== 'tool_use') continue;
+
+                    $toolName  = $block['name'];
+                    $toolInput = $block['input'] ?? [];
+                    $toolId    = $block['id'];
+
+                    $allToolCalls[] = [
+                        'iteration' => $iteration,
+                        'tool'      => $toolName,
+                        'input'     => $toolInput,
+                        'id'        => $toolId,
+                    ];
+
+                    try {
+                        $execResult = $toolExecutor($toolName, $toolInput);
+                        $toolResults[] = [
+                            'type'        => 'tool_result',
+                            'tool_use_id' => $toolId,
+                            'content'     => is_array($execResult) ? json_encode($execResult) : (string)$execResult,
+                        ];
+
+                        $lastIdx = count($allToolCalls) - 1;
+                        $allToolCalls[$lastIdx]['result'] = $execResult;
+                        $allToolCalls[$lastIdx]['ok'] = true;
+                    } catch (\Throwable $e) {
+                        $toolResults[] = [
+                            'type'        => 'tool_result',
+                            'tool_use_id' => $toolId,
+                            'content'     => json_encode(['error' => $e->getMessage()]),
+                            'is_error'    => true,
+                        ];
+
+                        $lastIdx = count($allToolCalls) - 1;
+                        $allToolCalls[$lastIdx]['error'] = $e->getMessage();
+                        $allToolCalls[$lastIdx]['ok'] = false;
+                    }
+                }
+
+                $messages[] = [
+                    'role'    => 'user',
+                    'content' => $toolResults,
+                ];
+
+                continue;
+            }
+
+            $responseText = $this->extractText($data);
+
+            return [
+                'ok'            => true,
+                'response_text' => trim($responseText) ?: 'Request processed.',
+                'mode'          => 'anthropic_api_tools',
+                'model'         => $data['model'] ?? $this->model,
+                'provider'      => 'anthropic',
+                'usage'         => $totalUsage,
+                'stop_reason'   => $stopReason,
+                'message_id'    => $data['id'] ?? null,
+                'tool_calls'    => $allToolCalls,
+                'iterations'    => $iteration + 1,
+            ];
+        }
+
+        return [
+            'ok'            => false,
+            'error'         => 'Max tool iterations reached (' . $this->maxToolIterations . ')',
+            'response_text' => null,
+            'tool_calls'    => $allToolCalls,
+            'iterations'    => $this->maxToolIterations,
+        ];
+    }
+
+    private function buildMessages($message, $options) {
+        $messages = [];
+        if (!empty($options['messages']) && is_array($options['messages'])) {
+            foreach ($options['messages'] as $msg) {
+                $messages[] = [
+                    'role'    => $msg['role'] ?? 'user',
+                    'content' => $msg['content'] ?? '',
+                ];
+            }
+        } elseif (!empty($options['context']) && is_array($options['context'])) {
+            foreach ($options['context'] as $msg) {
+                $messages[] = [
+                    'role'    => $msg['role'] ?? 'user',
+                    'content' => $msg['content'] ?? '',
+                ];
+            }
+        }
+
+        if (is_array($message)) {
+            $messages[] = ['role' => 'user', 'content' => $message];
+        } else {
+            $message = trim((string) ($message ?? ''));
+            if ($message !== '') {
+                $messages[] = ['role' => 'user', 'content' => $message];
+            }
+        }
+
+        return $messages;
+    }
+
+    private function extractText($data) {
+        $text = '';
+        if (!empty($data['content']) && is_array($data['content'])) {
+            foreach ($data['content'] as $block) {
+                if (($block['type'] ?? '') === 'text') {
+                    $text .= $block['text'];
+                }
+            }
+        }
+        return $text;
+    }
+
     private function callApi($body, $timeout) {
         $ch = curl_init();
 
@@ -188,9 +326,6 @@ class AiBridge {
         return ['ok' => true, 'error' => null, 'data' => $decoded];
     }
 
-    /**
-     * Default system prompt for the CorpFile AI assistant.
-     */
     private function defaultSystemPrompt() {
         return <<<'PROMPT'
 You are CorpFile AI, an intelligent assistant embedded in CorpFile, a corporate secretarial management platform used by company secretaries and compliance professionals.
@@ -205,6 +340,8 @@ Your expertise includes:
 - Invoice generation and fee management for secretarial services
 - Company event tracking (FYE changes, striking off, dormancy)
 
+You also have access to browser automation tools. When users ask you to look up information from websites (like ACRA BizFile+, IRAS, MOM), search the web, or interact with online services, you can use the available tools to navigate, scrape, screenshot, and interact with web pages. Use these tools proactively when web information would help answer the user's question.
+
 Guidelines:
 - Be concise, professional, and action-oriented
 - When discussing Singapore regulations, cite the Companies Act (Cap. 50) or relevant ACRA/IRAS guidelines
@@ -213,6 +350,7 @@ Guidelines:
 - Never fabricate company data, filing numbers, or regulatory references
 - When asked to generate documents, provide the full text content ready to use
 - For compliance checks, clearly state what is compliant and what needs attention
+- When using browser tools, summarize the findings clearly — don't dump raw HTML
 PROMPT;
     }
 }
