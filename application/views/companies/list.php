@@ -62,6 +62,29 @@ $selectedClientType = $filters['client_type'] ?? '';
                     </span>
                 </div>
 
+                <div class="cf-stats-bar" style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+                    <div class="cf-stat-card" style="flex:1;min-width:120px;padding:12px 16px;background:#fff;border-radius:8px;border:1px solid var(--cf-border);text-align:center;">
+                        <div style="font-size:24px;font-weight:700;color:var(--cf-primary)" id="statTotal">-</div>
+                        <div style="font-size:11px;color:var(--cf-text-secondary);text-transform:uppercase;">Total</div>
+                    </div>
+                    <div class="cf-stat-card" style="flex:1;min-width:120px;padding:12px 16px;background:#fff;border-radius:8px;border:1px solid var(--cf-border);text-align:center;">
+                        <div style="font-size:24px;font-weight:700;color:#ef4444" id="statAgmOverdue">-</div>
+                        <div style="font-size:11px;color:var(--cf-text-secondary);text-transform:uppercase;">AGM Overdue</div>
+                    </div>
+                    <div class="cf-stat-card" style="flex:1;min-width:120px;padding:12px 16px;background:#fff;border-radius:8px;border:1px solid var(--cf-border);text-align:center;">
+                        <div style="font-size:24px;font-weight:700;color:#ef4444" id="statArOverdue">-</div>
+                        <div style="font-size:11px;color:var(--cf-text-secondary);text-transform:uppercase;">AR Overdue</div>
+                    </div>
+                    <div class="cf-stat-card" style="flex:1;min-width:120px;padding:12px 16px;background:#fff;border-radius:8px;border:1px solid var(--cf-border);text-align:center;">
+                        <div style="font-size:24px;font-weight:700;color:#f59e0b" id="statEpDue">-</div>
+                        <div style="font-size:11px;color:var(--cf-text-secondary);text-transform:uppercase;">EP Due</div>
+                    </div>
+                    <div class="cf-stat-card" style="flex:1;min-width:120px;padding:12px 16px;background:#fff;border-radius:8px;border:1px solid var(--cf-border);text-align:center;">
+                        <div style="font-size:24px;font-weight:700;color:#6b7280" id="statMissing">-</div>
+                        <div style="font-size:11px;color:var(--cf-text-secondary);text-transform:uppercase;">Missing Info</div>
+                    </div>
+                </div>
+
                 <div class="cf-country-chips">
                     <button type="button" class="btn btn-default btn-sm country-chip <?= ($selectedCountry === 'all' || $selectedCountry === '') ? 'active' : '' ?>" data-country="all">
                         All <span class="badge" id="countryCountAll">0</span>
@@ -74,6 +97,9 @@ $selectedClientType = $filters['client_type'] ?? '';
                     </button>
                     <button type="button" class="btn btn-default btn-sm country-chip <?= ($selectedCountry === 'bvi_cayman' || $selectedCountry === 'bvi' || $selectedCountry === 'cayman') ? 'active' : '' ?>" data-country="bvi_cayman">
                         BVI/Cayman <span class="badge" id="countryCountBvi">0</span>
+                    </button>
+                    <button type="button" class="btn btn-default btn-sm country-chip <?= $selectedCountry === 'other' ? 'active' : '' ?>" data-country="other">
+                        Other <span class="badge" id="countryCountOther">0</span>
                     </button>
                 </div>
 
@@ -122,6 +148,7 @@ $selectedClientType = $filters['client_type'] ?? '';
                                 <option value="accounting_only" <?= $selectedClientType === 'accounting_only' ? 'selected' : '' ?>>Accounting Only</option>
                                 <option value="audit_client" <?= $selectedClientType === 'audit_client' ? 'selected' : '' ?>>Audit Client</option>
                                 <option value="listed_related" <?= $selectedClientType === 'listed_related' ? 'selected' : '' ?>>Listed Company Related</option>
+                                <option value="ep_client" <?= $selectedClientType === 'ep_client' ? 'selected' : '' ?>>EP Client (有EP)</option>
                             </select>
                         </div>
                         <div class="col-md-8">
@@ -133,6 +160,7 @@ $selectedClientType = $filters['client_type'] ?? '';
                                 <label class="cf-alert-toggle"><input type="checkbox" name="alert[]" value="ep_due" <?= in_array('ep_due', $selectedAlerts, true) ? 'checked' : '' ?>> EP Due <span class="badge" id="alertCountEp">0</span></label>
                                 <label class="cf-alert-toggle"><input type="checkbox" name="alert[]" value="id_passport_due" <?= in_array('id_passport_due', $selectedAlerts, true) ? 'checked' : '' ?>> ID/Passport Due <span class="badge" id="alertCountId">0</span></label>
                                 <label class="cf-alert-toggle"><input type="checkbox" name="alert[]" value="missing_info" <?= in_array('missing_info', $selectedAlerts, true) ? 'checked' : '' ?>> Missing Info <span class="badge" id="alertCountMissing">0</span></label>
+                                <label class="cf-alert-toggle"><input type="checkbox" name="alert[]" value="iit_due" <?= in_array('iit_due', $selectedAlerts, true) ? 'checked' : '' ?>> IIT Due <span class="badge" id="alertCountIit">0</span></label>
                             </div>
                         </div>
                     </div>
@@ -157,6 +185,8 @@ $selectedClientType = $filters['client_type'] ?? '';
                             <th>UEN / Reg No.</th>
                             <th>Type</th>
                             <th>FYE</th>
+                            <th style="width:60px;">AGM</th>
+                            <th style="width:60px;">AR</th>
                             <th>Status</th>
                             <th>Country</th>
                             <th style="min-width:180px;">Actions</th>
@@ -183,7 +213,20 @@ $selectedClientType = $filters['client_type'] ?? '';
                             <td style="font-size:12px; color:var(--cf-text-secondary);"><?= htmlspecialchars($c->company_id_code ?? '') ?></td>
                             <td style="font-family:monospace; font-size:12px;"><?= htmlspecialchars($c->registration_number ?? '') ?></td>
                             <td style="font-size:12px;"><?= htmlspecialchars($c->company_type_name ?? '') ?></td>
-                            <td style="font-size:12px;"><?= $c->fye_date ? date('M', strtotime($c->fye_date)) : '<span style="color:var(--cf-text-muted);">--</span>' ?></td>
+                            <td style="font-size:12px;">
+                                <?php if (!empty($c->fye_date)): ?>
+                                    <?= date('d M', strtotime($c->fye_date)) ?>
+                                    <span class="label label-default" style="font-size:9px;margin-left:4px;"><?= htmlspecialchars($c->fye_quarter ?? '') ?></span>
+                                <?php else: ?>
+                                    <span style="color:var(--cf-text-muted);">--</span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="text-align:center;">
+                                <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:<?= htmlspecialchars($c->agm_color ?? '#9ca3af') ?>;" title="<?= htmlspecialchars($c->agm_title ?? 'AGM: N/A') ?>"></span>
+                            </td>
+                            <td style="text-align:center;">
+                                <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:<?= htmlspecialchars($c->ar_color ?? '#9ca3af') ?>;" title="<?= htmlspecialchars($c->ar_title ?? 'AR Due: N/A') ?>"></span>
+                            </td>
                             <td>
                                 <span class="status-badge <?= $c->entity_status === 'Active' ? 'active' : 'draft' ?>">
                                     <?= htmlspecialchars($c->entity_status ?? 'Active') ?>
@@ -298,6 +341,7 @@ function loadFilterCounts() {
         $('#countryCountSg').text(resp.counts.country.sg || 0);
         $('#countryCountMy').text(resp.counts.country.my || 0);
         $('#countryCountBvi').text(resp.counts.country.bvi_cayman || 0);
+        $('#countryCountOther').text(resp.counts.country.other || 0);
 
         $('#alertCountFye').text(resp.counts.alerts.fye || 0);
         $('#alertCountAgm').text(resp.counts.alerts.agm_due || 0);
@@ -305,6 +349,13 @@ function loadFilterCounts() {
         $('#alertCountEp').text(resp.counts.alerts.ep_due || 0);
         $('#alertCountId').text(resp.counts.alerts.id_passport_due || 0);
         $('#alertCountMissing').text(resp.counts.alerts.missing_info || 0);
+        $('#alertCountIit').text(resp.counts.alerts.iit_due || 0);
+
+        $('#statTotal').text(resp.counts.country.all || 0);
+        $('#statAgmOverdue').text(resp.counts.alerts.agm_overdue || 0);
+        $('#statArOverdue').text(resp.counts.alerts.ar_overdue || 0);
+        $('#statEpDue').text(resp.counts.alerts.ep_due || 0);
+        $('#statMissing').text(resp.counts.alerts.missing_info || 0);
     });
 }
 

@@ -399,6 +399,112 @@ class Company_list extends BaseController {
         return $this->db->fetchOne("SELECT id, company_name FROM clients WHERE client_id = ?", [$clientId]);
     }
 
+    private function fyeReminderDateSql() {
+        return "(CASE
+            WHEN QUARTER(c.fye_date) = 1 THEN STR_TO_DATE(CONCAT(YEAR(c.fye_date), '-04-01'), '%Y-%m-%d')
+            WHEN QUARTER(c.fye_date) = 2 THEN STR_TO_DATE(CONCAT(YEAR(c.fye_date), '-07-01'), '%Y-%m-%d')
+            WHEN QUARTER(c.fye_date) = 3 THEN STR_TO_DATE(CONCAT(YEAR(c.fye_date), '-10-01'), '%Y-%m-%d')
+            ELSE STR_TO_DATE(CONCAT(YEAR(c.fye_date) + 1, '-01-01'), '%Y-%m-%d')
+        END)";
+    }
+
+    private function arDueDateSql() {
+        return "(CASE
+            WHEN c.date_of_agm IS NOT NULL THEN DATE_ADD(c.date_of_agm, INTERVAL 30 DAY)
+            WHEN c.fye_date IS NOT NULL THEN DATE_ADD(c.fye_date, INTERVAL 7 MONTH)
+            WHEN c.date_of_ar IS NOT NULL THEN c.date_of_ar
+            WHEN c.last_ar_filing IS NOT NULL THEN DATE_ADD(c.last_ar_filing, INTERVAL 12 MONTH)
+            ELSE NULL
+        END)";
+    }
+
+    private function epExistsCondition() {
+        $parts = [];
+
+        if ($this->hasTable('due_dates')) {
+            $parts[] = "EXISTS (
+                SELECT 1 FROM due_dates d
+                WHERE d.company_id = c.id
+                  AND (
+                    UPPER(COALESCE(d.event_name, '')) LIKE '%EMPLOYMENT PASS%'
+                    OR UPPER(COALESCE(d.event_name, '')) LIKE '%EP EXPIRY%'
+                    OR UPPER(COALESCE(d.event_name, '')) LIKE 'EP%'
+                  )
+            )";
+        }
+
+        if ($this->hasTable('employment_passes')) {
+            $parts[] = "EXISTS (SELECT 1 FROM employment_passes ep WHERE ep.company_id = c.id)";
+        }
+
+        if ($this->hasTable('employment_pass')) {
+            $parts[] = "EXISTS (SELECT 1 FROM employment_pass ep2 WHERE ep2.company_id = c.id)";
+        }
+
+        if (empty($parts)) {
+            return '0 = 1';
+        }
+
+        return '(' . implode(' OR ', $parts) . ')';
+    }
+
+    private function iitDueCondition() {
+        $window = "CURDATE() BETWEEN DATE_SUB(STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-03-01'), '%Y-%m-%d'), INTERVAL 21 DAY) AND STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-03-01'), '%Y-%m-%d')";
+        return "({$window} AND UPPER(COALESCE(c.country, '')) = 'SINGAPORE')";
+    }
+
+    private function enrichCompanies($companies) {
+        $today = new DateTimeImmutable('today');
+        foreach ($companies as $c) {
+            $c->fye_quarter = '';
+            if (!empty($c->fye_date)) {
+                $month = (int)date('n', strtotime($c->fye_date));
+                $c->fye_quarter = $month <= 3 ? 'Q1' : ($month <= 6 ? 'Q2' : ($month <= 9 ? 'Q3' : 'Q4'));
+            }
+
+            $c->agm_color = '#9ca3af';
+            $c->agm_title = 'AGM: N/A';
+            if (!empty($c->next_agm_due)) {
+                $agmTs = strtotime($c->next_agm_due);
+                if ($agmTs !== false) {
+                    $due = (new DateTimeImmutable())->setTimestamp($agmTs);
+                    $days = (int)$today->diff($due)->format('%r%a');
+                    $c->agm_color = $days < 0 ? '#ef4444' : ($days <= 60 ? '#f59e0b' : '#10b981');
+                    $c->agm_title = 'AGM Due: ' . $due->format('Y-m-d');
+                } else {
+                    $c->agm_title = 'AGM: Invalid date';
+                }
+            }
+
+            $c->ar_color = '#9ca3af';
+            $c->ar_due_date = null;
+            $c->ar_title = 'AR Due: N/A';
+            if (!empty($c->date_of_agm) && strtotime($c->date_of_agm) !== false) {
+                $c->ar_due_date = date('Y-m-d', strtotime($c->date_of_agm . ' +30 days'));
+            } elseif (!empty($c->fye_date) && strtotime($c->fye_date) !== false) {
+                $c->ar_due_date = date('Y-m-d', strtotime($c->fye_date . ' +7 months'));
+            } elseif (!empty($c->date_of_ar) && strtotime($c->date_of_ar) !== false) {
+                $c->ar_due_date = date('Y-m-d', strtotime($c->date_of_ar));
+            } elseif (!empty($c->last_ar_filing) && strtotime($c->last_ar_filing) !== false) {
+                $c->ar_due_date = date('Y-m-d', strtotime($c->last_ar_filing . ' +12 months'));
+            }
+
+            if (!empty($c->ar_due_date)) {
+                $arTs = strtotime($c->ar_due_date);
+                if ($arTs !== false) {
+                    $due = (new DateTimeImmutable())->setTimestamp($arTs);
+                    $days = (int)$today->diff($due)->format('%r%a');
+                    $c->ar_color = $days < 0 ? '#ef4444' : ($days <= 60 ? '#f59e0b' : '#10b981');
+                    $c->ar_title = 'AR Due: ' . $due->format('Y-m-d');
+                } else {
+                    $c->ar_title = 'AR: Invalid date';
+                }
+            }
+        }
+
+        return $companies;
+    }
+
     private function readFilters() {
         $alerts = $_GET['alert'] ?? [];
         if (is_string($alerts) && $alerts !== '') {
@@ -422,8 +528,8 @@ class Company_list extends BaseController {
             'reg_no' => trim((string)($_GET['filter_reg_no'] ?? '')),
             'status' => trim((string)($_GET['filter_status'] ?? '')),
             'entity_status' => in_array($entityStatus, ['prospect', 'client', 'non_client'], true) ? $entityStatus : '',
-            'client_type' => in_array($clientType, ['css_client', 'accounting_only', 'audit_client', 'listed_related'], true) ? $clientType : '',
-            'alerts' => array_values(array_intersect(['fye', 'agm_due', 'ar_due', 'ep_due', 'id_passport_due', 'missing_info'], array_map('strtolower', array_map('trim', $alerts)))),
+            'client_type' => in_array($clientType, ['css_client', 'accounting_only', 'audit_client', 'listed_related', 'ep_client'], true) ? $clientType : '',
+            'alerts' => array_values(array_intersect(['fye', 'agm_due', 'ar_due', 'ep_due', 'id_passport_due', 'missing_info', 'iit_due'], array_map('strtolower', array_map('trim', $alerts)))),
         ];
     }
 
@@ -436,6 +542,9 @@ class Company_list extends BaseController {
         }
         if ($country === 'bvi_cayman' || $country === 'bvi' || $country === 'cayman') {
             return ["UPPER(COALESCE(c.country, '')) IN ('BVI', 'CAYMAN ISLANDS', 'BRITISH VIRGIN ISLANDS')", []];
+        }
+        if ($country === 'other') {
+            return ["UPPER(COALESCE(c.country, '')) NOT IN ('SINGAPORE', 'MALAYSIA', 'BVI', 'CAYMAN ISLANDS', 'BRITISH VIRGIN ISLANDS')", []];
         }
         return ['', []];
     }
@@ -491,12 +600,18 @@ class Company_list extends BaseController {
             return ["COALESCE(c.is_listed_related, 0) = 1", []];
         }
 
+        if ($clientType === 'ep_client') {
+            return [$this->epExistsCondition(), []];
+        }
+
         return ['', []];
     }
 
     private function alertCondition($alert) {
         if ($alert === 'fye') {
-            return "c.fye_date IS NOT NULL AND c.fye_date BETWEEN DATE_SUB(CURDATE(), INTERVAL 3 MONTH) AND CURDATE()";
+            return "c.fye_date IS NOT NULL
+                AND CURDATE() >= DATE_ADD(c.fye_date, INTERVAL 3 DAY)
+                AND CURDATE() >= " . $this->fyeReminderDateSql();
         }
 
         if ($alert === 'agm_due') {
@@ -504,11 +619,7 @@ class Company_list extends BaseController {
         }
 
         if ($alert === 'ar_due') {
-            return "(
-                (c.date_of_ar IS NOT NULL AND c.date_of_ar <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
-                OR
-                (c.last_ar_filing IS NOT NULL AND DATE_ADD(c.last_ar_filing, INTERVAL 12 MONTH) <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
-            )";
+            return $this->arDueDateSql() . " IS NOT NULL AND " . $this->arDueDateSql() . " <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH)";
         }
 
         if ($alert === 'ep_due') {
@@ -526,6 +637,10 @@ class Company_list extends BaseController {
                     OR UPPER(COALESCE(d.event_name, '')) LIKE 'EP%'
                   )
             )";
+        }
+
+        if ($alert === 'iit_due') {
+            return $this->iitDueCondition();
         }
 
         if ($alert === 'id_passport_due') {
@@ -663,6 +778,7 @@ class Company_list extends BaseController {
                      ORDER BY c.company_name ASC",
                     $params
                 );
+                $data['companies'] = $this->enrichCompanies($data['companies']);
                 $data['total'] = count($data['companies']);
                 $data['company_types'] = $this->db->fetchAll(
                     "SELECT * FROM company_types WHERE client_id = ? AND status = 1",
@@ -683,12 +799,14 @@ class Company_list extends BaseController {
                 'sg' => 0,
                 'my' => 0,
                 'bvi_cayman' => 0,
+                'other' => 0,
             ],
             'client_type' => [
                 'css_client' => 0,
                 'accounting_only' => 0,
                 'audit_client' => 0,
                 'listed_related' => 0,
+                'ep_client' => 0,
             ],
             'alerts' => [
                 'fye' => 0,
@@ -697,6 +815,9 @@ class Company_list extends BaseController {
                 'ep_due' => 0,
                 'id_passport_due' => 0,
                 'missing_info' => 0,
+                'iit_due' => 0,
+                'agm_overdue' => 0,
+                'ar_overdue' => 0,
             ],
         ];
 
@@ -716,6 +837,7 @@ class Company_list extends BaseController {
                     SUM(CASE WHEN UPPER(COALESCE(c.country, '')) = 'SINGAPORE' THEN 1 ELSE 0 END) AS sg_count,
                     SUM(CASE WHEN UPPER(COALESCE(c.country, '')) = 'MALAYSIA' THEN 1 ELSE 0 END) AS my_count,
                     SUM(CASE WHEN UPPER(COALESCE(c.country, '')) IN ('BVI', 'CAYMAN ISLANDS', 'BRITISH VIRGIN ISLANDS') THEN 1 ELSE 0 END) AS bvi_cayman_count,
+                    SUM(CASE WHEN UPPER(COALESCE(c.country, '')) NOT IN ('SINGAPORE', 'MALAYSIA', 'BVI', 'CAYMAN ISLANDS', 'BRITISH VIRGIN ISLANDS') THEN 1 ELSE 0 END) AS other_count,
 
                     SUM(CASE WHEN ((" . ($this->hasColumn('companies', 'is_css_client') ? 'c.is_css_client = 1' : '0 = 1') . ") OR " . ($this->hasTable('secretaries') ? "EXISTS (
                         SELECT 1 FROM secretaries s
@@ -732,14 +854,14 @@ class Company_list extends BaseController {
                           )
                     )" : '0 = 1') . ")) THEN 1 ELSE 0 END) AS audit_client_count,
                     SUM(CASE WHEN " . ($this->hasColumn('companies', 'is_listed_related') ? 'COALESCE(c.is_listed_related, 0) = 1' : '0 = 1') . " THEN 1 ELSE 0 END) AS listed_related_count,
+                    SUM(CASE WHEN " . $this->epExistsCondition() . " THEN 1 ELSE 0 END) AS ep_client_count,
 
-                    SUM(CASE WHEN c.fye_date IS NOT NULL AND c.fye_date BETWEEN DATE_SUB(CURDATE(), INTERVAL 3 MONTH) AND CURDATE() THEN 1 ELSE 0 END) AS fye_count,
+                    SUM(CASE WHEN c.fye_date IS NOT NULL
+                        AND CURDATE() >= DATE_ADD(c.fye_date, INTERVAL 3 DAY)
+                        AND CURDATE() >= " . $this->fyeReminderDateSql() . "
+                    THEN 1 ELSE 0 END) AS fye_count,
                     SUM(CASE WHEN c.next_agm_due IS NOT NULL AND c.next_agm_due <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH) THEN 1 ELSE 0 END) AS agm_due_count,
-                    SUM(CASE WHEN (
-                        (c.date_of_ar IS NOT NULL AND c.date_of_ar <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
-                        OR
-                        (c.last_ar_filing IS NOT NULL AND DATE_ADD(c.last_ar_filing, INTERVAL 12 MONTH) <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
-                    ) THEN 1 ELSE 0 END) AS ar_due_count,
+                    SUM(CASE WHEN " . $this->arDueDateSql() . " IS NOT NULL AND " . $this->arDueDateSql() . " <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH) THEN 1 ELSE 0 END) AS ar_due_count,
                     SUM(CASE WHEN " . ($this->hasTable('due_dates') ? "EXISTS (
                         SELECT 1 FROM due_dates d
                         WHERE d.company_id = c.id
@@ -757,7 +879,10 @@ class Company_list extends BaseController {
                         OR c.fye_date IS NULL
                         OR c.incorporation_date IS NULL" . ($this->hasTable('directors') ? "
                         OR NOT EXISTS (SELECT 1 FROM directors dr WHERE dr.company_id = c.id)" : '') . "
-                    ) THEN 1 ELSE 0 END) AS missing_info_count
+                    ) THEN 1 ELSE 0 END) AS missing_info_count,
+                    SUM(CASE WHEN " . $this->iitDueCondition() . " THEN 1 ELSE 0 END) AS iit_due_count,
+                    SUM(CASE WHEN c.next_agm_due IS NOT NULL AND c.next_agm_due < CURDATE() THEN 1 ELSE 0 END) AS agm_overdue_count,
+                    SUM(CASE WHEN " . $this->arDueDateSql() . " IS NOT NULL AND " . $this->arDueDateSql() . " < CURDATE() THEN 1 ELSE 0 END) AS ar_overdue_count
                 FROM companies c
                 WHERE c.client_id = ?";
 
@@ -782,11 +907,13 @@ class Company_list extends BaseController {
             $counts['country']['sg'] = (int)$row->sg_count;
             $counts['country']['my'] = (int)$row->my_count;
             $counts['country']['bvi_cayman'] = (int)$row->bvi_cayman_count;
+            $counts['country']['other'] = (int)$row->other_count;
 
             $counts['client_type']['css_client'] = (int)$row->css_client_count;
             $counts['client_type']['accounting_only'] = (int)$row->accounting_only_count;
             $counts['client_type']['audit_client'] = (int)$row->audit_client_count;
             $counts['client_type']['listed_related'] = (int)$row->listed_related_count;
+            $counts['client_type']['ep_client'] = (int)$row->ep_client_count;
 
             $counts['alerts']['fye'] = (int)$row->fye_count;
             $counts['alerts']['agm_due'] = (int)$row->agm_due_count;
@@ -794,6 +921,9 @@ class Company_list extends BaseController {
             $counts['alerts']['ep_due'] = (int)$row->ep_due_count;
             $counts['alerts']['id_passport_due'] = (int)$row->id_passport_due_count;
             $counts['alerts']['missing_info'] = (int)$row->missing_info_count;
+            $counts['alerts']['iit_due'] = (int)$row->iit_due_count;
+            $counts['alerts']['agm_overdue'] = (int)$row->agm_overdue_count;
+            $counts['alerts']['ar_overdue'] = (int)$row->ar_overdue_count;
         }
 
         $this->json(['ok' => true, 'counts' => $counts]);
