@@ -8,6 +8,32 @@ $dbName = getenv('DB_NAME') ?: 'corpfile';
 $pdo = new PDO("mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4", $dbUser, $dbPass);
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+$memberCols = [
+    'gender VARCHAR(20) DEFAULT NULL', 'alias_name VARCHAR(255) DEFAULT NULL',
+    'date_of_birth DATE DEFAULT NULL', 'country_of_birth VARCHAR(100) DEFAULT NULL',
+    'risk_assessment_rating VARCHAR(20) DEFAULT NULL', 'additional_notes TEXT DEFAULT NULL',
+    'father_name VARCHAR(255) DEFAULT NULL', 'mother_name VARCHAR(255) DEFAULT NULL',
+    'spouse_name VARCHAR(255) DEFAULT NULL', 'phone VARCHAR(50) DEFAULT NULL',
+    'residential_address TEXT DEFAULT NULL', 'foreign_address TEXT DEFAULT NULL',
+    'contact_address TEXT DEFAULT NULL', "default_address_type VARCHAR(30) DEFAULT 'Contact Address'",
+];
+foreach ($memberCols as $colDef) {
+    $colName = explode(' ', $colDef)[0];
+    $exists = $pdo->query("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='{$dbName}' AND table_name='members' AND column_name='{$colName}'")->fetchColumn();
+    if (!$exists) {
+        $pdo->exec("ALTER TABLE members ADD COLUMN {$colDef}");
+        echo "  Added members.{$colName}\n";
+    }
+}
+
+$pdo->exec("CREATE TABLE IF NOT EXISTS member_identifications (
+    id INT AUTO_INCREMENT PRIMARY KEY, member_id INT NOT NULL, id_slot INT DEFAULT 1,
+    id_type VARCHAR(50), id_number VARCHAR(100), id_expiry_date DATE DEFAULT NULL,
+    id_issued_date DATE DEFAULT NULL, id_issued_country VARCHAR(100) DEFAULT NULL,
+    client_id INT DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_member (member_id)
+)");
+
 $json = file_get_contents(__DIR__ . '/scraped-members.json');
 $members = json_decode($json, true);
 
