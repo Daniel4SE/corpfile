@@ -359,6 +359,39 @@ class Companies extends BaseController {
 
 // Company List controller (maps to /company_list)
 class Company_list extends BaseController {
+    private $tableCache = [];
+    private $columnCache = [];
+
+    private function hasTable($table) {
+        if (isset($this->tableCache[$table])) {
+            return $this->tableCache[$table];
+        }
+        if (!$this->db) {
+            $this->tableCache[$table] = false;
+            return false;
+        }
+        $row = $this->db->fetchOne("SHOW TABLES LIKE ?", [$table]);
+        $this->tableCache[$table] = (bool)$row;
+        return $this->tableCache[$table];
+    }
+
+    private function hasColumn($table, $column) {
+        $key = $table . '.' . $column;
+        if (isset($this->columnCache[$key])) {
+            return $this->columnCache[$key];
+        }
+        if (!$this->db) {
+            $this->columnCache[$key] = false;
+            return false;
+        }
+        $row = $this->db->fetchOne(
+            "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1",
+            [$table, $column]
+        );
+        $this->columnCache[$key] = (bool)$row;
+        return $this->columnCache[$key];
+    }
+
     private function getClientRecord() {
         if (!$this->db) return null;
         $clientId = $_SESSION['client_id'] ?? '';
@@ -409,35 +442,52 @@ class Company_list extends BaseController {
 
     private function clientTypeCondition($clientType, $clientCompanyName) {
         if ($clientType === 'css_client') {
-            return [
-                "(c.is_css_client = 1 OR EXISTS (
+            if (!$this->hasTable('secretaries') && !$this->hasColumn('companies', 'is_css_client')) {
+                return ['0 = 1', []];
+            }
+            $flag = $this->hasColumn('companies', 'is_css_client') ? 'c.is_css_client = 1 OR ' : '';
+            $secretaryCheck = $this->hasTable('secretaries') ? "EXISTS (
                     SELECT 1 FROM secretaries s
                     WHERE s.company_id = c.id
                       AND UPPER(TRIM(COALESCE(s.name, ''))) = UPPER(TRIM(?))
-                ))",
+                )" : '0 = 1';
+            return [
+                '(' . $flag . $secretaryCheck . ')',
                 [$clientCompanyName]
             ];
         }
 
         if ($clientType === 'accounting_only') {
-            return ["c.is_accounting_client = 1 AND COALESCE(c.is_audit_client, 0) = 0", []];
+            if (!$this->hasColumn('companies', 'is_accounting_client')) {
+                return ['0 = 1', []];
+            }
+            $auditField = $this->hasColumn('companies', 'is_audit_client') ? 'COALESCE(c.is_audit_client, 0)' : '0';
+            return ["c.is_accounting_client = 1 AND {$auditField} = 0", []];
         }
 
         if ($clientType === 'audit_client') {
-            return [
-                "(c.is_audit_client = 1 OR EXISTS (
+            if (!$this->hasTable('auditors') && !$this->hasColumn('companies', 'is_audit_client')) {
+                return ['0 = 1', []];
+            }
+            $flag = $this->hasColumn('companies', 'is_audit_client') ? 'c.is_audit_client = 1 OR ' : '';
+            $auditorCheck = $this->hasTable('auditors') ? "EXISTS (
                     SELECT 1 FROM auditors a
                     WHERE a.company_id = c.id
                       AND (
                         UPPER(TRIM(COALESCE(a.name, ''))) = UPPER(TRIM(?))
                         OR UPPER(TRIM(COALESCE(a.firm_name, ''))) = UPPER(TRIM(?))
                       )
-                ))",
+                )" : '0 = 1';
+            return [
+                '(' . $flag . $auditorCheck . ')',
                 [$clientCompanyName, $clientCompanyName]
             ];
         }
 
         if ($clientType === 'listed_related') {
+            if (!$this->hasColumn('companies', 'is_listed_related')) {
+                return ['0 = 1', []];
+            }
             return ["COALESCE(c.is_listed_related, 0) = 1", []];
         }
 
@@ -462,6 +512,9 @@ class Company_list extends BaseController {
         }
 
         if ($alert === 'ep_due') {
+            if (!$this->hasTable('due_dates')) {
+                return '0 = 1';
+            }
             return "EXISTS (
                 SELECT 1 FROM due_dates d
                 WHERE d.company_id = c.id
@@ -476,22 +529,38 @@ class Company_list extends BaseController {
         }
 
         if ($alert === 'id_passport_due') {
+            if (!$this->hasTable('member_identifications')) {
+                return '0 = 1';
+            }
+
+            $entityChecks = [];
+            if ($this->hasTable('directors')) $entityChecks[] = 'EXISTS (SELECT 1 FROM directors dr WHERE dr.company_id = c.id AND dr.member_id = mi.member_id)';
+            if ($this->hasTable('shareholders')) $entityChecks[] = 'EXISTS (SELECT 1 FROM shareholders sh WHERE sh.company_id = c.id AND sh.member_id = mi.member_id)';
+            if ($this->hasTable('secretaries')) $entityChecks[] = 'EXISTS (SELECT 1 FROM secretaries se WHERE se.company_id = c.id AND se.member_id = mi.member_id)';
+            if ($this->hasTable('controllers')) $entityChecks[] = 'EXISTS (SELECT 1 FROM controllers co WHERE co.company_id = c.id AND co.member_id = mi.member_id)';
+            if ($this->hasTable('company_officials')) $entityChecks[] = 'EXISTS (SELECT 1 FROM company_officials cf WHERE cf.company_id = c.id AND cf.member_id = mi.member_id)';
+
+            if (empty($entityChecks)) {
+                return '0 = 1';
+            }
+
             return "EXISTS (
                 SELECT 1
                 FROM member_identifications mi
                 WHERE mi.expired_date IS NOT NULL
                   AND mi.expired_date <= DATE_ADD(CURDATE(), INTERVAL 3 MONTH)
-                  AND (
-                    EXISTS (SELECT 1 FROM directors dr WHERE dr.company_id = c.id AND dr.member_id = mi.member_id)
-                    OR EXISTS (SELECT 1 FROM shareholders sh WHERE sh.company_id = c.id AND sh.member_id = mi.member_id)
-                    OR EXISTS (SELECT 1 FROM secretaries se WHERE se.company_id = c.id AND se.member_id = mi.member_id)
-                    OR EXISTS (SELECT 1 FROM controllers co WHERE co.company_id = c.id AND co.member_id = mi.member_id)
-                    OR EXISTS (SELECT 1 FROM company_officials cf WHERE cf.company_id = c.id AND cf.member_id = mi.member_id)
-                  )
+                  AND (" . implode(' OR ', $entityChecks) . ")
             )";
         }
 
         if ($alert === 'missing_info') {
+            if (!$this->hasTable('directors')) {
+                return "(
+                    COALESCE(TRIM(c.registration_number), '') = ''
+                    OR c.fye_date IS NULL
+                    OR c.incorporation_date IS NULL
+                )";
+            }
             return "(
                 COALESCE(TRIM(c.registration_number), '') = ''
                 OR c.fye_date IS NULL
@@ -648,21 +717,21 @@ class Company_list extends BaseController {
                     SUM(CASE WHEN UPPER(COALESCE(c.country, '')) = 'MALAYSIA' THEN 1 ELSE 0 END) AS my_count,
                     SUM(CASE WHEN UPPER(COALESCE(c.country, '')) IN ('BVI', 'CAYMAN ISLANDS', 'BRITISH VIRGIN ISLANDS') THEN 1 ELSE 0 END) AS bvi_cayman_count,
 
-                    SUM(CASE WHEN (c.is_css_client = 1 OR EXISTS (
+                    SUM(CASE WHEN ((" . ($this->hasColumn('companies', 'is_css_client') ? 'c.is_css_client = 1' : '0 = 1') . ") OR " . ($this->hasTable('secretaries') ? "EXISTS (
                         SELECT 1 FROM secretaries s
                         WHERE s.company_id = c.id
                           AND UPPER(TRIM(COALESCE(s.name, ''))) = UPPER(TRIM(?))
-                    )) THEN 1 ELSE 0 END) AS css_client_count,
-                    SUM(CASE WHEN c.is_accounting_client = 1 AND COALESCE(c.is_audit_client, 0) = 0 THEN 1 ELSE 0 END) AS accounting_only_count,
-                    SUM(CASE WHEN (c.is_audit_client = 1 OR EXISTS (
+                    )" : '0 = 1') . ")) THEN 1 ELSE 0 END) AS css_client_count,
+                    SUM(CASE WHEN " . ($this->hasColumn('companies', 'is_accounting_client') ? "c.is_accounting_client = 1 AND " . ($this->hasColumn('companies', 'is_audit_client') ? 'COALESCE(c.is_audit_client, 0)' : '0') . " = 0" : '0 = 1') . " THEN 1 ELSE 0 END) AS accounting_only_count,
+                    SUM(CASE WHEN ((" . ($this->hasColumn('companies', 'is_audit_client') ? 'c.is_audit_client = 1' : '0 = 1') . ") OR " . ($this->hasTable('auditors') ? "EXISTS (
                         SELECT 1 FROM auditors a
                         WHERE a.company_id = c.id
                           AND (
                             UPPER(TRIM(COALESCE(a.name, ''))) = UPPER(TRIM(?))
                             OR UPPER(TRIM(COALESCE(a.firm_name, ''))) = UPPER(TRIM(?))
                           )
-                    )) THEN 1 ELSE 0 END) AS audit_client_count,
-                    SUM(CASE WHEN COALESCE(c.is_listed_related, 0) = 1 THEN 1 ELSE 0 END) AS listed_related_count,
+                    )" : '0 = 1') . ")) THEN 1 ELSE 0 END) AS audit_client_count,
+                    SUM(CASE WHEN " . ($this->hasColumn('companies', 'is_listed_related') ? 'COALESCE(c.is_listed_related, 0) = 1' : '0 = 1') . " THEN 1 ELSE 0 END) AS listed_related_count,
 
                     SUM(CASE WHEN c.fye_date IS NOT NULL AND c.fye_date BETWEEN DATE_SUB(CURDATE(), INTERVAL 3 MONTH) AND CURDATE() THEN 1 ELSE 0 END) AS fye_count,
                     SUM(CASE WHEN c.next_agm_due IS NOT NULL AND c.next_agm_due <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH) THEN 1 ELSE 0 END) AS agm_due_count,
@@ -671,7 +740,7 @@ class Company_list extends BaseController {
                         OR
                         (c.last_ar_filing IS NOT NULL AND DATE_ADD(c.last_ar_filing, INTERVAL 12 MONTH) <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH))
                     ) THEN 1 ELSE 0 END) AS ar_due_count,
-                    SUM(CASE WHEN EXISTS (
+                    SUM(CASE WHEN " . ($this->hasTable('due_dates') ? "EXISTS (
                         SELECT 1 FROM due_dates d
                         WHERE d.company_id = c.id
                           AND d.due_date IS NOT NULL
@@ -681,35 +750,32 @@ class Company_list extends BaseController {
                             OR UPPER(COALESCE(d.event_name, '')) LIKE '%EP EXPIRY%'
                             OR UPPER(COALESCE(d.event_name, '')) LIKE 'EP%'
                           )
-                    ) THEN 1 ELSE 0 END) AS ep_due_count,
-                    SUM(CASE WHEN EXISTS (
-                        SELECT 1
-                        FROM member_identifications mi
-                        WHERE mi.expired_date IS NOT NULL
-                          AND mi.expired_date <= DATE_ADD(CURDATE(), INTERVAL 3 MONTH)
-                          AND (
-                            EXISTS (SELECT 1 FROM directors dr WHERE dr.company_id = c.id AND dr.member_id = mi.member_id)
-                            OR EXISTS (SELECT 1 FROM shareholders sh WHERE sh.company_id = c.id AND sh.member_id = mi.member_id)
-                            OR EXISTS (SELECT 1 FROM secretaries se WHERE se.company_id = c.id AND se.member_id = mi.member_id)
-                            OR EXISTS (SELECT 1 FROM controllers co WHERE co.company_id = c.id AND co.member_id = mi.member_id)
-                            OR EXISTS (SELECT 1 FROM company_officials cf WHERE cf.company_id = c.id AND cf.member_id = mi.member_id)
-                          )
-                    ) THEN 1 ELSE 0 END) AS id_passport_due_count,
+                    )" : '0 = 1') . " THEN 1 ELSE 0 END) AS ep_due_count,
+                    SUM(CASE WHEN " . $this->alertCondition('id_passport_due') . " THEN 1 ELSE 0 END) AS id_passport_due_count,
                     SUM(CASE WHEN (
                         COALESCE(TRIM(c.registration_number), '') = ''
                         OR c.fye_date IS NULL
-                        OR c.incorporation_date IS NULL
-                        OR NOT EXISTS (SELECT 1 FROM directors dr WHERE dr.company_id = c.id)
+                        OR c.incorporation_date IS NULL" . ($this->hasTable('directors') ? "
+                        OR NOT EXISTS (SELECT 1 FROM directors dr WHERE dr.company_id = c.id)" : '') . "
                     ) THEN 1 ELSE 0 END) AS missing_info_count
                 FROM companies c
                 WHERE c.client_id = ?";
 
-        $row = $this->db->fetchOne($sql, [
+        $params = [
             (string)($client->company_name ?? ''),
             (string)($client->company_name ?? ''),
             (string)($client->company_name ?? ''),
             $client->id,
-        ]);
+        ];
+
+        if (!$this->hasTable('secretaries')) {
+            array_shift($params);
+        }
+        if (!$this->hasTable('auditors')) {
+            array_splice($params, $this->hasTable('secretaries') ? 1 : 0, 2);
+        }
+
+        $row = $this->db->fetchOne($sql, $params);
 
         if ($row) {
             $counts['country']['all'] = (int)$row->total_count;
