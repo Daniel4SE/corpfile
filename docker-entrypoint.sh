@@ -73,6 +73,47 @@ ALTER TABLE `companies` ADD COLUMN IF NOT EXISTS `is_audit_client` TINYINT DEFAU
 ALTER TABLE `companies` ADD COLUMN IF NOT EXISTS `is_listed_related` TINYINT DEFAULT 0;
 SQL
 
+  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `gender` VARCHAR(20) DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `alias_name` VARCHAR(255) DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `date_of_birth` DATE DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `country_of_birth` VARCHAR(100) DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `risk_assessment_rating` VARCHAR(20) DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `additional_notes` TEXT DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `father_name` VARCHAR(255) DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `mother_name` VARCHAR(255) DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `spouse_name` VARCHAR(255) DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `phone` VARCHAR(50) DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `residential_address` TEXT DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `foreign_address` TEXT DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `contact_address` TEXT DEFAULT NULL;
+ALTER TABLE `members` ADD COLUMN IF NOT EXISTS `default_address_type` VARCHAR(30) DEFAULT 'Contact Address';
+SQL
+
+  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
+CREATE TABLE IF NOT EXISTS `member_identifications` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `member_id` INT NOT NULL,
+  `id_slot` INT DEFAULT 1,
+  `id_type` VARCHAR(50),
+  `id_number` VARCHAR(100),
+  `id_expiry_date` DATE DEFAULT NULL,
+  `id_issued_date` DATE DEFAULT NULL,
+  `id_issued_country` VARCHAR(100) DEFAULT NULL,
+  `client_id` INT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_member` (`member_id`)
+);
+SQL
+
+  mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
+ALTER TABLE `member_identifications` ADD COLUMN IF NOT EXISTS `id_slot` INT DEFAULT 1;
+ALTER TABLE `member_identifications` ADD COLUMN IF NOT EXISTS `id_expiry_date` DATE DEFAULT NULL;
+ALTER TABLE `member_identifications` ADD COLUMN IF NOT EXISTS `id_issued_date` DATE DEFAULT NULL;
+ALTER TABLE `member_identifications` ADD COLUMN IF NOT EXISTS `id_issued_country` VARCHAR(100) DEFAULT NULL;
+ALTER TABLE `member_identifications` ADD COLUMN IF NOT EXISTS `client_id` INT DEFAULT NULL;
+SQL
+
   # Chat history tables
   mysql $MYSQL_OPTS "$DB_NAME" 2>/dev/null <<'SQL' || true
 CREATE TABLE IF NOT EXISTS `chat_conversations` (

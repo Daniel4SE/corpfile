@@ -294,6 +294,11 @@ class Add_member extends BaseController {
             'father_name'            => $this->input('father_name', ''),
             'mother_name'            => $this->input('mother_name', ''),
             'spouse_name'            => $this->input('spouse_name', ''),
+            'phone'                  => $this->input('phone', ''),
+            'default_address_type'   => $this->input('default_address_type', 'Contact Address'),
+            'residential_address'    => $this->input('residential_address', ''),
+            'foreign_address'        => $this->input('foreign_address', ''),
+            'contact_address'        => $this->input('contact_address', ''),
             'preferred_contact_mode' => $this->input('preferred_contact_mode', ''),
             'email'                  => $this->input('email', ''),
             'alternate_email'        => $this->input('alternate_email', ''),
@@ -310,62 +315,43 @@ class Add_member extends BaseController {
 
         // Save identifications
         $identifications = $_POST['identification'] ?? [];
-        foreach ($identifications as $ident) {
+        for ($slot = 1; $slot <= 2; $slot++) {
+            $ident = $identifications[$slot] ?? [];
             $idType = $ident['id_type'] ?? '';
-            $idNum  = $ident['id_number'] ?? '';
-            if (empty($idType) && empty($idNum)) continue;
-            $issueDate  = !empty($ident['issue_date'])  ? DateTime::createFromFormat('d/m/Y', $ident['issue_date'])  : null;
-            $expiryDate = !empty($ident['expiry_date']) ? DateTime::createFromFormat('d/m/Y', $ident['expiry_date']) : null;
+            $idNum = $ident['id_number'] ?? '';
+            if (empty($idType) && empty($idNum)) {
+                continue;
+            }
+            $issuedDate = !empty($ident['id_issued_date']) ? DateTime::createFromFormat('d/m/Y', $ident['id_issued_date']) : null;
+            $expiryDate = !empty($ident['id_expiry_date']) ? DateTime::createFromFormat('d/m/Y', $ident['id_expiry_date']) : null;
             $this->db->insert('member_identifications', [
-                'member_id'        => $memberId,
-                'id_type'          => $idType,
-                'id_number'        => $idNum,
-                'country_of_issue' => $ident['country_of_issue'] ?? '',
-                'issue_date'       => $issueDate  ? $issueDate->format('Y-m-d')  : null,
-                'expiry_date'      => $expiryDate ? $expiryDate->format('Y-m-d') : null,
+                'member_id' => $memberId,
+                'id_slot' => $slot,
+                'id_type' => $idType,
+                'id_number' => $idNum,
+                'id_expiry_date' => $expiryDate ? $expiryDate->format('Y-m-d') : null,
+                'id_issued_date' => $issuedDate ? $issuedDate->format('Y-m-d') : null,
+                'id_issued_country' => $ident['id_issued_country'] ?? '',
+                'client_id' => $client->id,
             ]);
         }
 
-        // Save registered address
-        $regStreet = $this->input('reg_street', '');
-        if (!empty($regStreet) || !empty($this->input('reg_block', '')) || !empty($this->input('reg_country', ''))) {
+        $addresses = [
+            'Contact Address' => $this->input('contact_address', ''),
+            'Residential Address' => $this->input('residential_address', ''),
+            'Foreign Address' => $this->input('foreign_address', ''),
+        ];
+        $defaultAddressType = $this->input('default_address_type', 'Contact Address');
+        foreach ($addresses as $addressType => $addressText) {
+            if (empty($addressText)) {
+                continue;
+            }
             $this->db->insert('addresses', [
-                'entity_type'  => 'member',
-                'entity_id'    => $memberId,
-                'address_type' => 'Registered',
-                'is_default'   => 1,
-                'block'        => $this->input('reg_block', ''),
-                'address_text'  => $regStreet,
-                'building'     => $this->input('reg_building', ''),
-                'level'        => $this->input('reg_level', ''),
-                'unit'         => $this->input('reg_unit', ''),
-                'country'      => $this->input('reg_country', ''),
-                'state'        => $this->input('reg_state', ''),
-                'city'         => $this->input('reg_city', ''),
-                'postal_code'  => $this->input('reg_postal_code', ''),
-            ]);
-        }
-
-        // Save other addresses
-        $otherAddresses = $_POST['other_address'] ?? [];
-        foreach ($otherAddresses as $addr) {
-            $addrType   = $addr['address_type'] ?? '';
-            $addrStreet = $addr['street'] ?? '';
-            if (empty($addrType) && empty($addrStreet)) continue;
-            $this->db->insert('addresses', [
-                'entity_type'  => 'member',
-                'entity_id'    => $memberId,
-                'address_type' => $addrType,
-                'is_default'   => 0,
-                'block'        => $addr['block'] ?? '',
-                'address_text'  => $addrStreet,
-                'building'     => $addr['building'] ?? '',
-                'level'        => $addr['level'] ?? '',
-                'unit'         => $addr['unit'] ?? '',
-                'country'      => $addr['country'] ?? '',
-                'state'        => $addr['state'] ?? '',
-                'city'         => $addr['city'] ?? '',
-                'postal_code'  => $addr['postal_code'] ?? '',
+                'entity_type' => 'member',
+                'entity_id' => $memberId,
+                'address_type' => $addressType,
+                'is_default' => $defaultAddressType === $addressType ? 1 : 0,
+                'address_text' => $addressText,
             ]);
         }
 
@@ -392,8 +378,12 @@ class View_member extends BaseController {
             'page_title' => 'View Individual',
             'member' => null,
             'identifications' => [],
-            'addresses' => [],
-            'roles' => [],
+            'identification_slots' => [1 => null, 2 => null],
+            'director_history' => [],
+            'shareholder_history' => [],
+            'secretary_history' => [],
+            'contact_person_history' => [],
+            'controller_history' => [],
         ];
 
         if ($this->db) {
@@ -403,20 +393,62 @@ class View_member extends BaseController {
             );
             if ($data['member']) {
                 $data['identifications'] = $this->db->fetchAll(
-                    "SELECT * FROM member_identifications WHERE member_id = ? ORDER BY id ASC",
+                    "SELECT * FROM member_identifications WHERE member_id = ? ORDER BY id_slot ASC, id ASC",
                     [$id]
                 );
-                $data['addresses'] = $this->db->fetchAll(
-                    "SELECT * FROM addresses WHERE entity_type = 'member' AND entity_id = ? ORDER BY is_default DESC, id ASC",
+
+                foreach ($data['identifications'] as $ident) {
+                    $slot = !empty($ident->id_slot) ? (int)$ident->id_slot : 1;
+                    if ($slot < 1 || $slot > 2) {
+                        continue;
+                    }
+                    if ($data['identification_slots'][$slot] === null) {
+                        $data['identification_slots'][$slot] = $ident;
+                    }
+                }
+
+                $data['director_history'] = $this->db->fetchAll(
+                    "SELECT d.*, c.company_name
+                     FROM directors d
+                     LEFT JOIN companies c ON c.id = d.company_id
+                     WHERE d.member_id = ? AND (LOWER(IFNULL(d.role, 'director')) = 'director')
+                     ORDER BY d.date_of_appointment DESC, d.id DESC",
                     [$id]
                 );
-                // Fetch company roles (officer positions held by this member)
-                $data['roles'] = $this->db->fetchAll(
-                    "SELECT d.*, c.company_name 
-                     FROM directors d 
-                     LEFT JOIN companies c ON c.id = d.company_id 
-                     WHERE d.member_id = ? 
-                     ORDER BY d.date_of_appointment DESC",
+
+                $data['shareholder_history'] = $this->db->fetchAll(
+                    "SELECT s.*, c.company_name
+                     FROM shareholders s
+                     LEFT JOIN companies c ON c.id = s.company_id
+                     WHERE s.member_id = ?
+                     ORDER BY s.date_of_appointment DESC, s.id DESC",
+                    [$id]
+                );
+
+                $data['secretary_history'] = $this->db->fetchAll(
+                    "SELECT s.*, c.company_name
+                     FROM secretaries s
+                     LEFT JOIN companies c ON c.id = s.company_id
+                     WHERE s.member_id = ?
+                     ORDER BY s.date_of_appointment DESC, s.id DESC",
+                    [$id]
+                );
+
+                $data['contact_person_history'] = $this->db->fetchAll(
+                    "SELECT d.*, c.company_name
+                     FROM directors d
+                     LEFT JOIN companies c ON c.id = d.company_id
+                     WHERE d.member_id = ? AND LOWER(IFNULL(d.role, '')) = 'contact_person'
+                     ORDER BY d.date_of_appointment DESC, d.id DESC",
+                    [$id]
+                );
+
+                $data['controller_history'] = $this->db->fetchAll(
+                    "SELECT c2.*, c.company_name
+                     FROM controllers c2
+                     LEFT JOIN companies c ON c.id = c2.company_id
+                     WHERE c2.member_id = ?
+                     ORDER BY c2.date_of_appointment DESC, c2.id DESC",
                     [$id]
                 );
             }
@@ -445,6 +477,7 @@ class Edit_member extends BaseController {
             'page_title' => 'Edit Individual',
             'member' => null,
             'identifications' => [],
+            'identification_slots' => [1 => null, 2 => null],
             'addresses' => [],
             'countries' => $this->getCountries(),
         ];
@@ -452,9 +485,18 @@ class Edit_member extends BaseController {
         if ($this->db) {
             $data['member'] = $this->db->fetchOne("SELECT * FROM members WHERE id = ?", [$id]);
             $data['identifications'] = $this->db->fetchAll(
-                "SELECT * FROM member_identifications WHERE member_id = ? ORDER BY id ASC",
+                "SELECT * FROM member_identifications WHERE member_id = ? ORDER BY id_slot ASC, id ASC",
                 [$id]
             );
+            foreach ($data['identifications'] as $ident) {
+                $slot = !empty($ident->id_slot) ? (int)$ident->id_slot : 1;
+                if ($slot < 1 || $slot > 2) {
+                    continue;
+                }
+                if ($data['identification_slots'][$slot] === null) {
+                    $data['identification_slots'][$slot] = $ident;
+                }
+            }
             $data['addresses'] = $this->db->fetchAll(
                 "SELECT * FROM addresses WHERE entity_type = 'member' AND entity_id = ? ORDER BY is_default DESC, id ASC",
                 [$id]
@@ -507,6 +549,11 @@ class Edit_member extends BaseController {
             'father_name'            => $this->input('father_name', ''),
             'mother_name'            => $this->input('mother_name', ''),
             'spouse_name'            => $this->input('spouse_name', ''),
+            'phone'                  => $this->input('phone', ''),
+            'default_address_type'   => $this->input('default_address_type', 'Contact Address'),
+            'residential_address'    => $this->input('residential_address', ''),
+            'foreign_address'        => $this->input('foreign_address', ''),
+            'contact_address'        => $this->input('contact_address', ''),
             'preferred_contact_mode' => $this->input('preferred_contact_mode', ''),
             'email'                  => $this->input('email', ''),
             'alternate_email'        => $this->input('alternate_email', ''),
@@ -523,65 +570,48 @@ class Edit_member extends BaseController {
         // Replace identifications: delete existing and re-insert
         $this->db->delete('member_identifications', 'member_id = ?', [$id]);
         $identifications = $_POST['identification'] ?? [];
-        foreach ($identifications as $ident) {
+        $clientId = $_SESSION['client_id'] ?? '';
+        $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
+        for ($slot = 1; $slot <= 2; $slot++) {
+            $ident = $identifications[$slot] ?? [];
             $idType = $ident['id_type'] ?? '';
-            $idNum  = $ident['id_number'] ?? '';
-            if (empty($idType) && empty($idNum)) continue;
-            $issueDate  = !empty($ident['issue_date'])  ? DateTime::createFromFormat('d/m/Y', $ident['issue_date'])  : null;
-            $expiryDate = !empty($ident['expiry_date']) ? DateTime::createFromFormat('d/m/Y', $ident['expiry_date']) : null;
+            $idNum = $ident['id_number'] ?? '';
+            if (empty($idType) && empty($idNum)) {
+                continue;
+            }
+            $issuedDate = !empty($ident['id_issued_date']) ? DateTime::createFromFormat('d/m/Y', $ident['id_issued_date']) : null;
+            $expiryDate = !empty($ident['id_expiry_date']) ? DateTime::createFromFormat('d/m/Y', $ident['id_expiry_date']) : null;
             $this->db->insert('member_identifications', [
-                'member_id'       => $id,
-                'id_type'         => $idType,
-                'id_number'       => $idNum,
-                'country_of_issue'=> $ident['country_of_issue'] ?? '',
-                'issue_date'      => $issueDate  ? $issueDate->format('Y-m-d')  : null,
-                'expiry_date'     => $expiryDate ? $expiryDate->format('Y-m-d') : null,
+                'member_id' => $id,
+                'id_slot' => $slot,
+                'id_type' => $idType,
+                'id_number' => $idNum,
+                'id_expiry_date' => $expiryDate ? $expiryDate->format('Y-m-d') : null,
+                'id_issued_date' => $issuedDate ? $issuedDate->format('Y-m-d') : null,
+                'id_issued_country' => $ident['id_issued_country'] ?? '',
+                'client_id' => $client ? $client->id : null,
             ]);
         }
 
         // Replace addresses: delete existing and re-insert
         $this->db->delete('addresses', "entity_type = 'member' AND entity_id = ?", [$id]);
 
-        // Registered address
-        $regStreet = $this->input('reg_street', '');
-        if (!empty($regStreet) || !empty($this->input('reg_block', '')) || !empty($this->input('reg_country', ''))) {
+        $addresses = [
+            'Contact Address' => $this->input('contact_address', ''),
+            'Residential Address' => $this->input('residential_address', ''),
+            'Foreign Address' => $this->input('foreign_address', ''),
+        ];
+        $defaultAddressType = $this->input('default_address_type', 'Contact Address');
+        foreach ($addresses as $addressType => $addressText) {
+            if (empty($addressText)) {
+                continue;
+            }
             $this->db->insert('addresses', [
-                'entity_type'  => 'member',
-                'entity_id'    => $id,
-                'address_type' => 'Registered',
-                'is_default'   => 1,
-                'block'        => $this->input('reg_block', ''),
-                'address_text'  => $regStreet,
-                'building'     => $this->input('reg_building', ''),
-                'level'        => $this->input('reg_level', ''),
-                'unit'         => $this->input('reg_unit', ''),
-                'country'      => $this->input('reg_country', ''),
-                'state'        => $this->input('reg_state', ''),
-                'city'         => $this->input('reg_city', ''),
-                'postal_code'  => $this->input('reg_postal_code', ''),
-            ]);
-        }
-
-        // Other addresses
-        $otherAddresses = $_POST['other_address'] ?? [];
-        foreach ($otherAddresses as $addr) {
-            $addrType   = $addr['address_type'] ?? '';
-            $addrStreet = $addr['street'] ?? '';
-            if (empty($addrType) && empty($addrStreet)) continue;
-            $this->db->insert('addresses', [
-                'entity_type'  => 'member',
-                'entity_id'    => $id,
-                'address_type' => $addrType,
-                'is_default'   => 0,
-                'block'        => $addr['block'] ?? '',
-                'address_text'  => $addrStreet,
-                'building'     => $addr['building'] ?? '',
-                'level'        => $addr['level'] ?? '',
-                'unit'         => $addr['unit'] ?? '',
-                'country'      => $addr['country'] ?? '',
-                'state'        => $addr['state'] ?? '',
-                'city'         => $addr['city'] ?? '',
-                'postal_code'  => $addr['postal_code'] ?? '',
+                'entity_type' => 'member',
+                'entity_id' => $id,
+                'address_type' => $addressType,
+                'is_default' => $defaultAddressType === $addressType ? 1 : 0,
+                'address_text' => $addressText,
             ]);
         }
 
