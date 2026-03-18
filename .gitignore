@@ -51,3 +51,4 @@ scripts/
 # IDE
 .vscode/
 .idea/
+scraped-files/
