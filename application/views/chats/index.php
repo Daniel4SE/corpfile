@@ -391,6 +391,61 @@
 .cf-plus-dropdown-item:hover svg {
     color: var(--cf-text, #1e293b);
 }
+/* Agents submenu */
+.cf-plus-agents-trigger { position: relative; }
+.cf-agents-submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: -6px;
+    min-width: 220px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    padding: 6px;
+    z-index: 10000;
+    margin-left: 4px;
+}
+.cf-agents-submenu button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cf-text, #1e293b);
+    font-family: var(--cf-font, inherit) !important;
+    transition: background 0.12s;
+}
+.cf-agents-submenu button:hover { background: #f5f7fa; }
+.cf-agent-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+/* Agent badge above input */
+.cf-chat-agent-badge {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cf-text-secondary);
+    border-bottom: 1px solid #f1f5f9;
+}
+.cf-agent-badge-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
 .cf-plus-item-badge {
     margin-left: auto;
     font-size: 11px;
@@ -667,10 +722,32 @@
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                                     <span>Files & Images</span>
                                 </button>
-                                <button class="cf-plus-dropdown-item" type="button" onclick="insertTemplate(); closeChatPlusMenu();">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                                    <span>Templates</span>
-                                </button>
+                                <div class="cf-plus-dropdown-item cf-plus-agents-trigger" type="button" onmouseenter="showAgentsSub()" onmouseleave="hideAgentsSub()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                                    <span>Agents</span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;opacity:0.4;"><polyline points="9 18 15 12 9 6"/></svg>
+                                    <!-- Agents submenu -->
+                                    <div class="cf-agents-submenu" id="chatAgentsSub">
+                                        <button type="button" onclick="selectChatAgent('compliance','Company Registration','Show me upcoming compliance deadlines and overdue items'); closeChatPlusMenu();">
+                                            <span class="cf-agent-dot" style="background:#8b5cf6;"></span> Company Registration
+                                        </button>
+                                        <button type="button" onclick="selectChatAgent('docgen','Document Generator','Help me generate a corporate document or resolution'); closeChatPlusMenu();">
+                                            <span class="cf-agent-dot" style="background:#3b82f6;"></span> Document Generator
+                                        </button>
+                                        <button type="button" onclick="selectChatAgent('kyc','KYC Screening','Run a KYC screening check for a new client'); closeChatPlusMenu();">
+                                            <span class="cf-agent-dot" style="background:#10b981;"></span> KYC Screening
+                                        </button>
+                                        <button type="button" onclick="selectChatAgent('ir8a','IR8A / Tax Filing','Help me with IR8A form preparation'); closeChatPlusMenu();">
+                                            <span class="cf-agent-dot" style="background:#f59e0b;"></span> IR8A / Tax Filing
+                                        </button>
+                                        <button type="button" onclick="selectChatAgent('invoice','Invoice Manager','Generate annual invoices for current clients'); closeChatPlusMenu();">
+                                            <span class="cf-agent-dot" style="background:#ec4899;"></span> Invoice Manager
+                                        </button>
+                                        <button type="button" onclick="selectChatAgent('payroll','SG Payroll','Calculate Singapore payroll including CPF contributions'); closeChatPlusMenu();">
+                                            <span class="cf-agent-dot" style="background:#7c3aed;"></span> SG Payroll
+                                        </button>
+                                    </div>
+                                </div>
                                 <button class="cf-plus-dropdown-item" type="button" onclick="toggleWebSearch(); closeChatPlusMenu();">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                                     <span>Web Search</span>
@@ -830,25 +907,41 @@ document.getElementById('chatFileInput').addEventListener('change', function(e) 
     e.target.value = '';
 });
 
-/* Templates popup */
-function insertTemplate() {
-    var templates = [
-        'Generate a board resolution for change of registered address',
-        'Draft annual return filing summary for all active companies',
-        'Create a KYC due diligence report for a new client',
-        'Prepare IR8A tax filing data for all employees',
-        'Generate monthly invoice for corporate secretary services',
-        'Draft director appointment resolution'
-    ];
-    var choice = prompt('Choose a template number:\\n' + templates.map(function(t, i) { return (i+1) + '. ' + t; }).join('\\n'));
-    if (choice && templates[parseInt(choice) - 1]) {
-        var ta = document.getElementById('chatInput');
-        ta.value = templates[parseInt(choice) - 1];
-        ta.style.height = 'auto';
-        ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
-        ta.focus();
+/* Agent selector from + menu */
+var chatSelectedAgent = null;
+function selectChatAgent(agentKey, agentName, defaultPrompt) {
+    chatSelectedAgent = agentKey;
+    currentConvAgent = agentKey; /* Wire into chat API payload */
+    /* Show agent badge above input */
+    var badge = document.getElementById('chatAgentBadge');
+    if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'chatAgentBadge';
+        badge.className = 'cf-chat-agent-badge';
+        document.querySelector('.cf-chat-input-box').insertBefore(badge, document.getElementById('chatInput'));
     }
+    badge.innerHTML = '<span class="cf-agent-badge-dot" style="background:' + getAgentColor(agentKey) + ';"></span>' +
+        '<span>' + agentName + '</span>' +
+        '<button onclick="clearChatAgent()" title="Remove agent" style="background:none;border:none;cursor:pointer;color:var(--cf-text-muted);font-size:14px;padding:0 2px;margin-left:4px;">&times;</button>';
+    badge.style.display = 'flex';
+    /* Set prompt */
+    var ta = document.getElementById('chatInput');
+    ta.value = defaultPrompt;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
+    ta.focus();
 }
+function clearChatAgent() {
+    chatSelectedAgent = null;
+    var badge = document.getElementById('chatAgentBadge');
+    if (badge) badge.style.display = 'none';
+}
+function getAgentColor(key) {
+    var colors = {compliance:'#8b5cf6',docgen:'#3b82f6',kyc:'#10b981',ir8a:'#f59e0b',invoice:'#ec4899',payroll:'#7c3aed'};
+    return colors[key] || '#6b7280';
+}
+function showAgentsSub() { document.getElementById('chatAgentsSub').style.display = 'block'; }
+function hideAgentsSub() { setTimeout(function(){ document.getElementById('chatAgentsSub').style.display = 'none'; }, 200); }
 
 /* Web Search toggle */
 var chatWebSearchEnabled = true;
