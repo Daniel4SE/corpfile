@@ -718,36 +718,39 @@
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             </button>
                             <div class="cf-plus-dropdown" id="chatPlusDropdown">
+                                <!-- Add Documents or Images -->
                                 <button class="cf-plus-dropdown-item" type="button" onclick="document.getElementById('chatFileInput').click(); closeChatPlusMenu();">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                                    <span>Files & Images</span>
+                                    <span>Add Documents or Images</span>
                                 </button>
-                                <div class="cf-plus-dropdown-item cf-plus-agents-trigger" type="button" onmouseenter="showAgentsSub()" onmouseleave="hideAgentsSub()">
+                                <!-- Add Agents -->
+                                <div class="cf-plus-dropdown-item cf-plus-agents-trigger" onmouseenter="showAgentsSub()" onmouseleave="hideAgentsSub()">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                                    <span>Agents</span>
+                                    <span>Add Agents</span>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;opacity:0.4;"><polyline points="9 18 15 12 9 6"/></svg>
-                                    <!-- Agents submenu -->
                                     <div class="cf-agents-submenu" id="chatAgentsSub">
-                                        <button type="button" onclick="selectChatAgent('compliance','Company Registration','Show me upcoming compliance deadlines and overdue items'); closeChatPlusMenu();">
-                                            <span class="cf-agent-dot" style="background:#8b5cf6;"></span> Company Registration
-                                        </button>
-                                        <button type="button" onclick="selectChatAgent('docgen','Document Generator','Help me generate a corporate document or resolution'); closeChatPlusMenu();">
-                                            <span class="cf-agent-dot" style="background:#3b82f6;"></span> Document Generator
-                                        </button>
-                                        <button type="button" onclick="selectChatAgent('kyc','KYC Screening','Run a KYC screening check for a new client'); closeChatPlusMenu();">
-                                            <span class="cf-agent-dot" style="background:#10b981;"></span> KYC Screening
-                                        </button>
-                                        <button type="button" onclick="selectChatAgent('ir8a','IR8A / Tax Filing','Help me with IR8A form preparation'); closeChatPlusMenu();">
-                                            <span class="cf-agent-dot" style="background:#f59e0b;"></span> IR8A / Tax Filing
-                                        </button>
-                                        <button type="button" onclick="selectChatAgent('invoice','Invoice Manager','Generate annual invoices for current clients'); closeChatPlusMenu();">
-                                            <span class="cf-agent-dot" style="background:#ec4899;"></span> Invoice Manager
-                                        </button>
-                                        <button type="button" onclick="selectChatAgent('payroll','SG Payroll','Calculate Singapore payroll including CPF contributions'); closeChatPlusMenu();">
-                                            <span class="cf-agent-dot" style="background:#7c3aed;"></span> SG Payroll
-                                        </button>
+                                        <button type="button" onclick="selectChatAgent('compliance','Company Registration','Show me upcoming compliance deadlines and overdue items'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#8b5cf6;"></span> Company Registration</button>
+                                        <button type="button" onclick="selectChatAgent('docgen','Document Generator','Help me generate a corporate document or resolution'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#3b82f6;"></span> Document Generator</button>
+                                        <button type="button" onclick="selectChatAgent('kyc','KYC Screening','Run a KYC screening check for a new client'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#10b981;"></span> KYC Screening</button>
+                                        <button type="button" onclick="selectChatAgent('ir8a','IR8A / Tax Filing','Help me with IR8A form preparation'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#f59e0b;"></span> IR8A / Tax Filing</button>
+                                        <button type="button" onclick="selectChatAgent('invoice','Invoice Manager','Generate annual invoices for current clients'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#ec4899;"></span> Invoice Manager</button>
+                                        <button type="button" onclick="selectChatAgent('payroll','SG Payroll','Calculate Singapore payroll including CPF contributions'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#7c3aed;"></span> SG Payroll</button>
                                     </div>
                                 </div>
+                                <!-- Add Connectors -->
+                                <div class="cf-plus-dropdown-item cf-plus-agents-trigger" onmouseenter="document.getElementById('chatConnSub').style.display='block'" onmouseleave="setTimeout(function(){document.getElementById('chatConnSub').style.display='none'},200)">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg>
+                                    <span>Add Connectors</span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;opacity:0.4;"><polyline points="9 18 15 12 9 6"/></svg>
+                                    <div class="cf-agents-submenu" id="chatConnSub" style="display:none;">
+                                        <button type="button" onclick="window.open('https://www.bizfile.gov.sg','_blank'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#206570;"></span> ACRA BizFile+</button>
+                                        <button type="button" onclick="window.open('https://www.iras.gov.sg','_blank'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#e74c3c;"></span> IRAS e-Filing</button>
+                                        <button type="button" onclick="window.open('https://www.cpf.gov.sg','_blank'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#f59e0b;"></span> CPF Board</button>
+                                        <button type="button" onclick="window.open('https://www.corppass.gov.sg','_blank'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#3b82f6;"></span> CorpPass</button>
+                                        <button type="button" onclick="window.open('https://www.mom.gov.sg','_blank'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#8b5cf6;"></span> MOM WorkPass</button>
+                                    </div>
+                                </div>
+                                <!-- Web Search -->
                                 <button class="cf-plus-dropdown-item" type="button" onclick="toggleWebSearch(); closeChatPlusMenu();">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                                     <span>Web Search</span>

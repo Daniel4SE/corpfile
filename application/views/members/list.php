@@ -117,7 +117,7 @@
                                     ?>
                                 </td>
                                 <td style="font-size:12px;"><?php echo htmlspecialchars($row->email); ?></td>
-                                <td style="font-size:12px;"><?php echo htmlspecialchars($row->contact_number); ?></td>
+                                <td style="font-size:12px;"><?php echo htmlspecialchars($row->phone ?? $row->contact_number ?? ''); ?></td>
                                 <td>
                                     <div style="display:flex; gap:4px; flex-wrap:wrap;">
                                         <a href="<?php echo site_url('members/edit_member/' . $row->id); ?>" class="btn btn-default btn-xs" title="Edit" style="border-radius:6px;">
