@@ -738,18 +738,10 @@
                                     </div>
                                 </div>
                                 <!-- Add Connectors -->
-                                <div class="cf-plus-dropdown-item cf-plus-agents-trigger" onmouseenter="document.getElementById('chatConnSub').style.display='block'" onmouseleave="setTimeout(function(){document.getElementById('chatConnSub').style.display='none'},200)">
+                                <button class="cf-plus-dropdown-item" type="button" onclick="openConnectorsModal(); closeChatPlusMenu();">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg>
                                     <span>Add Connectors</span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;opacity:0.4;"><polyline points="9 18 15 12 9 6"/></svg>
-                                    <div class="cf-agents-submenu" id="chatConnSub" style="display:none;">
-                                        <button type="button" onclick="window.open('https://www.bizfile.gov.sg','_blank'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#206570;"></span> ACRA BizFile+</button>
-                                        <button type="button" onclick="window.open('https://www.iras.gov.sg','_blank'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#e74c3c;"></span> IRAS e-Filing</button>
-                                        <button type="button" onclick="window.open('https://www.cpf.gov.sg','_blank'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#f59e0b;"></span> CPF Board</button>
-                                        <button type="button" onclick="window.open('https://www.corppass.gov.sg','_blank'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#3b82f6;"></span> CorpPass</button>
-                                        <button type="button" onclick="window.open('https://www.mom.gov.sg','_blank'); closeChatPlusMenu();"><span class="cf-agent-dot" style="background:#8b5cf6;"></span> MOM WorkPass</button>
-                                    </div>
-                                </div>
+                                </button>
                                 <!-- Web Search -->
                                 <button class="cf-plus-dropdown-item" type="button" onclick="toggleWebSearch(); closeChatPlusMenu();">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -1418,4 +1410,245 @@ function toggleChatSidebar() {
 
 /* ── Init: load conversation list on page load ── */
 loadConversations();
+
+/* ═══ Connectors Modal ═══ */
+function openConnectorsModal() {
+    document.getElementById('connectorsModal').style.display = 'flex';
+    document.getElementById('connSearch').value = '';
+    filterConnectors();
+}
+function closeConnectorsModal() {
+    document.getElementById('connectorsModal').style.display = 'none';
+}
+function filterConnectors() {
+    var q = (document.getElementById('connSearch').value || '').toLowerCase();
+    document.querySelectorAll('.conn-card').forEach(function(c) {
+        var text = (c.dataset.name + ' ' + c.dataset.desc).toLowerCase();
+        c.style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
+    });
+}
+function toggleConnector(el, name) {
+    el.classList.toggle('connected');
+    var btn = el.querySelector('.conn-add-btn');
+    if (el.classList.contains('connected')) {
+        btn.innerHTML = '<i class="fa fa-check"></i>';
+        btn.title = 'Connected';
+    } else {
+        btn.innerHTML = '<i class="fa fa-plus"></i>';
+        btn.title = 'Add connector';
+    }
+}
 </script>
+
+<!-- Connectors Modal -->
+<div class="conn-modal-overlay" id="connectorsModal" style="display:none;" onclick="if(event.target===this)closeConnectorsModal()">
+<div class="conn-modal">
+    <div class="conn-modal-header">
+        <div>
+            <h2 style="margin:0; font-size:22px; font-weight:700;">Connectors</h2>
+            <p style="margin:4px 0 0; font-size:13px; color:var(--cf-text-secondary);">Connect CorpFile AI to your apps, government portals, and services.</p>
+        </div>
+        <button class="conn-close" onclick="closeConnectorsModal()">&times;</button>
+    </div>
+    <div class="conn-toolbar">
+        <input type="text" class="conn-search" id="connSearch" placeholder="Search connectors..." oninput="filterConnectors()">
+    </div>
+    <div class="conn-grid">
+        <!-- SG Government -->
+        <div class="conn-card" data-name="ACRA BizFile+" data-desc="File annual returns, company changes, and search business profiles" onclick="toggleConnector(this,'ACRA BizFile+')">
+            <div class="conn-icon" style="background:#206570; color:#fff; font-weight:700; font-size:14px;">A</div>
+            <div class="conn-body">
+                <div class="conn-name">ACRA BizFile+ <span class="conn-tag popular">Government</span></div>
+                <div class="conn-desc">File annual returns, company changes, and search business profiles via BizFile+</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="IRAS" data-desc="Tax filing, stamp duty, GST returns, and IR8A submissions" onclick="toggleConnector(this,'IRAS')">
+            <div class="conn-icon" style="background:#e74c3c; color:#fff; font-weight:700; font-size:14px;">I</div>
+            <div class="conn-body">
+                <div class="conn-name">IRAS <span class="conn-tag popular">Government</span></div>
+                <div class="conn-desc">Tax filing, stamp duty, GST returns, and IR8A submissions via myTax Portal</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="CPF Board" data-desc="CPF contributions, submission, and employer obligations" onclick="toggleConnector(this,'CPF Board')">
+            <div class="conn-icon" style="background:#f59e0b; color:#fff; font-weight:700; font-size:14px;">C</div>
+            <div class="conn-body">
+                <div class="conn-name">CPF Board <span class="conn-tag popular">Government</span></div>
+                <div class="conn-desc">CPF contributions, submission, and employer obligations management</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="CorpPass" data-desc="Corporate digital identity for SG government transactions" onclick="toggleConnector(this,'CorpPass')">
+            <div class="conn-icon" style="background:#3b82f6; color:#fff; font-weight:700; font-size:14px;">CP</div>
+            <div class="conn-body">
+                <div class="conn-name">CorpPass <span class="conn-tag">Government</span></div>
+                <div class="conn-desc">Corporate digital identity and authentication for government e-services</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="MOM" data-desc="Work passes, employment act compliance, and foreign worker levy" onclick="toggleConnector(this,'MOM')">
+            <div class="conn-icon" style="background:#8b5cf6; color:#fff; font-weight:700; font-size:14px;">M</div>
+            <div class="conn-body">
+                <div class="conn-name">MOM WorkPass <span class="conn-tag">Government</span></div>
+                <div class="conn-desc">Work passes, employment act compliance, and foreign worker management</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="MyInfo Business" data-desc="KYC verification and corporate entity data from SG government" onclick="toggleConnector(this,'MyInfo Business')">
+            <div class="conn-icon" style="background:#10b981; color:#fff; font-weight:700; font-size:12px;">Mi</div>
+            <div class="conn-body">
+                <div class="conn-name">MyInfo Business <span class="conn-tag">Government</span></div>
+                <div class="conn-desc">KYC verification and pre-filled corporate entity data from government</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <!-- Productivity -->
+        <div class="conn-card" data-name="Xero" data-desc="Sync accounting data, invoices, bank feeds, and financial reports" onclick="toggleConnector(this,'Xero')">
+            <div class="conn-icon" style="background:#13B5EA; color:#fff; font-weight:700; font-size:14px;">X</div>
+            <div class="conn-body">
+                <div class="conn-name">Xero <span class="conn-tag">Accounting</span></div>
+                <div class="conn-desc">Sync accounting data, invoices, bank feeds, and financial reports</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="QuickBooks" data-desc="Accounting, invoicing, expense tracking, and payroll integration" onclick="toggleConnector(this,'QuickBooks')">
+            <div class="conn-icon" style="background:#2CA01C; color:#fff; font-weight:700; font-size:12px;">QB</div>
+            <div class="conn-body">
+                <div class="conn-name">QuickBooks <span class="conn-tag">Accounting</span></div>
+                <div class="conn-desc">Accounting, invoicing, expense tracking, and payroll integration</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="Google Workspace" data-desc="Gmail, Calendar, Drive — email management and scheduling" onclick="toggleConnector(this,'Google Workspace')">
+            <div class="conn-icon" style="background:#fff; border:1px solid #e5e7eb;"><span style="font-size:18px;">G</span></div>
+            <div class="conn-body">
+                <div class="conn-name">Google Workspace <span class="conn-tag">Productivity</span></div>
+                <div class="conn-desc">Gmail, Calendar, Drive — email management, scheduling, and file storage</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="Microsoft 365" data-desc="Outlook, Teams, OneDrive — enterprise email and collaboration" onclick="toggleConnector(this,'Microsoft 365')">
+            <div class="conn-icon" style="background:#0078D4; color:#fff; font-weight:700; font-size:12px;">MS</div>
+            <div class="conn-body">
+                <div class="conn-name">Microsoft 365 <span class="conn-tag">Productivity</span></div>
+                <div class="conn-desc">Outlook, Teams, OneDrive — enterprise email and collaboration suite</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="Slack" data-desc="Send notifications, search messages, and automate workflows" onclick="toggleConnector(this,'Slack')">
+            <div class="conn-icon" style="background:#4A154B; color:#fff; font-weight:700; font-size:14px;">S</div>
+            <div class="conn-body">
+                <div class="conn-name">Slack <span class="conn-tag">Communication</span></div>
+                <div class="conn-desc">Send notifications, search messages, and automate team workflows</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="DocuSign" data-desc="Send documents for e-signature and track signing status" onclick="toggleConnector(this,'DocuSign')">
+            <div class="conn-icon" style="background:#FFD23F; color:#000; font-weight:700; font-size:12px;">DS</div>
+            <div class="conn-body">
+                <div class="conn-name">DocuSign <span class="conn-tag">eSign</span></div>
+                <div class="conn-desc">Send documents for e-signature, track signing status, and manage envelopes</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="Stripe" data-desc="Accept payments, manage subscriptions, and track revenue" onclick="toggleConnector(this,'Stripe')">
+            <div class="conn-icon" style="background:#635BFF; color:#fff; font-weight:700; font-size:14px;">S</div>
+            <div class="conn-body">
+                <div class="conn-name">Stripe <span class="conn-tag">Payments</span></div>
+                <div class="conn-desc">Accept payments, manage subscriptions, and track revenue streams</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="Dropbox" data-desc="Cloud document storage, sharing, and version control" onclick="toggleConnector(this,'Dropbox')">
+            <div class="conn-icon" style="background:#0061FF; color:#fff; font-weight:700; font-size:12px;">DB</div>
+            <div class="conn-body">
+                <div class="conn-name">Dropbox <span class="conn-tag">Storage</span></div>
+                <div class="conn-desc">Cloud document storage, file sharing, and version control</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="Notion" data-desc="Connect workspace to search, update, and power workflows" onclick="toggleConnector(this,'Notion')">
+            <div class="conn-icon" style="background:#000; color:#fff; font-weight:700; font-size:14px;">N</div>
+            <div class="conn-body">
+                <div class="conn-name">Notion <span class="conn-tag">Productivity</span></div>
+                <div class="conn-desc">Connect your workspace to search, update, and power workflows</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+        <div class="conn-card" data-name="Telegram" data-desc="Send notifications and updates to Telegram channels and groups" onclick="toggleConnector(this,'Telegram')">
+            <div class="conn-icon" style="background:#0088CC; color:#fff; font-weight:700; font-size:14px;">T</div>
+            <div class="conn-body">
+                <div class="conn-name">Telegram <span class="conn-tag">Communication</span></div>
+                <div class="conn-desc">Send notifications and updates to Telegram channels and groups</div>
+            </div>
+            <button class="conn-add-btn" title="Add connector"><i class="fa fa-plus"></i></button>
+        </div>
+    </div>
+</div>
+</div>
+
+<style>
+.conn-modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000;
+    display:flex; align-items:center; justify-content:center;
+    animation: connFadeIn 0.15s ease;
+}
+@keyframes connFadeIn { from{opacity:0} to{opacity:1} }
+.conn-modal {
+    background:var(--cf-white,#fff); border-radius:16px; width:780px; max-width:95vw;
+    max-height:85vh; overflow:hidden; display:flex; flex-direction:column;
+    box-shadow:0 24px 64px rgba(0,0,0,0.2);
+}
+.conn-modal-header {
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding:24px 28px 16px; flex-shrink:0;
+}
+.conn-close {
+    background:none; border:none; font-size:28px; color:var(--cf-text-muted);
+    cursor:pointer; padding:0 4px; line-height:1;
+}
+.conn-close:hover { color:var(--cf-text); }
+.conn-toolbar {
+    padding:0 28px 16px; flex-shrink:0;
+}
+.conn-search {
+    width:100%; border:1px solid var(--cf-border,#e5e7eb); border-radius:10px;
+    padding:10px 14px; font-size:14px; outline:none;
+    font-family:var(--cf-font,inherit) !important;
+}
+.conn-search:focus { border-color:var(--cf-accent,#4f86c6); box-shadow:0 0 0 2px rgba(79,134,198,0.1); }
+.conn-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+    padding:0 28px 28px; overflow-y:auto; flex:1;
+}
+.conn-card {
+    display:flex; align-items:center; gap:14px; padding:14px 16px;
+    border:1px solid var(--cf-border,#e5e7eb); border-radius:12px;
+    cursor:pointer; transition:border-color 0.15s, box-shadow 0.15s;
+    background:var(--cf-white,#fff);
+}
+.conn-card:hover { border-color:var(--cf-accent,#4f86c6); box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+.conn-card.connected { border-color:#10b981; background:rgba(16,185,129,0.03); }
+.conn-icon {
+    width:40px; height:40px; border-radius:10px; display:flex;
+    align-items:center; justify-content:center; flex-shrink:0; font-size:16px;
+}
+.conn-body { flex:1; min-width:0; }
+.conn-name { font-size:14px; font-weight:600; color:var(--cf-text,#1e293b); margin-bottom:2px; display:flex; align-items:center; gap:6px; }
+.conn-desc { font-size:11px; color:var(--cf-text-muted,#94a3b8); line-height:1.4; }
+.conn-tag {
+    font-size:10px; font-weight:500; padding:1px 6px; border-radius:4px;
+    background:rgba(107,114,128,0.08); color:var(--cf-text-secondary,#64748b);
+}
+.conn-tag.popular { background:rgba(79,134,198,0.1); color:var(--cf-accent,#4f86c6); }
+.conn-add-btn {
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--cf-border,#e5e7eb);
+    background:var(--cf-white,#fff); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--cf-text-muted); font-size:14px; flex-shrink:0;
+    transition:all 0.15s;
+}
+.conn-add-btn:hover { border-color:var(--cf-accent); color:var(--cf-accent); }
+.conn-card.connected .conn-add-btn { background:#10b981; border-color:#10b981; color:#fff; }
+@media(max-width:768px) { .conn-grid { grid-template-columns:1fr; } .conn-modal { width:95vw; } }
+</style>
