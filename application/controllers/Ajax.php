@@ -568,6 +568,51 @@ class Ajax extends BaseController {
         }
     }
 
+    /**
+     * List documents for document picker (chat attachment)
+     * GET /Ajax/list_documents
+     */
+    public function list_documents() {
+        $this->requireAuth();
+        header('Content-Type: application/json');
+        $documents = [];
+        if ($this->db) {
+            $clientId = $this->getClientDbId();
+            if ($clientId) {
+                try {
+                    $rows = $this->db->fetchAll(
+                        "SELECT d.id, d.document_name as name, d.file_type as type, d.file_size,
+                                COALESCE(c.company_name, 'General') as company
+                         FROM documents d
+                         LEFT JOIN companies c ON c.id = d.entity_id AND d.entity_type = 'company'
+                         WHERE d.client_id = ?
+                         ORDER BY d.created_at DESC
+                         LIMIT 200",
+                        [$clientId]
+                    );
+                    foreach ($rows as $r) {
+                        $ext = strtolower(pathinfo($r->name ?? '', PATHINFO_EXTENSION));
+                        $iconMap = ['pdf'=>'pdf-o','doc'=>'word-o','docx'=>'word-o','xls'=>'excel-o','xlsx'=>'excel-o','jpg'=>'image-o','jpeg'=>'image-o','png'=>'image-o','csv'=>'excel-o','txt'=>'text-o','zip'=>'archive-o'];
+                        $size = '';
+                        if ($r->file_size) {
+                            $s = (int)$r->file_size;
+                            $size = $s < 1024 ? $s.' B' : ($s < 1048576 ? round($s/1024,1).' KB' : round($s/1048576,1).' MB');
+                        }
+                        $documents[] = [
+                            'id' => $r->id,
+                            'name' => $r->name,
+                            'type' => strtoupper($ext ?: ($r->type ?? '?')),
+                            'icon' => $iconMap[$ext] ?? 'o',
+                            'size' => $size,
+                            'company' => $r->company,
+                        ];
+                    }
+                } catch (\Exception $e) {}
+            }
+        }
+        echo json_encode(['success' => true, 'documents' => $documents]);
+    }
+
     // ─── Global Search ──────────────────────────────────────────────
 
     /**

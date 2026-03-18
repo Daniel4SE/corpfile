@@ -723,6 +723,11 @@
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                                     <span>Add Files</span>
                                 </button>
+                                <!-- Add from Documents -->
+                                <button class="cf-plus-dropdown-item" type="button" onclick="openDocPicker(); closeChatPlusMenu();">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                    <span>Add from Documents</span>
+                                </button>
                                 <!-- Add Agents -->
                                 <div class="cf-plus-dropdown-item cf-plus-agents-trigger" onmouseenter="showAgentsSub()" onmouseleave="hideAgentsSub()">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
@@ -1411,6 +1416,55 @@ function toggleChatSidebar() {
 /* ── Init: load conversation list on page load ── */
 loadConversations();
 
+/* ═══ Document Picker ═══ */
+function openDocPicker() {
+    var modal = document.getElementById('docPickerModal');
+    modal.style.display = 'flex';
+    document.getElementById('docPickerSearch').value = '';
+    document.getElementById('docPickerList').innerHTML = '<div style="text-align:center;padding:40px;color:var(--cf-text-muted);">Loading documents...</div>';
+    /* Fetch documents from system */
+    $.get(BASE + 'Ajax/global_search?q=&type=documents_only', function(res) {
+        /* Fallback: fetch all documents via a simple endpoint */
+        $.get(BASE + 'Ajax/list_documents', function(data) {
+            if (data.success && data.documents && data.documents.length) {
+                renderDocPicker(data.documents);
+            } else {
+                document.getElementById('docPickerList').innerHTML = '<div style="text-align:center;padding:40px;color:var(--cf-text-muted);">No documents found.</div>';
+            }
+        }).fail(function() {
+            document.getElementById('docPickerList').innerHTML = '<div style="text-align:center;padding:40px;color:var(--cf-text-muted);">Could not load documents.</div>';
+        });
+    });
+}
+function closeDocPicker() { document.getElementById('docPickerModal').style.display = 'none'; }
+function renderDocPicker(docs) {
+    var html = '';
+    docs.forEach(function(d) {
+        html += '<div class="dp-item" data-name="' + (d.name||'').toLowerCase() + '" data-id="' + d.id + '" onclick="attachSystemDoc(' + d.id + ',\'' + (d.name||'').replace(/'/g,"\\'") + '\')">' +
+            '<div class="dp-icon"><i class="fa fa-file-' + (d.icon||'o') + '"></i></div>' +
+            '<div class="dp-body"><div class="dp-name">' + (d.name||'Untitled') + '</div>' +
+            '<div class="dp-meta">' + (d.company||'General') + ' &middot; ' + (d.size||'') + ' &middot; ' + (d.type||'') + '</div></div>' +
+            '<div class="dp-add"><i class="fa fa-plus"></i></div></div>';
+    });
+    document.getElementById('docPickerList').innerHTML = html;
+}
+function filterDocPicker() {
+    var q = (document.getElementById('docPickerSearch').value||'').toLowerCase();
+    document.querySelectorAll('#docPickerList .dp-item').forEach(function(el) {
+        el.style.display = (!q || el.dataset.name.indexOf(q) !== -1) ? '' : 'none';
+    });
+}
+function attachSystemDoc(docId, docName) {
+    /* Add as a reference in the chat input */
+    var ta = document.getElementById('chatInput') || document.getElementById('agentChatInput');
+    var ref = '[Document: ' + docName + ' (ID:' + docId + ')]\n';
+    ta.value = ref + ta.value;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
+    ta.focus();
+    closeDocPicker();
+}
+
 /* ═══ Connectors Modal ═══ */
 function openConnectorsModal() {
     document.getElementById('connectorsModal').style.display = 'flex';
@@ -1439,6 +1493,33 @@ function toggleConnector(el, name) {
     }
 }
 </script>
+
+<!-- Document Picker Modal -->
+<div class="conn-modal-overlay" id="docPickerModal" style="display:none;" onclick="if(event.target===this)closeDocPicker()">
+<div class="conn-modal" style="width:600px;">
+    <div class="conn-modal-header">
+        <div>
+            <h2 style="margin:0; font-size:20px; font-weight:700;">Add from Documents</h2>
+            <p style="margin:4px 0 0; font-size:13px; color:var(--cf-text-secondary);">Attach a document from your company files to this conversation.</p>
+        </div>
+        <button class="conn-close" onclick="closeDocPicker()">&times;</button>
+    </div>
+    <div class="conn-toolbar">
+        <input type="text" class="conn-search" id="docPickerSearch" placeholder="Search documents..." oninput="filterDocPicker()">
+    </div>
+    <div id="docPickerList" style="padding:0 28px 28px; overflow-y:auto; flex:1; max-height:400px;"></div>
+</div>
+</div>
+<style>
+.dp-item { display:flex; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--cf-border,#e5e7eb); border-radius:10px; cursor:pointer; margin-bottom:6px; transition:border-color 0.15s; }
+.dp-item:hover { border-color:var(--cf-accent,#4f86c6); background:rgba(79,134,198,0.03); }
+.dp-icon { width:36px; height:36px; border-radius:8px; background:var(--cf-bg,#f8fafc); display:flex; align-items:center; justify-content:center; color:var(--cf-accent); font-size:15px; flex-shrink:0; }
+.dp-body { flex:1; min-width:0; }
+.dp-name { font-size:13px; font-weight:600; color:var(--cf-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dp-meta { font-size:11px; color:var(--cf-text-muted); margin-top:1px; }
+.dp-add { width:28px; height:28px; border-radius:50%; border:1px solid var(--cf-border); display:flex; align-items:center; justify-content:center; color:var(--cf-text-muted); font-size:12px; flex-shrink:0; }
+.dp-item:hover .dp-add { border-color:var(--cf-accent); color:var(--cf-accent); }
+</style>
 
 <!-- Connectors Modal -->
 <div class="conn-modal-overlay" id="connectorsModal" style="display:none;" onclick="if(event.target===this)closeConnectorsModal()">
