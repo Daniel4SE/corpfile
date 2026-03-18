@@ -143,6 +143,20 @@
                                 <span>Files & Images</span>
                             </button>
 
+                            <div class="cf-plus-dropdown-item cf-plus-agents-trigger" onmouseenter="document.getElementById('agentAgentsSub').style.display='block'" onmouseleave="setTimeout(function(){document.getElementById('agentAgentsSub').style.display='none'},200)">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                                <span>Agents</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;opacity:0.4;"><polyline points="9 18 15 12 9 6"/></svg>
+                                <div class="cf-agents-submenu" id="agentAgentsSub" style="display:none;">
+                                    <button type="button" onclick="switchToAgent('compliance'); closeAgentPlusMenu();"><span class="cf-agent-dot" style="background:#8b5cf6;"></span> Company Registration</button>
+                                    <button type="button" onclick="switchToAgent('docgen'); closeAgentPlusMenu();"><span class="cf-agent-dot" style="background:#3b82f6;"></span> Document Generator</button>
+                                    <button type="button" onclick="switchToAgent('kyc'); closeAgentPlusMenu();"><span class="cf-agent-dot" style="background:#10b981;"></span> KYC Screening</button>
+                                    <button type="button" onclick="switchToAgent('ir8a'); closeAgentPlusMenu();"><span class="cf-agent-dot" style="background:#f59e0b;"></span> IR8A / Tax Filing</button>
+                                    <button type="button" onclick="switchToAgent('invoice'); closeAgentPlusMenu();"><span class="cf-agent-dot" style="background:#ec4899;"></span> Invoice Manager</button>
+                                    <button type="button" onclick="switchToAgent('payroll'); closeAgentPlusMenu();"><span class="cf-agent-dot" style="background:#7c3aed;"></span> SG Payroll</button>
+                                </div>
+                            </div>
+
                             <button class="cf-plus-dropdown-item" type="button" onclick="toggleAgentWebSearch(); closeAgentPlusMenu();">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                                 <span>Web Search</span>
@@ -827,6 +841,21 @@
 .cf-plus-dropdown-item:hover { background: #f5f7fa; }
 .cf-plus-dropdown-item svg { color: #64748b; flex-shrink: 0; }
 .cf-plus-dropdown-item:hover svg { color: var(--cf-text, #1e293b); }
+/* Agents submenu */
+.cf-plus-agents-trigger { position: relative; }
+.cf-agents-submenu {
+    position: absolute; left: 100%; top: -6px; min-width: 220px;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12); padding: 6px; z-index: 10000; margin-left: 4px;
+}
+.cf-agents-submenu button {
+    display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px;
+    cursor: pointer; border: none; background: none; width: 100%; text-align: left;
+    font-size: 13px; font-weight: 500; color: var(--cf-text, #1e293b);
+    font-family: var(--cf-font, inherit) !important; transition: background 0.12s;
+}
+.cf-agents-submenu button:hover { background: #f5f7fa; }
+.cf-agent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .cf-plus-item-badge {
     margin-left: auto;
     font-size: 11px;
@@ -1442,22 +1471,11 @@
         e.target.value = '';
     });
 
-    /* Templates popup */
-    window.insertAgentTemplate = function() {
-        var templates = [
-            'Run compliance check for all active companies',
-            'Generate board resolution for director change',
-            'Screen new client for KYC due diligence',
-            'Prepare IR8A filing data for current year',
-            'Generate monthly invoice batch',
-            'Calculate CPF contributions for all employees'
-        ];
-        var choice = prompt('Choose a template number:\n' + templates.map(function(t, i) { return (i+1) + '. ' + t; }).join('\n'));
-        if (choice && templates[parseInt(choice) - 1]) {
-            chatInput.value = templates[parseInt(choice) - 1];
-            chatInput.style.height = 'auto';
-            chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
-            chatInput.focus();
+    /* Switch to agent from + menu submenu */
+    window.switchToAgent = function(agentKey) {
+        var card = document.querySelector('.cf-agent-card-v2[data-agent="' + agentKey + '"]');
+        if (card) {
+            card.click();
         }
     };
 
