@@ -1,1 +1,13 @@
 scraped-files/
+.wrangler/
+.git/
+scraped_pages/
+browser-service/
+node_modules/
+compare/
+extracted_data/
+screenshots/
+scraped_assets/
+data_import/
+*.log
+.DS_Store
