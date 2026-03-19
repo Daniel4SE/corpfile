@@ -550,3 +550,28 @@ class New_registration extends BaseController {
         $this->loadLayout('workspace/new_registration', $data);
     }
 }
+
+// ─── Company Transfer-In ─────────────────────────────────────
+class Company_transfer extends BaseController {
+    public function index() {
+        $this->requireAuth();
+
+        $companies = [];
+        if ($this->db) {
+            $clientId = $_SESSION['client_id'] ?? '';
+            $client = $this->db->fetchOne("SELECT id FROM clients WHERE client_id = ?", [$clientId]);
+            if ($client) {
+                $companies = $this->db->fetchAll(
+                    "SELECT id, company_name, registration_number FROM companies WHERE client_id = ? ORDER BY company_name",
+                    [$client->id]
+                );
+            }
+        }
+
+        $data = [
+            'page_title' => 'Company Transfer-In',
+            'companies' => $companies,
+        ];
+        $this->loadLayout('workspace/company_transfer', $data);
+    }
+}

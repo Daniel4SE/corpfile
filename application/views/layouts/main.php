@@ -183,7 +183,7 @@
                             </li>
 
                             <!-- 5. Registration -->
-                            <li class="<?= in_array($current_url, ['registration','new_registration','add_company']) ? 'active' : '' ?>">
+                            <li class="<?= in_array($current_url, ['registration','new_registration','company_transfer','add_company']) ? 'active' : '' ?>">
                                 <a>
                                     <span class="cf-nav-icon"><?= cf_icon('registration') ?></span>
                                     <span>Registration</span>
@@ -195,6 +195,9 @@
                                     </li>
                                     <li class="<?= ($current_url == 'new_registration') ? 'active' : '' ?>">
                                         <a href="<?= base_url('new_registration') ?>">New Company</a>
+                                    </li>
+                                    <li class="<?= ($current_url == 'company_transfer') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('company_transfer') ?>">Company Transfer</a>
                                     </li>
                                 </ul>
                             </li>
