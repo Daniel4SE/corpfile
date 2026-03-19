@@ -783,7 +783,6 @@
 </div>
 
 <script>
-var BASE_URL = '<?= base_url() ?>';
 var regData = {
     questionnaire: {},
     ubo: [],
@@ -1294,7 +1293,7 @@ function goToStep(stepNum) {
     $('#nrStepSubtitle').text(STEP_META[n].subtitle);
 }
 
-$(function() {
+document.addEventListener('DOMContentLoaded', function() {
     addUbo();
     addShareholder();
     addDirector();

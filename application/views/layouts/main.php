@@ -197,7 +197,7 @@
                                         <a href="<?= base_url('new_registration') ?>">New Company</a>
                                     </li>
                                     <li class="<?= ($current_url == 'company_transfer') ? 'active' : '' ?>">
-                                        <a href="<?= base_url('company_transfer') ?>">Company Transfer</a>
+                                        <a href="<?= base_url('company_transfer') ?>">Company Transfer-In</a>
                                     </li>
                                 </ul>
                             </li>

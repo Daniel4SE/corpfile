@@ -140,6 +140,7 @@ $controllerMap = [
     'dashboard' => ['file' => 'Dashboard.php', 'class' => 'Dashboard'],
     'registration' => ['file' => 'Workspace.php', 'class' => 'Registration'],
     'new_registration' => ['file' => 'Workspace.php', 'class' => 'New_registration'],
+    'company_transfer' => ['file' => 'Workspace.php', 'class' => 'Company_transfer'],
     'events_alerts' => ['file' => 'Workspace.php', 'class' => 'Events_alerts'],
     'workflow' => ['file' => 'Workspace.php', 'class' => 'Workflow'],
     'agents' => ['file' => 'Workspace.php', 'class' => 'Agents'],
