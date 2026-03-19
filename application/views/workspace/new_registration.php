@@ -476,7 +476,7 @@
         <div class="nr-step-pane active" data-pane="1">
             <div class="nr-accordion" id="nrAccordion">
                 <div class="nr-section open" data-section="1">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>1. Company Info</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -497,7 +497,7 @@
                 </div>
 
                 <div class="nr-section" data-section="2">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>2. Company Assets</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -510,7 +510,7 @@
                 </div>
 
                 <div class="nr-section" data-section="3">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>3. Source of Funds</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -523,7 +523,7 @@
                 </div>
 
                 <div class="nr-section" data-section="4">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>4. Group Companies</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -536,7 +536,7 @@
                 </div>
 
                 <div class="nr-section" data-section="5">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>5. UBO / Registrable Controller</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -548,7 +548,7 @@
                 </div>
 
                 <div class="nr-section" data-section="6">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>6. Shareholders</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -560,7 +560,7 @@
                 </div>
 
                 <div class="nr-section" data-section="7">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>7. Capital Structure</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -587,7 +587,7 @@
                 </div>
 
                 <div class="nr-section" data-section="8">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>8. Registered Office</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -612,7 +612,7 @@
                 </div>
 
                 <div class="nr-section" data-section="9">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>9. Directors</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -624,7 +624,7 @@
                 </div>
 
                 <div class="nr-section" data-section="10">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>10. Accounting</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -639,7 +639,7 @@
                 </div>
 
                 <div class="nr-section" data-section="11">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>11. Bank Account</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -660,7 +660,7 @@
                 </div>
 
                 <div class="nr-section" data-section="12">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>12. Key Contact</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -674,7 +674,7 @@
                 </div>
 
                 <div class="nr-section" data-section="13">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>13. Declaration</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -690,7 +690,7 @@
                 </div>
 
                 <div class="nr-section" data-section="14">
-                    <button type="button" class="nr-section-head">
+                    <button type="button" class="nr-section-head" onclick="toggleNrSection(this)">
                         <span>14. KYC Risk</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
@@ -1297,10 +1297,6 @@ document.addEventListener('DOMContentLoaded', function() {
     addUbo();
     addShareholder();
     addDirector();
-
-    $('#nrAccordion').on('click', '.nr-section-head', function() {
-        $(this).closest('.nr-section').toggleClass('open');
-    });
 
     $('#addUboBtn').on('click', function() { addUbo(); });
     $('#addShareholderBtn').on('click', function() { addShareholder(); });
