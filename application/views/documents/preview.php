@@ -13,6 +13,14 @@
 <?php if (!empty($document)):
     $ext = strtolower(pathinfo($document->file_path ?? '', PATHINFO_EXTENSION));
     $file_url = base_url($document->file_path ?? '');
+    $r2 = new R2Storage();
+    if ($r2->isConfigured()) {
+        $r2Key = 'documents/' . basename($document->file_path ?? '');
+        $r2Url = $r2->getUrl($r2Key);
+        if ($r2Url) {
+            $file_url = $r2Url;
+        }
+    }
 ?>
     <?php if (in_array($ext, ['jpg','jpeg','png','gif','bmp','svg'])): ?>
         <div class="text-center"><img src="<?= $file_url ?>" class="img-responsive" style="max-height:80vh;margin:auto;"></div>

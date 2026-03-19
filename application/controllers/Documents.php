@@ -3,6 +3,8 @@
  * Documents Controller - Document Management
  * Handles: /documents
  */
+require_once APPPATH . 'libraries/R2Storage.php';
+
 class Documents extends BaseController {
     
     public function index() {
@@ -101,8 +103,6 @@ class Documents extends BaseController {
         if (!is_dir($uploadDir)) { mkdir($uploadDir, 0755, true); }
 
         $userCompanyId = $this->input('company_id', '') ?: null;
-        $docType   = $this->input('document_type', 'General');
-        $desc      = $this->input('description', '');
         $userId    = $_SESSION['user_id'] ?? null;
 
         // Pre-load all company names for auto-matching
@@ -110,6 +110,9 @@ class Documents extends BaseController {
             "SELECT id, company_name FROM companies WHERE client_id = ? ORDER BY CHAR_LENGTH(company_name) DESC",
             [$client->id]
         );
+
+        $r2 = new R2Storage();
+        $r2Enabled = $r2->isConfigured();
 
         $count = 0;
         $matched = 0;
@@ -131,6 +134,12 @@ class Documents extends BaseController {
             $entityType = $companyId ? 'company' : 'general';
 
             if (move_uploaded_file($tmpName, $dest)) {
+                if ($r2Enabled) {
+                    $r2Key = 'documents/' . $safeName;
+                    $contentType = function_exists('mime_content_type') ? mime_content_type($dest) : 'application/octet-stream';
+                    $r2->upload($r2Key, $dest, $contentType ?: 'application/octet-stream');
+                }
+
                 $this->db->insert('documents', [
                     'client_id'     => $client->id,
                     'entity_type'   => $entityType,
@@ -189,7 +198,31 @@ class Documents extends BaseController {
         $doc = $this->db->fetchOne("SELECT * FROM documents WHERE id = ?", [$id]);
         if (!$doc || empty($doc->file_path)) { $this->redirect('documents'); return; }
         $filePath = BASEPATH . $doc->file_path;
-        if (!file_exists($filePath)) { $this->setFlash('error', 'File not found.'); $this->redirect('documents'); return; }
+        if (!file_exists($filePath)) {
+            $r2 = new R2Storage();
+            if ($r2->isConfigured()) {
+                $r2Key = 'documents/' . basename($doc->file_path);
+                $url = $r2->getUrl($r2Key);
+                if ($url) {
+                    header('Location: ' . $url);
+                    exit;
+                }
+
+                $remoteBody = $r2->download($r2Key);
+                if ($remoteBody !== false) {
+                    header('Content-Description: File Transfer');
+                    header('Content-Type: application/octet-stream');
+                    header('Content-Disposition: attachment; filename="' . ($doc->document_name ?? $doc->file_name ?? 'download') . '"');
+                    header('Content-Length: ' . strlen($remoteBody));
+                    echo $remoteBody;
+                    exit;
+                }
+            }
+
+            $this->setFlash('error', 'File not found.');
+            $this->redirect('documents');
+            return;
+        }
         header('Content-Description: File Transfer');
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: attachment; filename="' . ($doc->document_name ?? $doc->file_name ?? 'download') . '"');
@@ -447,6 +480,13 @@ class Edit_form extends BaseController {
         }
 
         if (move_uploaded_file($_FILES['file']['tmp_name'], $dest)) {
+            $r2 = new R2Storage();
+            if ($r2->isConfigured()) {
+                $r2Key = 'documents/' . $safeName;
+                $contentType = function_exists('mime_content_type') ? mime_content_type($dest) : 'application/octet-stream';
+                $r2->upload($r2Key, $dest, $contentType ?: 'application/octet-stream');
+            }
+
             $this->db->insert('documents', [
                 'client_id' => $client->id,
                 'entity_type' => $companyId ? 'company' : 'general',
@@ -495,6 +535,13 @@ class Api_doc_upload extends BaseController {
         }
 
         if (move_uploaded_file($_FILES['file']['tmp_name'], $dest)) {
+            $r2 = new R2Storage();
+            if ($r2->isConfigured()) {
+                $r2Key = 'documents/' . $safeName;
+                $contentType = function_exists('mime_content_type') ? mime_content_type($dest) : 'application/octet-stream';
+                $r2->upload($r2Key, $dest, $contentType ?: 'application/octet-stream');
+            }
+
             $this->db->insert('documents', [
                 'client_id' => $client->id,
                 'entity_type' => $companyId ? 'company' : 'general',
