@@ -480,7 +480,7 @@
                         <span>1. Company Info</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
-                    <div class="nr-section-body">
+                    <div class="nr-section-body" style="display:block;">
                         <div class="row">
                             <div class="col-sm-4 form-group"><label>Company Name Choice 1</label><input class="form-control" name="company_name_1" type="text"></div>
                             <div class="col-sm-4 form-group"><label>Company Name Choice 2</label><input class="form-control" name="company_name_2" type="text"></div>
