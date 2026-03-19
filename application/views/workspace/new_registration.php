@@ -527,7 +527,7 @@
                         <span>4. Group Companies</span>
                         <span class="nr-chevron"><i class="fa fa-chevron-down"></i></span>
                     </button>
-                    <div class="nr-section-body">
+                    <div class="nr-section-body" style="display:block;">
                         <div class="row">
                             <div class="col-sm-6 form-group"><label>Group Name</label><input class="form-control" name="group_name" type="text"></div>
                             <div class="col-sm-6 form-group"><label>Group Website</label><input class="form-control" name="group_website" type="text" placeholder="https://"></div>
@@ -805,6 +805,17 @@ var STEP_META = {
     3: { title: 'Step 3: ACRA Filing', subtitle: 'Capture filing completion status, UEN, and incorporation date.' },
     4: { title: 'Step 4: Post-Incorporation Documents', subtitle: 'Generate post-incorporation set and complete registration.' }
 };
+
+function toggleNrSection(btn) {
+    var section = btn && btn.closest ? btn.closest('.nr-section') : null;
+    if (!section) return false;
+    var body = section.querySelector('.nr-section-body');
+    if (!body) return false;
+    var willOpen = !section.classList.contains('open');
+    section.classList.toggle('open', willOpen);
+    body.style.display = willOpen ? 'block' : 'none';
+    return false;
+}
 
 function addUbo(initial) {
     uboIndex += 1;
