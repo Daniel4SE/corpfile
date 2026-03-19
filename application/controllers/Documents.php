@@ -488,7 +488,6 @@ class Api_doc_upload extends BaseController {
         $dest = $uploadDir . $safeName;
 
         $companyName = $_POST['company'] ?? '';
-        $category = $_POST['category'] ?? '';
         $companyId = null;
         if ($companyName) {
             $row = $this->db->fetchOne("SELECT id FROM companies WHERE company_name = ? AND client_id = ?", [$companyName, $client->id]);
@@ -504,7 +503,6 @@ class Api_doc_upload extends BaseController {
                 'file_path' => 'uploads/documents/' . $safeName,
                 'file_size' => $_FILES['file']['size'],
                 'file_type' => strtolower(pathinfo($name, PATHINFO_EXTENSION)),
-                'description' => $category,
             ]);
             echo json_encode(['ok' => true, 'name' => $name, 'company_id' => $companyId]);
         } else {
