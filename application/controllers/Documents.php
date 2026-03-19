@@ -415,4 +415,51 @@ class Edit_form extends BaseController {
         }
         $this->loadLayout('documents/edit_form', $data);
     }
+
+    public function api_upload() {
+        header('Content-Type: application/json');
+        $apiKey = getenv('IMPORT_API_KEY') ?: 'corpfile-import-2026';
+        if (($_SERVER['HTTP_X_API_KEY'] ?? '') !== $apiKey) {
+            http_response_code(401);
+            echo json_encode(['ok' => false, 'error' => 'Unauthorized']);
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_FILES['file'])) {
+            echo json_encode(['ok' => false, 'error' => 'POST with file required']);
+            return;
+        }
+        $client = $this->db->fetchOne("SELECT id FROM clients LIMIT 1");
+        if (!$client) { echo json_encode(['ok' => false, 'error' => 'No client']); return; }
+
+        $uploadDir = BASEPATH . 'uploads/documents/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+        $name = $_FILES['file']['name'];
+        $safeName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $name);
+        $dest = $uploadDir . $safeName;
+
+        $companyName = $_POST['company'] ?? '';
+        $category = $_POST['category'] ?? '';
+        $companyId = null;
+        if ($companyName) {
+            $row = $this->db->fetchOne("SELECT id FROM companies WHERE company_name = ? AND client_id = ?", [$companyName, $client->id]);
+            if ($row) $companyId = $row->id;
+        }
+
+        if (move_uploaded_file($_FILES['file']['tmp_name'], $dest)) {
+            $this->db->insert('documents', [
+                'client_id' => $client->id,
+                'entity_type' => $companyId ? 'company' : 'general',
+                'entity_id' => $companyId,
+                'document_name' => $name,
+                'file_path' => 'uploads/documents/' . $safeName,
+                'file_size' => $_FILES['file']['size'],
+                'file_type' => strtolower(pathinfo($name, PATHINFO_EXTENSION)),
+                'description' => $category,
+            ]);
+            echo json_encode(['ok' => true, 'name' => $name, 'company_id' => $companyId]);
+        } else {
+            echo json_encode(['ok' => false, 'error' => 'Move failed']);
+        }
+    }
 }
