@@ -309,6 +309,7 @@ $controllerMap = [
 
     // ─── Documents ───────────────────────────────────────────────
     'documents'            => ['file' => 'Documents.php', 'class' => 'Documents'],
+    'api_doc_upload'       => ['file' => 'Documents.php', 'class' => 'Api_doc_upload'],
     'alldocuments'         => ['file' => 'Documents.php', 'class' => 'Documents'],
     'company_document'     => ['file' => 'Documents.php', 'class' => 'Company_document'],
     'company_file'         => ['file' => 'Documents.php', 'class' => 'Company_file'],

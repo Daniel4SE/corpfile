@@ -416,7 +416,7 @@ class Edit_form extends BaseController {
         $this->loadLayout('documents/edit_form', $data);
     }
 
-    public function api_upload() {
+    public function api_upload_internal() {
         header('Content-Type: application/json');
         $apiKey = getenv('IMPORT_API_KEY') ?: 'corpfile-import-2026';
         if (($_SERVER['HTTP_X_API_KEY'] ?? '') !== $apiKey) {
@@ -461,5 +461,12 @@ class Edit_form extends BaseController {
         } else {
             echo json_encode(['ok' => false, 'error' => 'Move failed']);
         }
+    }
+}
+
+class Api_doc_upload extends BaseController {
+    public function index() {
+        $doc = new Documents();
+        $doc->api_upload_internal();
     }
 }
