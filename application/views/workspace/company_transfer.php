@@ -584,7 +584,7 @@
                             <select class="form-control" id="ctCompanySelect" name="company_id">
                                 <option value="">-- Select a company --</option>
                                 <?php foreach ($companies as $c): ?>
-                                <option value="<?= $c->id ?>"><?= htmlspecialchars($c->company_name) ?> (<?= htmlspecialchars($c->registration_number ?? '') ?>)</option>
+                                <option value="<?= $c->id ?>" data-uen="<?= htmlspecialchars($c->registration_number ?? '') ?>"><?= htmlspecialchars($c->company_name) ?> (<?= htmlspecialchars($c->registration_number ?? '') ?>)</option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -922,6 +922,8 @@ function ctGoStep(stepNum) {
     $('#ctStepSubtitle').text(ctStepMeta[n].subtitle);
 
     if (n === 3) {
+        ctSetProgress(0, 'Preparing transfer-in generation request...');
+        $('#ctSpinnerWrap').show();
         ctGenerateDocuments();
     }
 }
@@ -1295,6 +1297,7 @@ function ctGenerateDocuments() {
         }
     }).done(function(res) {
         ctSetProgress(85, 'Processing generated package...');
+        $('#ctSpinnerWrap').hide();
         if (res && res.success) {
             ctData.generated_content = res.content || '';
         } else {
@@ -1304,6 +1307,7 @@ function ctGenerateDocuments() {
         ctRenderOutput();
         ctGoStep(4);
     }).fail(function(xhr, status) {
+        $('#ctSpinnerWrap').hide();
         ctSetProgress(0, 'Generation failed.');
         if (status === 'timeout') {
             ctData.generated_content = 'Error: generation request timed out. Please try again.';
@@ -1385,9 +1389,16 @@ $(document).ready(function() {
     });
 
     $('#ctCompanySelect').on('change', function() {
-        var selectedText = $('#ctCompanySelect option:selected').text();
-        if (selectedText && selectedText !== '-- Select a company --' && !$('[name="company_name"]').val()) {
-            $('[name="company_name"]').val(selectedText.replace(/\s*\([^\)]*\)\s*$/, ''));
+        var $selected = $('#ctCompanySelect option:selected');
+        var selectedText = $selected.text();
+        var uen = $selected.data('uen') || '';
+        if (selectedText && selectedText !== '-- Select a company --') {
+            if (!$('[name="company_name"]').val()) {
+                $('[name="company_name"]').val(selectedText.replace(/\s*\([^\)]*\)\s*$/, ''));
+            }
+            if (!$('[name="company_uen"]').val() && uen) {
+                $('[name="company_uen"]').val(uen);
+            }
         }
     });
 
