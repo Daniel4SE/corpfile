@@ -488,6 +488,12 @@ class DocumentGenerator extends BaseController {
                 'instruction' => 'Generate a Letter of Indemnity for a lost share certificate, indemnifying the company against claims arising from the issuance of a replacement certificate.',
             ],
 
+            // ─── Company Transfer-In ─────────────────────────────────
+            'transfer_in_package' => [
+                'name' => 'Company Transfer-In — Complete Document Package',
+                'instruction' => 'Generate a complete document package for transferring a company\'s corporate secretary services to Yu Young Consulting. This includes: New Client Acceptance Form, merged Board Resolution for all selected changes, Special Resolution (if applicable), and all supplementary documents (Form 45, Consent to Act as Secretary, Notice of Registered Office, resignation letters, etc.). The user will specify which change types apply.',
+            ],
+
             // ─── Reports ─────────────────────────────────────────────
             'report_css' => [
                 'name' => 'CSS Reports (24 Report Types)',

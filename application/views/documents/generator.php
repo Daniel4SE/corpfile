@@ -23,6 +23,9 @@
     <button class="dg-tab" data-cat="forms" onclick="switchCategory('forms', this)">
         <i class="fa fa-file-text-o"></i> Forms
     </button>
+    <button class="dg-tab" data-cat="transfer" onclick="switchCategory('transfer', this)">
+        <i class="fa fa-exchange"></i> Company Transfer
+    </button>
     <button class="dg-tab" data-cat="reports" onclick="switchCategory('reports', this)">
         <i class="fa fa-bar-chart"></i> Reports
     </button>
@@ -164,6 +167,27 @@
             <div class="dg-card-arrow"><i class="fa fa-chevron-right"></i></div>
         </div>
         <?php endforeach; ?>
+    </div>
+</div>
+
+<!-- ═══════ Company Transfer-In ═══════ -->
+<div class="dg-category" id="cat-transfer" style="display:none;">
+    <div class="dg-section-label">Company Transfer-In — 转入公司文件生成</div>
+    <p style="color:var(--cf-text-secondary); font-size:13px; margin-bottom:16px; line-height:1.6;">
+        Generate the complete document package for transferring a company's corporate secretary services to Yu Young Consulting.
+        Select the applicable change types and the system will auto-merge Board Resolutions and generate all supplementary documents.
+    </p>
+    <div class="dg-grid">
+        <div class="dg-card" data-id="transfer_in_package" data-name="company transfer-in complete document package" onclick="selectTemplate('transfer_in_package', this)">
+            <div class="dg-card-icon" style="background:linear-gradient(135deg, #206570, #26B99A);">
+                <i class="fa fa-files-o"></i>
+            </div>
+            <div class="dg-card-body">
+                <div class="dg-card-name">Transfer-In Document Package</div>
+                <div class="dg-card-desc">Complete package — Board Resolution (auto-merged), Acceptance Form, Forms & Resignation Letters</div>
+            </div>
+            <div class="dg-card-arrow"><i class="fa fa-chevron-right"></i></div>
+        </div>
     </div>
 </div>
 
@@ -670,6 +694,81 @@
 /* Hidden template */
 .dg-card.dg-hidden { display: none; }
 
+/* ═══ Transfer-In Specific ═══ */
+.dg-ti-section {
+    background: var(--cf-white);
+    border: 1px solid var(--cf-border);
+    border-radius: var(--cf-radius);
+    padding: 20px 24px;
+}
+.dg-ti-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cf-text);
+    margin-bottom: 4px;
+}
+.dg-ti-section-desc {
+    font-size: 12px;
+    color: var(--cf-text-muted);
+    margin-bottom: 14px;
+}
+.dg-ti-group-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--cf-text-secondary);
+    font-weight: 600;
+    margin-bottom: 8px;
+    padding-top: 4px;
+}
+.dg-ti-check-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    margin: 0 -10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-weight: 400;
+}
+.dg-ti-check-row:hover {
+    background: rgba(79,134,198,0.04);
+}
+.dg-ti-cb {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--cf-accent);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.dg-ti-check-label {
+    font-size: 13px;
+    color: var(--cf-text);
+    line-height: 1.4;
+}
+.dg-ti-cn {
+    color: var(--cf-text-muted);
+    font-size: 12px;
+}
+.dg-ti-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.dg-ti-badge-special {
+    background: #fef3c7;
+    color: #92400e;
+}
+.dg-ti-badge-admin {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
 @media (max-width: 768px) {
     .dg-grid { grid-template-columns: 1fr; }
     .dg-gen-panel { width: 100vw; max-width: 100vw; }
@@ -787,6 +886,13 @@ var templateFields = {
     'form_change_particulars':     { label: 'Change of Particulars', hint: 'Enter old and new details.', fields: [{ id:'person_name', label:'Person Name', type:'text', placeholder:'Director/Secretary name' }, { id:'field_changed', label:'Field Changed', type:'select', options:['Residential Address','Name','ID Number','Nationality'] }, { id:'old_value', label:'Old Value', type:'text', placeholder:'Previous value' }, { id:'new_value', label:'New Value', type:'text', placeholder:'New value' }] },
     'form_waiver_preemptive':      { label: 'Waiver of Pre-emptive Rights', hint: 'Enter allotment details.', fields: [{ id:'num_shares', label:'Shares to be Allotted', type:'text', placeholder:'e.g. 10,000' }, { id:'allottee', label:'Allottee Name', type:'text', placeholder:'Name of allottee' }] },
     'form_indemnity_lost_cert':    { label: 'Lost Certificate Indemnity', hint: 'Enter certificate details.', fields: [{ id:'cert_no', label:'Certificate Number', type:'text', placeholder:'e.g. CERT-001' }, { id:'holder_name', label:'Certificate Holder', type:'text', placeholder:'Name of holder' }, { id:'num_shares', label:'No. of Shares', type:'text', placeholder:'Shares on lost certificate' }] },
+
+    /* Company Transfer-In */
+    'transfer_in_package': {
+        label: 'Company Transfer-In — Document Package',
+        hint: 'Select the changes needed for this transfer-in. The standard 3 items (address, secretary, director) are pre-checked. Board Resolutions will be auto-merged into one document.',
+        custom: true
+    },
 };
 
 var selectedTemplateName = '';
@@ -863,6 +969,12 @@ function buildWizFields(templateId) {
     
     $('#wizStep2Label').text(config.label);
     $('#wizStep2Hint').text(config.hint);
+
+    /* Custom transfer-in builder */
+    if (config.custom && templateId === 'transfer_in_package') {
+        buildTransferInFields(container);
+        return;
+    }
     
     config.fields.forEach(function(f) {
         var html = '<div class="dg-wiz-field"><label for="wiz_' + f.id + '">' + f.label + '</label>';
@@ -884,13 +996,154 @@ function buildWizFields(templateId) {
     });
 }
 
+/* ═══════ Transfer-In Custom Builder ═══════ */
+function buildTransferInFields(container) {
+    var changeTypes = [
+        { id: 'change_registered_office',   label: 'Change Registered Office',       cn: '变更注册地址',   checked: true,  group: 'standard' },
+        { id: 'change_secretary',            label: 'Change Secretary',               cn: '变更公司秘书',   checked: true,  group: 'standard' },
+        { id: 'change_director',             label: 'Change Director',                cn: '变更董事',       checked: false, group: 'standard' },
+        { id: 'change_company_name',         label: 'Change Company Name',            cn: '变更公司名称',   checked: false, group: 'additional', special: true },
+        { id: 'change_principal_activities', label: 'Change Principal Activities',    cn: '变更主营业务',   checked: false, group: 'additional' },
+        { id: 'change_registered_controller',label: 'Change Registered Controller',  cn: '变更实控人',     checked: false, group: 'additional' },
+        { id: 'change_accounting_period',    label: 'Change Accounting Period',       cn: '变更会计期间',   checked: false, group: 'additional' },
+        { id: 'change_currency',             label: 'Change Currency',                cn: '变更货币',       checked: false, group: 'additional' },
+        { id: 'increase_share_capital',      label: 'Increase Share Capital',         cn: '增加股本',       checked: false, group: 'capital' },
+        { id: 'reduce_share_capital',        label: 'Reduce Share Capital',           cn: '减少股本',       checked: false, group: 'capital', special: true },
+        { id: 'transfer_share',              label: 'Transfer Share',                 cn: '股份转让',       checked: false, group: 'capital' },
+        { id: 'interim_dividend',            label: 'Interim Dividend',               cn: '中期分红',       checked: false, group: 'capital' },
+        { id: 'update_constitution',         label: 'Update Constitution',            cn: '更新章程',       checked: false, group: 'additional', special: true },
+        { id: 'update_paid_up_capital',      label: 'Update Paid-up Capital',         cn: '更新实缴资本',   checked: false, group: 'capital' },
+        { id: 'particulars_update',          label: 'Particulars Update',             cn: '个人信息更新',   checked: false, group: 'additional', noResolution: true }
+    ];
+
+    /* Section: Change Type Selection */
+    var html = '';
+    html += '<div class="dg-ti-section">';
+    html += '<div class="dg-ti-section-title">Select Change Types (变更项目)</div>';
+    html += '<div class="dg-ti-section-desc">Check all changes needed for this transfer-in. Pre-checked items are standard for most transfers.</div>';
+
+    /* Standard Transfer Package */
+    html += '<div class="dg-ti-group-label"><i class="fa fa-star" style="color:#f0ad4e; margin-right:6px;"></i>Standard Transfer Package</div>';
+    changeTypes.filter(function(ct) { return ct.group === 'standard'; }).forEach(function(ct) {
+        html += buildChangeTypeCheckbox(ct);
+    });
+
+    /* Additional Changes */
+    html += '<div class="dg-ti-group-label" style="margin-top:14px;"><i class="fa fa-plus-circle" style="color:#3498DB; margin-right:6px;"></i>Additional Changes</div>';
+    changeTypes.filter(function(ct) { return ct.group === 'additional'; }).forEach(function(ct) {
+        html += buildChangeTypeCheckbox(ct);
+    });
+
+    /* Capital & Share Changes */
+    html += '<div class="dg-ti-group-label" style="margin-top:14px;"><i class="fa fa-money" style="color:#27AE60; margin-right:6px;"></i>Capital & Share Changes</div>';
+    changeTypes.filter(function(ct) { return ct.group === 'capital'; }).forEach(function(ct) {
+        html += buildChangeTypeCheckbox(ct);
+    });
+
+    html += '</div>';
+
+    /* Section: Common Fields */
+    html += '<div class="dg-ti-section" style="margin-top:20px;">';
+    html += '<div class="dg-ti-section-title">Transfer Details</div>';
+    html += '<div class="dg-wiz-field"><label for="wiz_ti_effective_date">Effective Date (生效日期)</label>';
+    html += '<input type="date" id="wiz_ti_effective_date"></div>';
+
+    html += '<div class="dg-wiz-field"><label for="wiz_ti_new_address">New Registered Office (if different from Yu Young default)</label>';
+    html += '<input type="text" id="wiz_ti_new_address" placeholder="Default: 51 Goldhill Plaza #20-07 Singapore 308900"></div>';
+
+    html += '<div class="dg-wiz-field"><label for="wiz_ti_new_secretary">New Secretary Name (if different from default)</label>';
+    html += '<input type="text" id="wiz_ti_new_secretary" placeholder="Default: YANG YUJIE"></div>';
+    html += '</div>';
+
+    /* Section: Director Change Details (conditional) */
+    html += '<div class="dg-ti-section dg-ti-conditional" id="tiDirectorFields" style="margin-top:20px; display:none;">';
+    html += '<div class="dg-ti-section-title">New Director Details (变更董事详情)</div>';
+    html += '<div class="dg-wiz-field"><label for="wiz_ti_dir_name">Director Full Name</label>';
+    html += '<input type="text" id="wiz_ti_dir_name" placeholder="Full legal name"></div>';
+    html += '<div class="dg-wiz-field"><label for="wiz_ti_dir_id">ID/Passport No.</label>';
+    html += '<input type="text" id="wiz_ti_dir_id" placeholder="e.g. S1234567A"></div>';
+    html += '<div class="dg-wiz-field"><label for="wiz_ti_dir_nationality">Nationality</label>';
+    html += '<input type="text" id="wiz_ti_dir_nationality" placeholder="e.g. Singaporean"></div>';
+    html += '<div class="dg-wiz-field"><label for="wiz_ti_dir_address">Residential Address</label>';
+    html += '<input type="text" id="wiz_ti_dir_address" placeholder="Full residential address"></div>';
+    html += '<div class="dg-wiz-field"><label for="wiz_ti_dir_is_nominee">Is Nominee Director?</label>';
+    html += '<select id="wiz_ti_dir_is_nominee"><option value="no">No — Independent director</option><option value="yes">Yes — Yu Young nominee director</option></select></div>';
+    html += '<div class="dg-wiz-field"><label for="wiz_ti_dir_removing">Director Being Removed (if any)</label>';
+    html += '<input type="text" id="wiz_ti_dir_removing" placeholder="Name of outgoing director (leave blank if none)"></div>';
+    html += '</div>';
+
+    /* Section: Additional Context */
+    html += '<div class="dg-ti-section" style="margin-top:20px;">';
+    html += '<div class="dg-ti-section-title">Additional Instructions (补充说明)</div>';
+    html += '<div class="dg-wiz-field"><label for="wiz_ti_extra">Any additional details or special instructions</label>';
+    html += '<textarea id="wiz_ti_extra" rows="3" placeholder="e.g. New SSIC code for principal activity change, share transfer details, etc."></textarea></div>';
+    html += '</div>';
+
+    container.html(html);
+
+    /* Bind checkbox change events */
+    container.find('.dg-ti-cb').on('change', function() {
+        var id = $(this).val();
+        /* Show/hide director fields */
+        if (id === 'change_director') {
+            $('#tiDirectorFields').toggle($(this).is(':checked'));
+        }
+    });
+}
+
+function buildChangeTypeCheckbox(ct) {
+    var badges = '';
+    if (ct.special) badges += ' <span class="dg-ti-badge dg-ti-badge-special">Special Resolution</span>';
+    if (ct.noResolution) badges += ' <span class="dg-ti-badge dg-ti-badge-admin">No Resolution</span>';
+    return '<label class="dg-ti-check-row">' +
+        '<input type="checkbox" class="dg-ti-cb" value="' + ct.id + '"' + (ct.checked ? ' checked' : '') + '>' +
+        '<span class="dg-ti-check-label">' + ct.label + ' <span class="dg-ti-cn">(' + ct.cn + ')</span>' + badges + '</span>' +
+        '</label>';
+}
+
 function collectWizFields() {
     var data = {};
     var config = templateFields[selectedTemplateId];
     if (!config) return data;
+
+    /* Custom transfer-in collection */
+    if (config.custom && selectedTemplateId === 'transfer_in_package') {
+        return collectTransferInFields();
+    }
+
     config.fields.forEach(function(f) {
         data[f.id] = $('#wiz_' + f.id).val() || '';
     });
+    return data;
+}
+
+function collectTransferInFields() {
+    var data = {};
+    /* Collect selected change types */
+    var selected = [];
+    $('.dg-ti-cb:checked').each(function() {
+        selected.push($(this).val());
+    });
+    data['selected_changes'] = selected.join(', ');
+
+    /* Common fields */
+    data['effective_date'] = $('#wiz_ti_effective_date').val() || '';
+    data['new_registered_office'] = $('#wiz_ti_new_address').val() || '51 Goldhill Plaza #20-07 Singapore 308900';
+    data['new_secretary_name'] = $('#wiz_ti_new_secretary').val() || 'YANG YUJIE';
+
+    /* Director fields (if change_director selected) */
+    if (selected.indexOf('change_director') !== -1) {
+        data['new_director_name'] = $('#wiz_ti_dir_name').val() || '';
+        data['new_director_id'] = $('#wiz_ti_dir_id').val() || '';
+        data['new_director_nationality'] = $('#wiz_ti_dir_nationality').val() || '';
+        data['new_director_address'] = $('#wiz_ti_dir_address').val() || '';
+        data['is_nominee_director'] = $('#wiz_ti_dir_is_nominee').val() || 'no';
+        data['removing_director'] = $('#wiz_ti_dir_removing').val() || '';
+    }
+
+    /* Extra context */
+    data['additional_instructions'] = $('#wiz_ti_extra').val() || '';
+
     return data;
 }
 

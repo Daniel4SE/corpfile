@@ -183,11 +183,20 @@
                             </li>
 
                             <!-- 5. Registration -->
-                            <li class="<?= in_array($current_url, ['registration','add_company']) ? 'active' : '' ?>">
-                                <a href="<?= base_url('registration') ?>">
+                            <li class="<?= in_array($current_url, ['registration','new_registration','add_company']) ? 'active' : '' ?>">
+                                <a>
                                     <span class="cf-nav-icon"><?= cf_icon('registration') ?></span>
                                     <span>Registration</span>
+                                    <span class="cf-chevron"><?= cf_icon('chevron_down', 14) ?></span>
                                 </a>
+                                <ul class="nav child_menu">
+                                    <li class="<?= ($current_url == 'registration') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('registration') ?>">Company Profiles</a>
+                                    </li>
+                                    <li class="<?= ($current_url == 'new_registration') ? 'active' : '' ?>">
+                                        <a href="<?= base_url('new_registration') ?>">New Company</a>
+                                    </li>
+                                </ul>
                             </li>
 
                             <!-- 7. Events & Alerts -->

@@ -541,3 +541,12 @@ class Agents extends Workspace_section {
         $this->loadLayout('workspace/agents', $data);
     }
 }
+
+// ─── New Company Registration SOP ────────────────────────────
+class New_registration extends BaseController {
+    public function index() {
+        $this->requireAuth();
+        $data = ['page_title' => 'New Company Registration'];
+        $this->loadLayout('workspace/new_registration', $data);
+    }
+}
